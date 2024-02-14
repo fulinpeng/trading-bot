@@ -1,0 +1,21 @@
+{
+    "apps": [
+        {
+            "name": "bot-app",
+            "script": "gridBot6-1.js",
+            "watch": true,
+            "ignore_watch": ["node_modules", "logs"],
+            "instances": "max",
+            "exec_mode": "cluster",
+            "env": {
+                "NODE_ENV": "production"
+            },
+            "log_date_format": "YYYY-MM-DD HH:mm Z",
+            "error_file": "pm2/logs/error.log",
+            "out_file": "pm2/logs/out.log",
+            "pid_file": "pm2/pids/app.pid",
+            "merge_logs": true,
+            "cwd": "./"
+        }
+    ]
+}

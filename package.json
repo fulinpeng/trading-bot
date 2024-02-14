@@ -1,0 +1,31 @@
+{
+    "name": "trading-bot",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "start-6-1": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot6-1.js",
+        "start-6-2": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot6-2.js",
+        "start-6-3": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot6-3.js",
+        "start-6-4": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot6-4.js",
+        "start-9": "forever start --minUptime 5000 --spinSleepTime 5000 -o /dev/null -e /dev/null gridBot9.js",
+        "restart-all": "forever restartall",
+        "stop-all": "forever stopall",
+        "log-all": "forever logs"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@binance/connector": "^3.2.0",
+        "axios": "^1.6.5",
+        "crypto": "^1.0.1",
+        "dotenv": "^16.4.0",
+        "https-proxy-agent": "^7.0.2",
+        "node-binance-api": "^0.13.1",
+        "socks-proxy-agent": "^8.0.2",
+        "ta-lib": "^0.11.0",
+        "tunnel": "^0.0.6",
+        "ws": "^8.16.0"
+    }
+}
