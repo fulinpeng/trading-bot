@@ -5,7 +5,7 @@ function debounce(func, delay, immediate) {
         const later = async () => {
             timeoutId = null;
             if (!immediate) {
-                await func.apply(this, args);
+                await func(...args);
             }
         };
 
@@ -15,7 +15,7 @@ function debounce(func, delay, immediate) {
         timeoutId = setTimeout(later, delay);
 
         if (callNow) {
-            await func.apply(this, args);
+            await func(...args);
         }
     };
 }
@@ -33,7 +33,7 @@ function throttle(func, delay) {
         if (shouldInvoke) {
             lastInvokeTime = now;
             try {
-                const result = await func.apply(this, args);
+                const result = await func(...args);
                 return result;
             } catch (error) {
                 throw error;
@@ -44,7 +44,7 @@ function throttle(func, delay) {
             timeoutId = setTimeout(async () => {
                 lastInvokeTime = Date.now();
                 try {
-                    const result = await func.apply(this, args);
+                    const result = await func(...args);
                     return result;
                 } catch (error) {
                     throw error;
@@ -66,7 +66,7 @@ function throttleImmediate(func, delay, immediate = true) {
         if (shouldInvoke) {
             lastInvokeTime = now;
             try {
-                const result = await func.apply(this, args);
+                const result = await func(...args);
                 return result;
             } catch (error) {
                 throw error;
@@ -77,7 +77,7 @@ function throttleImmediate(func, delay, immediate = true) {
             timeoutId = setTimeout(async () => {
                 lastInvokeTime = immediate ? Date.now() : lastInvokeTime;
                 try {
-                    const result = await func.apply(this, args);
+                    const result = await func(...args);
                     return result;
                 } catch (error) {
                     throw error;
@@ -98,9 +98,48 @@ const getDate = () => {
 
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
+// 计算数组平均值的函数
+function calculateAverage(values, period) {
+    if (period) {
+        const sum = values.slice(0, period).reduce((acc, val) => acc + val, 0);
+        return sum / period;
+    } else {
+        const sum = values.reduce((acc, val) => acc + val, 0);
+        return sum / values.length;
+    }
+}
+function isNonEmpty(value) {
+    if (Array.isArray(value)) {
+        return value.length > 0 && !value.some((item) => item === undefined || item === null);
+    }
 
+    if (typeof value === "object" && value !== null) {
+        return Object.values(value).some((item) => item === undefined || item === null);
+    }
+
+    return false; // 非数组和对象的情况
+}
+
+function findFarthestNumber(arr, cur) {
+    let farthestNumber = arr[0];
+    let maxDistance = Math.abs(arr[0] - cur);
+
+    for (let i = 1; i < arr.length; i++) {
+        const distance = Math.abs(arr[i] - cur);
+        if (distance > maxDistance) {
+            maxDistance = distance;
+            farthestNumber = arr[i];
+        }
+    }
+
+    return farthestNumber;
+}
 module.exports = {
     debounce,
     throttle,
+    throttleImmediate,
     getDate,
+    calculateAverage,
+    isNonEmpty,
+    findFarthestNumber,
 };

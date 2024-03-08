@@ -18,7 +18,7 @@ const {
     leverage,
     gridCount,
     gridHight,
-    repeatNum,
+    maxRepeatNum,
     needSellPercent,
     EMA_PERIOD,
     klineStage,
@@ -848,7 +848,7 @@ const confirmOrder = async () => {
                 side: trend === "up" ? "BUY" : "SELL",
             });
             // 确定好方向后，再重新绘制网格
-            if (repeatSamePointMap[curGridPoint + ""] >= repeatNum) {
+            if (repeatSamePointMap[curGridPoint + ""] >= maxRepeatNum) {
                 console.log("根据上一次的curGridPoint重新绘制网格");
 
                 setGridPointsToCurPriceCenter(curGridPoint); // 重新绘制网格

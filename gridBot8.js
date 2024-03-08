@@ -18,7 +18,7 @@ const {
     leverage,
     gridCount,
     gridHight,
-    repeatNum,
+    maxRepeatNum,
     needSellPercent,
     EMA_PERIOD,
     klineStage,

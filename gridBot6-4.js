@@ -16,7 +16,7 @@ const {
     availableMoney,
     invariableBalance,
     leverage,
-    repeatNum,
+    maxRepeatNum,
     needSellPercent,
     EMA_PERIOD,
     klineStage,

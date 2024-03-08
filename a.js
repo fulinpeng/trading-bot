@@ -1,253 +1,176 @@
-{
-    code: 'ERR_BAD_REQUEST',
-    config: {
-      transitional: {
-        silentJSONParsing: true,
-        forcedJSONParsing: true,
-        clarifyTimeoutError: false
-      },
-      adapter: [ 'xhr', 'http' ],
-      transformRequest: [ [Function: transformRequest] ],
-      transformResponse: [ [Function: transformResponse] ],
-      timeout: 0,
-      xsrfCookieName: 'XSRF-TOKEN',
-      xsrfHeaderName: 'X-XSRF-TOKEN',
-      maxContentLength: -1,
-      maxBodyLength: -1,
-      env: { FormData: [Function], Blob: [class Blob] },
-      validateStatus: [Function: validateStatus],
-      headers: Object [AxiosHeaders] {
-        Accept: 'application/json, text/plain, */*',
-        'Content-Type': 'application/json',
-        'X-MBX-APIKEY': 'W9MjiCH5x52x5UBQVmrY4flVrWHUz8bouP2VJtPa66jCuPmP1SV3E7ucwkwSL4cr',
-        'User-Agent': 'axios/1.6.5',
-        'Accept-Encoding': 'gzip, compress, deflate, br'
-      },
-      httpsAgent: HttpsProxyAgent {
-        _events: [Object: null prototype],
-        _eventsCount: 2,
-        _maxListeners: undefined,
-        options: [Object],
-        requests: [Object: null prototype] {},
-        sockets: [Object: null prototype],
-        freeSockets: [Object: null prototype] {},
-        keepAliveMsecs: 1000,
-        keepAlive: false,
-        maxSockets: Infinity,
-        maxFreeSockets: 256,
-        scheduling: 'lifo',
-        maxTotalSockets: Infinity,
-        totalSocketCount: 1,
-        proxy: [URL],
-        proxyHeaders: {},
-        connectOpts: [Object],
-        [Symbol(kCapture)]: false,
-        [Symbol(AgentBaseInternalState)]: [Object]
-      },
-      method: 'get',
-      url: 'https://fapi.binance.com/fapi/v2/positionRisk?symbol=IDUSDT&timestamp=1707294057784&recvWindow=6000&signature=054f94a6e6cdc5bc5d949fa3feb29eafdc417a529fdfeb01fed535ceb4f119c2',
-      data: undefined
-    },
-    request: <ref *1> ClientRequest {
-      _events: [Object: null prototype] {
-        abort: [Function (anonymous)],
-        aborted: [Function (anonymous)],
-        connect: [Function (anonymous)],
-        error: [Function (anonymous)],
-        socket: [Function (anonymous)],
-        timeout: [Function (anonymous)],
-        finish: [Function: requestOnFinish]
-      },
-      _eventsCount: 7,
-      _maxListeners: undefined,
-      outputData: [],
-      outputSize: 0,
-      writable: true,
-      destroyed: false,
-      _last: true,
-      chunkedEncoding: false,
-      shouldKeepAlive: false,
-      maxRequestsOnConnectionReached: false,
-      _defaultKeepAlive: true,
-      useChunkedEncodingByDefault: false,
-      sendDate: false,
-      _removedConnection: false,
-      _removedContLen: false,
-      _removedTE: false,
-      strictContentLength: false,
-      _contentLength: 0,
-      _hasBody: true,
-      _trailer: '',
-      finished: true,
-      _headerSent: true,
-      _closed: false,
-      socket: TLSSocket {
-        _tlsOptions: [Object],
-        _secureEstablished: true,
-        _securePending: false,
-        _newSessionPending: false,
-        _controlReleased: true,
-        secureConnecting: false,
-        _SNICallback: null,
-        servername: 'fapi.binance.com',
-        alpnProtocol: false,
-        authorized: true,
-        authorizationError: null,
-        encrypted: true,
-        _events: [Object: null prototype],
-        _eventsCount: 9,
-        connecting: false,
-        _hadError: false,
-        _parent: [Socket],
-        _host: null,
-        _closeAfterHandlingError: false,
-        _readableState: [ReadableState],
-        _maxListeners: undefined,
-        _writableState: [WritableState],
-        allowHalfOpen: false,
-        _sockname: null,
-        _pendingData: null,
-        _pendingEncoding: '',
-        server: undefined,
-        _server: null,
-        ssl: [TLSWrap],
-        _requestCert: true,
-        _rejectUnauthorized: true,
-        parser: null,
-        _httpMessage: [Circular *1],
-        [Symbol(res)]: [TLSWrap],
-        [Symbol(verified)]: true,
-        [Symbol(pendingSession)]: null,
-        [Symbol(async_id_symbol)]: 62,
-        [Symbol(kHandle)]: [TLSWrap],
-        [Symbol(lastWriteQueueSize)]: 0,
-        [Symbol(timeout)]: null,
-        [Symbol(kBuffer)]: null,
-        [Symbol(kBufferCb)]: null,
-        [Symbol(kBufferGen)]: null,
-        [Symbol(kCapture)]: false,
-        [Symbol(kSetNoDelay)]: false,
-        [Symbol(kSetKeepAlive)]: true,
-        [Symbol(kSetKeepAliveInitialDelay)]: 60,
-        [Symbol(kBytesRead)]: 0,
-        [Symbol(kBytesWritten)]: 0,
-        [Symbol(connect-options)]: [Object]
-      },
-      _header: 'GET /fapi/v2/positionRisk?symbol=IDUSDT&timestamp=1707294057784&recvWindow=6000&signature=054f94a6e6cdc5bc5d949fa3feb29eafdc417a529fdfeb01fed535ceb4f119c2 HTTP/1.1\r\n' +
-        'Accept: application/json, text/plain, */*\r\n' +
-        'Content-Type: application/json\r\n' +
-        'X-MBX-APIKEY: W9MjiCH5x52x5UBQVmrY4flVrWHUz8bouP2VJtPa66jCuPmP1SV3E7ucwkwSL4cr\r\n' +
-        'User-Agent: axios/1.6.5\r\n' +
-        'Accept-Encoding: gzip, compress, deflate, br\r\n' +
-        'Host: fapi.binance.com\r\n' +
-        'Connection: close\r\n' +
-        '\r\n',
-      _keepAliveTimeout: 0,
-      _onPendingData: [Function: nop],
-      agent: HttpsProxyAgent {
-        _events: [Object: null prototype],
-        _eventsCount: 2,
-        _maxListeners: undefined,
-        options: [Object],
-        requests: [Object: null prototype] {},
-        sockets: [Object: null prototype],
-        freeSockets: [Object: null prototype] {},
-        keepAliveMsecs: 1000,
-        keepAlive: false,
-        maxSockets: Infinity,
-        maxFreeSockets: 256,
-        scheduling: 'lifo',
-        maxTotalSockets: Infinity,
-        totalSocketCount: 1,
-        proxy: [URL],
-        proxyHeaders: {},
-        connectOpts: [Object],
-        [Symbol(kCapture)]: false,
-        [Symbol(AgentBaseInternalState)]: [Object]
-      },
-      socketPath: undefined,
-      method: 'GET',
-      maxHeaderSize: undefined,
-      insecureHTTPParser: undefined,
-      joinDuplicateHeaders: undefined,
-      path: '/fapi/v2/positionRisk?symbol=IDUSDT&timestamp=1707294057784&recvWindow=6000&signature=054f94a6e6cdc5bc5d949fa3feb29eafdc417a529fdfeb01fed535ceb4f119c2',
-      _ended: true,
-      res: IncomingMessage {
-        _readableState: [ReadableState],
-        _events: [Object: null prototype],
-        _eventsCount: 4,
-        _maxListeners: undefined,
-        socket: [TLSSocket],
-        httpVersionMajor: 1,
-        httpVersionMinor: 1,
-        httpVersion: '1.1',
-        complete: true,
-        rawHeaders: [Array],
-        rawTrailers: [],
-        joinDuplicateHeaders: undefined,
-        aborted: false,
-        upgrade: false,
-        url: '',
-        method: null,
-        statusCode: 401,
-        statusMessage: 'Unauthorized',
-        client: [TLSSocket],
-        _consuming: false,
-        _dumped: false,
-        req: [Circular *1],
-        responseUrl: 'https://fapi.binance.com/fapi/v2/positionRisk?symbol=IDUSDT&timestamp=1707294057784&recvWindow=6000&signature=054f94a6e6cdc5bc5d949fa3feb29eafdc417a529fdfeb01fed535ceb4f119c2',
-        redirects: [],
-        [Symbol(kCapture)]: false,
-        [Symbol(kHeaders)]: [Object],
-        [Symbol(kHeadersCount)]: 18,
-        [Symbol(kTrailers)]: null,
-        [Symbol(kTrailersCount)]: 0
-      },
-      aborted: false,
-      timeoutCb: null,
-      upgradeOrConnect: false,
-      parser: null,
-      maxHeadersCount: null,
-      reusedSocket: false,
-      host: 'fapi.binance.com',
-      protocol: 'https:',
-      _redirectable: Writable {
-        _writableState: [WritableState],
-        _events: [Object: null prototype],
-        _eventsCount: 3,
-        _maxListeners: undefined,
-        _options: [Object],
-        _ended: true,
-        _ending: true,
-        _redirectCount: 0,
-        _redirects: [],
-        _requestBodyLength: 0,
-        _requestBodyBuffers: [],
-        _onNativeResponse: [Function (anonymous)],
-        _currentRequest: [Circular *1],
-        _currentUrl: 'https://fapi.binance.com/fapi/v2/positionRisk?symbol=IDUSDT&timestamp=1707294057784&recvWindow=6000&signature=054f94a6e6cdc5bc5d949fa3feb29eafdc417a529fdfeb01fed535ceb4f119c2',
-        [Symbol(kCapture)]: false
-      },
-      [Symbol(kCapture)]: false,
-      [Symbol(kBytesWritten)]: 0,
-      [Symbol(kEndCalled)]: true,
-      [Symbol(kNeedDrain)]: false,
-      [Symbol(corked)]: 0,
-      [Symbol(kOutHeaders)]: [Object: null prototype] {
-        accept: [Array],
-        'content-type': [Array],
-        'x-mbx-apikey': [Array],
-        'user-agent': [Array],
-        'accept-encoding': [Array],
-        host: [Array]
-      },
-      [Symbol(errored)]: null,
-      [Symbol(kUniqueHeaders)]: null
-    },
-    response: {
-      data: {
-        code: -2015,
-        msg: 'Invalid API-key, IP, or permissions for action, request ip: 45.143.235.178'
-      }
-    }
+duo = [
+  {
+    symbol: 'DOGEUSDT',
+    positionAmt: '0',
+    entryPrice: '0.0',
+    breakEvenPrice: '0.0',
+    markPrice: '0.17876815',
+    unRealizedProfit: '0.00000000',
+    liquidationPrice: '0',
+    leverage: '4',
+    maxNotionalValue: '7000000',
+    marginType: 'isolated',
+    isolatedMargin: '0.00000000',
+    isAutoAddMargin: 'false',
+    positionSide: 'LONG',
+    notional: '0',
+    isolatedWallet: '0',
+    updateTime: 1709614828875,
+    isolated: true,
+    adlQuantile: 0
+  },
+  {
+    symbol: 'DOGEUSDT',
+    positionAmt: '-30',
+    entryPrice: '0.175896779661',
+    breakEvenPrice: '0.1772121376667',
+    markPrice: '0.17876815',
+    unRealizedProfit: '-0.08614140',
+    liquidationPrice: '0.21903766',
+    leverage: '4',
+    maxNotionalValue: '7000000',
+    marginType: 'isolated',
+    isolatedMargin: '1.24094090',
+    isAutoAddMargin: 'false',
+    positionSide: 'SHORT',
+    notional: '-5.36304450',
+    isolatedWallet: '1.32708230',
+    updateTime: 1709614987686,
+    isolated: true,
+    adlQuantile: 1
   }
+]
+
+// kong
+[
+    {
+        symbol: "AGIXUSDT",
+        positionAmt: "0",
+        entryPrice: "0.0",
+        breakEvenPrice: "0.0",
+        markPrice: "0.45200000",
+        unRealizedProfit: "0.00000000",
+        liquidationPrice: "0",
+        leverage: "1",
+        maxNotionalValue: "1.0E7",
+        marginType: "isolated",
+        isolatedMargin: "0.00000000",
+        isAutoAddMargin: "false",
+        positionSide: "LONG",
+        notional: "0",
+        isolatedWallet: "0",
+        updateTime: 1708253020071,
+        isolated: true,
+        adlQuantile: 0,
+    },
+    {
+        symbol: "AGIXUSDT",
+        positionAmt: "-13",
+        entryPrice: "0.4518",
+        breakEvenPrice: "0.4515741",
+        markPrice: "0.45200000",
+        unRealizedProfit: "-0.00260000",
+        liquidationPrice: "0.88566088",
+        leverage: "1",
+        maxNotionalValue: "1.0E7",
+        marginType: "isolated",
+        isolatedMargin: "5.86786330",
+        isAutoAddMargin: "false",
+        positionSide: "SHORT",
+        notional: "-5.87600000",
+        isolatedWallet: "5.87046330",
+        updateTime: 1708253349284,
+        isolated: true,
+        adlQuantile: 0,
+    },
+];
+
+[
+    1499040000000, // 开盘时间
+    "0.01634790", // 开盘价
+    "0.80000000", // 最高价
+    "0.01575800", // 最低价
+    "0.01577100", // 收盘价(当前K线未结束的即为最新价)
+    "148976.11427815", // 成交量
+    1499644799999, // 收盘时间
+    "2434.19055334", // 成交额
+    308, // 成交笔数
+    "1756.87402397", // 主动买入成交量
+    "28.46694368", // 主动买入成交额
+    "17928899.62484339", // 请忽略该参数
+];
+[
+    {
+        openTime, // 开盘时间
+        open, // 开盘价
+        high, // 最高价
+        low, // 最低价
+        close, // 收盘价(当前K线未结束的即为最新价)
+        volume, // 成交量
+        closeTime, // 收盘时间
+        quoteAssetVolume, // 成交额
+        numberOfTrades, // 成交笔数
+        takerBuyBaseAssetVolume, // 主动买入成交量
+        takerBuyQuoteAssetVolume, // 主动买入成交额
+    },
+];
+
+res = [
+    {
+        symbol: "BLURUSDT",
+        positionAmt: "14",
+        entryPrice: "0.721575",
+        breakEvenPrice: "0.7220035",
+        markPrice: "0.72110000",
+        unRealizedProfit: "-0.00665000",
+        liquidationPrice: "0.54942259",
+        leverage: "4",
+        maxNotionalValue: "2000000",
+        marginType: "isolated",
+        isolatedMargin: "2.51886250",
+        isAutoAddMargin: "false",
+        positionSide: "LONG",
+        notional: "10.09540000",
+        isolatedWallet: "2.52551250",
+        updateTime: 1709350466288,
+        isolated: true,
+        adlQuantile: 2,
+    },
+    {
+        symbol: "BLURUSDT",
+        positionAmt: "-28",
+        entryPrice: "0.72165",
+        breakEvenPrice: "0.721289175",
+        markPrice: "0.72110000",
+        unRealizedProfit: "0.01540000",
+        liquidationPrice: "0.88839917",
+        leverage: "4",
+        maxNotionalValue: "2000000",
+        marginType: "isolated",
+        isolatedMargin: "5.05750448",
+        isAutoAddMargin: "false",
+        positionSide: "SHORT",
+        notional: "-20.19080000",
+        isolatedWallet: "5.04210448",
+        updateTime: 1709350499756,
+        isolated: true,
+        adlQuantile: 2,
+    },
+];
+
+allPositionDetail = {
+    up: {
+        trend: "up",
+        side: "BUY",
+        orderPrice: 0.721575,
+        quantity: 14,
+        breakEvenPrice: "0.7220035",
+    },
+    down: {
+        trend: "down",
+        side: "SELL",
+        orderPrice: 0.72165,
+        quantity: 28,
+        breakEvenPrice: "0.721289175",
+    },
+};
