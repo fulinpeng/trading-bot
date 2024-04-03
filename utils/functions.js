@@ -134,6 +134,32 @@ function findFarthestNumber(arr, cur) {
 
     return farthestNumber;
 }
+function isIncreasing(arr) {
+    for (let i = 1; i < arr.length; i++) {
+        if (arr[i] <= arr[i - 1]) {
+            return false; // 非递增
+        }
+    }
+    return true; // 递增
+}
+
+function isDecreasing(arr) {
+    for (let i = 1; i < arr.length; i++) {
+        if (arr[i] >= arr[i - 1]) {
+            return false; // 非递减
+        }
+    }
+    return true; // 递减
+}
+function isDifferenceWithinThreshold(arr, threshold) {
+    for (let i = 1; i < arr.length; i++) {
+        if (Math.abs(arr[i] - arr[i - 1]) > threshold) {
+            return false; // 差值超过阈值
+        }
+    }
+    return true; // 所有差值均在阈值以内
+}
+
 module.exports = {
     debounce,
     throttle,
@@ -142,4 +168,7 @@ module.exports = {
     calculateAverage,
     isNonEmpty,
     findFarthestNumber,
+    isIncreasing,
+    isDecreasing,
+    isDifferenceWithinThreshold,
 };

@@ -174,3 +174,46 @@ allPositionDetail = {
         breakEvenPrice: "0.721289175",
     },
 };
+
+b = [
+    {
+        "symbol": "DOGEUSDT",
+        "positionAmt": "0",
+        "entryPrice": "0.0",
+        "breakEvenPrice": "0.0",
+        "markPrice": "0.16465933",
+        "unRealizedProfit": "0.00000000",
+        "liquidationPrice": "0",
+        "leverage": "6",
+        "maxNotionalValue": "2200000",
+        "marginType": "isolated",
+        "isolatedMargin": "0.00000000",
+        "isAutoAddMargin": "false",
+        "positionSide": "LONG",
+        "notional": "0",
+        "isolatedWallet": "0",
+        "updateTime": 1709885370434,
+        "isolated": true,
+        "adlQuantile": 0
+    },
+    {
+        "symbol": "DOGEUSDT",
+        "positionAmt": "-32",
+        "entryPrice": "0.16395",
+        "breakEvenPrice": "0.16395",
+        "markPrice": "0.16465933",
+        "unRealizedProfit": "-0.02269856",
+        "liquidationPrice": "0.19059204",
+        "leverage": "6",
+        "maxNotionalValue": "2200000",
+        "marginType": "isolated",
+        "isolatedMargin": "0.86034145",
+        "isAutoAddMargin": "false",
+        "positionSide": "SHORT",
+        "notional": "-5.26909856",
+        "isolatedWallet": "0.88304001",
+        "updateTime": 1709886017670,
+        "isolated": true,
+        "adlQuantile": 1
+    }
+]

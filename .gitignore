@@ -1,3 +1,5 @@
 node_modules
 logs
 errors
+README.md
+.env

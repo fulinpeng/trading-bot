@@ -1,0 +1,1 @@
+module.exports = {"historyEntryPoints":[2,1],"currentPrice":0.6348,"prePrice":0.6348,"curGridPoint":0.6349599993614,"prePointIndex":2,"currentPointIndex":1,"tradingDatas":{"2":{"up":{"trend":"up","side":"BUY","orderPrice":0.6386,"quantity":9}}},"gridPoints":[0.6313199993614,0.6349599993614,0.6385999993614,0.6422399993614],"gridHight":0.0038200000000000785}
