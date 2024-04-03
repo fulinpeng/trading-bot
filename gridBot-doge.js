@@ -1670,16 +1670,21 @@ const gridPointTrading2 = async () => {
                 teadeSell(times[allPoints - 1]),
             );
             await Promise.all(promises);
-            if (allPoints >= 2 && allPoints <= 4) {
+            if (allPoints >= 2 && allPoints <= 5) {
                 if (allPoints === 2 && Date.now() - firsttradeTime <= 90000) {
                     // 短时间到达第二个点，距离太短，2/3上移0.5个单位
                     gridPoints[2] += (gridPoints[2] - gridPoints[1]) * 0.5;
                     gridPoints[3] = gridPoints[2] + (gridPoints[2] - gridPoints[1]) * profitRate; // 不能用 _gridHeight，要实时算
                     console.log("时间小于90s，绘制网格 2/3交易点改变：", curMaxPrice, gridPoints);
                 } else {
+                    const _gridHight = gridPoints[2] - gridPoints[1];
                     // 在1交易完后，后根据最二线最高值，设置3
-                    if (Math.abs(curMaxPrice - gridPoints[3]) < (gridPoints[2] - gridPoints[1]) * 0.25) {
-                        gridPoints[3] -= (gridPoints[2] - gridPoints[1]) * 0.25;
+                    if (
+                        gridPoints[3] - gridPoints[2] >= _gridHight * 1.25 &&
+                        Math.abs(curMaxPrice - gridPoints[3]) < (gridPoints[2] - gridPoints[1]) * 0.25
+                    ) {
+                        gridPoints[3] -= _gridHight * 0.25;
+                        console.log("最高价快要出去了，绘制网格 2/3交易点改变：", curMaxPrice, gridPoints);
                     } else {
                         gridPoints[2] = curMaxPrice * 0.999999999;
                         gridPoints[3] = curMaxPrice + (gridPoints[2] - gridPoints[1]) * profitRate;
@@ -1694,16 +1699,21 @@ const gridPointTrading2 = async () => {
                 teadeBuy(times[allPoints - 1]),
             );
             await Promise.all(promises);
-            if (allPoints >= 2 && allPoints <= 4) {
+            if (allPoints >= 2 && allPoints <= 5) {
                 if (allPoints === 2 && Date.now() - firsttradeTime <= 90000) {
                     // 短时间到达第二个点，距离太短，0/1下移0.5个单位
                     gridPoints[1] -= (gridPoints[2] - gridPoints[1]) * 0.5;
                     gridPoints[0] = gridPoints[1] - (gridPoints[2] - gridPoints[1]) * profitRate; // 不能用 _gridHeight，要实时算
                     console.log("时间小于90s，绘制网格 0/1交易点改变：", curMaxPrice, gridPoints);
                 } else {
+                    const _gridHight = gridPoints[2] - gridPoints[1];
                     // 在1交易完后，后根据最二线最高值，设置3
-                    if (Math.abs(curMinPrice - gridPoints[0]) < (gridPoints[2] - gridPoints[1]) * 0.25) {
-                        gridPoints[0] += (gridPoints[2] - gridPoints[1]) * 0.25;
+                    if (
+                        gridPoints[1] - gridPoints[0] >= _gridHight * 1.25 &&
+                        Math.abs(curMinPrice - gridPoints[0]) < _gridHight * 0.25
+                    ) {
+                        gridPoints[0] += _gridHight * 0.25;
+                        console.log("最低价快要出去了，绘制网格 0/1交易点改变：", curMinPrice, gridPoints);
                     } else {
                         gridPoints[1] = curMinPrice * 0.999999999;
                         gridPoints[0] = curMinPrice - (gridPoints[2] - gridPoints[1]) * profitRate;
