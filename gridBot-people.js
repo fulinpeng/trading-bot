@@ -35,7 +35,7 @@ const {
     errorsFolder,
     profitProtectRate,
     xAngle,
-} = config["sol"];
+} = config["inj"];
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
@@ -1630,7 +1630,7 @@ const upPao = (one, two, three) => {
         isBigAndYang(three) &&
         twoBody < Math.abs(one.open - one.close) &&
         twoBody < Math.abs(three.open - three.close) &&
-        three.close < Math.max(one.high, two.high)
+        three.close > Math.max(one.high, two.high)
     ) {
         res = true;
     }
@@ -2012,49 +2012,49 @@ function calculateTradingSignal() {
     }
 
     // 中轨 ==> 上轨 || 下轨 ==> 中轨（做多）
-    if (
-        kLine3.close > kLine3.open &&
-        (isBigAndYang(kLine3, 0.8) || isUpCross(kLine3, 0.5)) &&
-        ((kLine3.low <= sma && upperBand < kLine3.high) || (kLine3.low <= lowerBand && sma < kLine3.high))
-    ) {
-        return {
-            trend: "up",
-            stopLoss: kLine3.low,
-            stopProfit: currentPrice * 1.002,
-        };
-    }
+    // if (
+    //     kLine3.close > kLine3.open &&
+    //     (isBigAndYang(kLine3, 0.8) || isUpCross(kLine3, 0.5)) &&
+    //     ((kLine3.low <= sma && upperBand < kLine3.high) || (kLine3.low <= lowerBand && sma < kLine3.high))
+    // ) {
+    //     return {
+    //         trend: "up",
+    //         stopLoss: kLine3.low,
+    //         stopProfit: currentPrice * 1.002,
+    //     };
+    // }
     // 中轨 ==> 下轨 || 上轨 ==> 中轨 (做空)
-    if (
-        kLine3.close < kLine3.open &&
-        (isBigAndYin(kLine3, 0.8) || isDownCross(kLine3, 0.5)) &&
-        ((kLine3.low < lowerBand && sma <= kLine3.high) || (kLine3.low < sma && upperBand <= kLine3.high))
-    ) {
-        return {
-            trend: "down",
-            stopLoss: kLine3.high,
-            stopProfit: currentPrice * 0.998,
-        };
-    }
+    // if (
+    //     kLine3.close < kLine3.open &&
+    //     (isBigAndYin(kLine3, 0.8) || isDownCross(kLine3, 0.5)) &&
+    //     ((kLine3.low < lowerBand && sma <= kLine3.high) || (kLine3.low < sma && upperBand <= kLine3.high))
+    // ) {
+    //     return {
+    //         trend: "down",
+    //         stopLoss: kLine3.high,
+    //         stopProfit: currentPrice * 0.998,
+    //     };
+    // }
     // 是否从下往上突破中轨做多(看最后一根k，实体穿过才算)
-    if (kLine3.close > kLine3.open && kLine3.low <= sma && sma < kLine3.close) {
-        if (max < upperBand && isBreakthroughSmaUp({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
-            return {
-                trend: "up",
-                stopLoss: kLine3.low,
-                stopProfit: currentPrice * 1.002,
-            };
-        }
-    }
+    // if (kLine3.close > kLine3.open && kLine3.low <= sma && sma < kLine3.close) {
+    //     if (max < upperBand && isBreakthroughSmaUp({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
+    //         return {
+    //             trend: "up",
+    //             stopLoss: kLine3.low,
+    //             stopProfit: currentPrice * 1.002,
+    //         };
+    //     }
+    // }
     // 是否从上往下突破中轨做空(看最后一根k，实体穿过才算)
-    if (kLine3.close < kLine3.open && kLine3.high >= sma && sma > kLine3.close) {
-        if (min > lowerBand && isBreakthroughSmaDown({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
-            return {
-                trend: "down",
-                stopLoss: kLine3.high,
-                stopProfit: currentPrice * 0.998,
-            };
-        }
-    }
+    // if (kLine3.close < kLine3.open && kLine3.high >= sma && sma > kLine3.close) {
+    //     if (min > lowerBand && isBreakthroughSmaDown({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
+    //         return {
+    //             trend: "down",
+    //             stopLoss: kLine3.high,
+    //             stopProfit: currentPrice * 0.998,
+    //         };
+    //     }
+    // }
     return { trend: "hold" }; // 默认为 hold
 }
 

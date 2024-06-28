@@ -35,7 +35,7 @@ const {
     errorsFolder,
     profitProtectRate,
     xAngle,
-} = config["sol"];
+} = config["inj"];
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();

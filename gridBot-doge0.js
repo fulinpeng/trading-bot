@@ -42,7 +42,7 @@ const {
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
-const isTest = false; // 将此标志设置为  true 使用沙盒环境
+const isTest = true; // 将此标志设置为  true 使用沙盒环境
 const api = "https://api.binance.com/api";
 const fapi = "https://fapi.binance.com/fapi";
 const apiKey = process.env.BINANCE_API_KEY; // 获取API密钥
@@ -791,7 +791,7 @@ const closeOrder = async (side, quantity, cb) => {
         if (isTest) {
             response = {
                 data: {
-                    origQty: quantity
+                    origQty: quantity,
                 },
             };
         } else {
@@ -838,9 +838,9 @@ const closeAllPositionsAndInit = async () => {
             .reduce((res, cur) => [...res, ...cur], []);
         res.map((v) => {
             if (v.trend == "up") {
-                testMoney += _currentPrice - v.orderPrice;
+                testMoney += (_currentPrice - v.orderPrice) * times[historyEntryPoints.length - 2];
             } else {
-                testMoney += v.orderPrice - _currentPrice;
+                testMoney += (v.orderPrice - _currentPrice) * times[historyEntryPoints.length - 2];
             }
         });
 
@@ -1268,7 +1268,8 @@ const closePointOrders = async (pointIndex) => {
             await closeOrder("SELL", tradingDatas[pointIndex].up.quantity, () => {
                 if (isTest) {
                     //测试
-                    testMoney += currentPrice - tradingDatas[pointIndex].up.orderPrice;
+                    testMoney +=
+                        (currentPrice - tradingDatas[pointIndex].up.orderPrice) * times[historyEntryPoints.length - 2];
                     console.log("平多 closePointOrders ~ testMoney:", testMoney);
                 }
                 tradingDatas[pointIndex].up = null;
@@ -1280,7 +1281,9 @@ const closePointOrders = async (pointIndex) => {
             await closeOrder("BUY", tradingDatas[pointIndex].down.quantity, () => {
                 if (isTest) {
                     // 测试
-                    testMoney += tradingDatas[pointIndex].down.orderPrice - currentPrice;
+                    testMoney +=
+                        (tradingDatas[pointIndex].down.orderPrice - currentPrice) *
+                        times[historyEntryPoints.length - 2];
                     console.log("平空 closePointOrders ~ testMoney:", testMoney);
                 }
                 tradingDatas[pointIndex].down = null;
@@ -1303,7 +1306,9 @@ const closeOtherPointYesOrders = async (pointIndexHistory, curIndex) => {
                         closeOrder("SELL", tradingDatas[index].up.quantity, () => {
                             if (isTest) {
                                 // 测试
-                                testMoney += currentPrice - tradingDatas[index].up.orderPrice;
+                                testMoney +=
+                                    (currentPrice - tradingDatas[index].up.orderPrice) *
+                                    times[historyEntryPoints.length - 2];
                                 console.log("低于当前交易点的 平多 closePointOrders ~ testMoney:", testMoney);
                             }
                             tradingDatas[index].up = null;
@@ -1318,7 +1323,9 @@ const closeOtherPointYesOrders = async (pointIndexHistory, curIndex) => {
                         closeOrder("BUY", tradingDatas[index].down.quantity, () => {
                             if (isTest) {
                                 // 测试
-                                testMoney += tradingDatas[index].down.orderPrice - currentPrice;
+                                testMoney +=
+                                    (tradingDatas[index].down.orderPrice - currentPrice) *
+                                    times[historyEntryPoints.length - 2];
                                 console.log("高于当前交易点的 平空 closePointOrders ~ testMoney:", testMoney);
                             }
                             tradingDatas[index].down = null;
@@ -1349,7 +1356,7 @@ const closeAllOrders = async ({ up, down }) => {
         const upPromise = closeOrder("SELL", up.quantity, () => {
             if (isTest) {
                 //测试
-                testMoney += currentPrice - up.orderPrice;
+                testMoney += (currentPrice - up.orderPrice) * times[historyEntryPoints.length - 2];
                 console.log("平多 closeAllOrders ~ testMoney:", testMoney);
             }
             console.log("平多完成");
@@ -1361,7 +1368,7 @@ const closeAllOrders = async ({ up, down }) => {
         const downPromise = closeOrder("BUY", down.quantity, () => {
             if (isTest) {
                 // 测试
-                testMoney += down.orderPrice - currentPrice;
+                testMoney += (down.orderPrice - currentPrice) * times[historyEntryPoints.length - 2];
                 console.log("平空 closeAllOrders ~ testMoney:", testMoney);
             }
             console.log("平空完成");
@@ -1423,7 +1430,7 @@ const reverseTrade = async (originTrend) => {
         fetchs.push(
             closeOrder("SELL", purchaseInfo.quantity, () => {
                 if (isTest) {
-                    testMoney += currentPrice - purchaseInfo.orderPrice;
+                    testMoney += (currentPrice - purchaseInfo.orderPrice) * times[historyEntryPoints.length - 2];
                     console.log("👌👌👌 平多 reverseTrade ~ testMoney:", testMoney);
                 }
             }),
@@ -1433,7 +1440,7 @@ const reverseTrade = async (originTrend) => {
         fetchs.push(
             closeOrder("BUY", purchaseInfo.quantity, () => {
                 if (isTest) {
-                    testMoney += purchaseInfo.orderPrice - currentPrice;
+                    testMoney += (purchaseInfo.orderPrice - currentPrice) * times[historyEntryPoints.length - 2];
                     console.log("👌👌👌 平空 reverseTrade ~  testMoney:", testMoney);
                 }
             }),

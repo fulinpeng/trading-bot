@@ -35,7 +35,7 @@ const {
     errorsFolder,
     profitProtectRate,
     xAngle,
-} = config["sol"];
+} = config["op"];
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
@@ -56,8 +56,8 @@ console.log(isTest ? "测试环境～～～" : "正式环境～～～");
 // let socksProxyAgent=new SocksProxyAgent("socks5://127.0.0.1:7890");
 
 // mac 小地球仪
-// let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
-// let socksProxyAgent = new SocksProxyAgent("socks5://127.0.0.1:31550");
+let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
+let socksProxyAgent = new SocksProxyAgent("socks5://127.0.0.1:31550");
 
 // win 小地球仪
 // let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:15715");
@@ -83,12 +83,12 @@ const axiosInstance = axios.create({
         "Content-Type": "application/json",
         "X-MBX-APIKEY": apiKey,
     },
-    // httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
+    httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
 });
 
 // WebSocket连接，用于获取实时交易信息
-// const ws = new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineStage}m`, { agent: socksProxyAgent });
-const ws = new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineStage}m`);
+const ws = new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineStage}m`, { agent: socksProxyAgent });
+// const ws = new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineStage}m`);
 // {
 //     "e": "kline",     // 事件类型
 //     "E": 123456789,   // 事件时间
@@ -125,8 +125,7 @@ let confirmNum = 3; // 下单后确认时间（分钟）
 let historyClosePrices = []; // 历史收盘价，用来计算EMA
 let allPositionDetail = {}; // 当前仓位信息
 let candleHeight = 0; // 蜡烛高度
-let isFirstGetProfit = false; // 是否开单后的第一次盈利
-let curProfitMaxPrice = 0; // 最高价格
+let isFirstGetProfit = true; // 开单就是 true 有了盈利就为 false
 
 const shadowBodyRate = 2; // 插针时，引线/实体
 
@@ -152,7 +151,7 @@ const oversoldThreshold = 31.5;
 
 const maxKLinelen = 50; // 储存kLine最大数量
 const STD_MULTIPLIER = 2; // 用来确定布林带的宽度
-const BOLL_PERIOD = 20;
+const BOLL_PERIOD = 26;
 const RSI_PERIOD_MIN = 6; // RSI计算周期
 const RSI_PERIOD_MAX = 14; // RSI计算周期
 
@@ -385,18 +384,15 @@ const judgeAndTrading = async () => {
         case "up":
             await teadeBuy();
             setGridPoints("up", stopLoss, stopProfit);
-            isFirstGetProfit = true;
-            curProfitMaxPrice = currentPrice;
             break;
         case "down":
             await teadeSell();
             setGridPoints("down", stopLoss, stopProfit);
-            isFirstGetProfit = true;
-            curProfitMaxPrice = currentPrice;
             break;
         default:
             break;
     }
+    isFirstGetProfit = true; // 开单成功就设置为false
     loadingTrading = false;
 };
 
@@ -565,20 +561,19 @@ const calculateEMA = (prices, period) => {
 };
 // 计算 EMA 斜率的函数
 function calculateEMASlope(emaArray, n) {
-    if (emaArray.length < n + 1) {
-        throw new Error(`EMA array length (${emaArray.length}) is less than ${n + 1}`);
-    }
+    // if (emaArray.length < n + 1) {
+    //     throw new Error(`EMA array length (${emaArray.length}) is less than ${n + 1}`);
+    // }
 
-    let slopes = [];
-    for (let i = emaArray.length - n; i < emaArray.length - 1; i++) {
-        let slope = emaArray[i + 1] - emaArray[i];
-        slopes.push(slope);
-    }
+    // let slopes = [];
+    // for (let i = emaArray.length - n; i < emaArray.length - 1; i++) {
+    //     let slope = emaArray[i + 1] - emaArray[i];
+    //     slopes.push(slope);
+    // }
 
-    const sum = slopes.reduce((acc, value) => acc + value, 0);
+    // const sum = slopes.reduce((acc, value) => acc + value, 0);
     // const len = emaArray.length;
     // const res = emaArray[len - 1] - emaArray[len - 2];
-    const res = sum / slopes.length;
     console.log("🚀 ~ 斜率 ~ res:", res);
     return res;
 }
@@ -790,8 +785,6 @@ const setInitData = async ({ up, down }) => {
             tradingInfo: __tradingInfo, // 订单数据
             gridPoints: __gridPoints, // 网格每个交易点
             candleHeight: __candleHeight,
-            isFirstGetProfit: __isFirstGetProfit,
-            curProfitMaxPrice: __curProfitMaxPrice,
         } = require(`./data/${SYMBOL}.js`);
         console.log("上一次停止程序时，交易情况", {
             __currentPrice,
@@ -799,8 +792,6 @@ const setInitData = async ({ up, down }) => {
             __tradingInfo,
             __gridPoints,
             __candleHeight,
-            __isFirstGetProfit,
-            __curProfitMaxPrice,
         });
 
         if (__currentPrice != 0 && __prePrice != 0 && !isNonEmpty(__tradingInfo) && __gridPoints.length > 0) {
@@ -809,8 +800,6 @@ const setInitData = async ({ up, down }) => {
             tradingInfo = __tradingInfo;
             gridPoints = __gridPoints;
             candleHeight = __candleHeight;
-            isFirstGetProfit = __isFirstGetProfit;
-            curProfitMaxPrice = __curProfitMaxPrice;
             hasOrder = true; // 有仓位直接用
             console.log(`setInitData初始化数据完成 当前 tradingInfo:`, tradingInfo);
         } else {
@@ -832,13 +821,13 @@ const setGridPoints = (trend, stopLoss, stopProfit) => {
     loadingNewPoints = true;
 
     if (trend === "up") {
-        let _stopLoss = stopLoss * 0.9999999999 - candleHeight / 10; // 止损
+        let _stopLoss = stopLoss * 0.9999999999; // 止损
         let _stopProfit = stopProfit * 0.9999999999; // 止盈
         gridPoints = [_stopLoss, _stopProfit];
     }
 
     if (trend === "down") {
-        let _stopLoss = stopLoss * 0.9999999999 + candleHeight / 10; // 止损
+        let _stopLoss = stopLoss * 0.9999999999; // 止损
         let _stopProfit = stopProfit * 0.9999999999; // 止盈
         gridPoints = [_stopProfit, _stopLoss];
     }
@@ -850,41 +839,47 @@ const setGridPoints = (trend, stopLoss, stopProfit) => {
 };
 
 // 更新止损位
-const modGridPoints = (protectRate = profitProtectRate) => {
+const modGridPoints = () => {
     const _currentPrice = currentPrice;
 
     loadingNewPoints = true;
 
     if (tradingInfo.trend === "up") {
-        // const minProfitPrice = tradingInfo.orderPrice * 1.001;
-        let stopLoss = tradingInfo.orderPrice + (_currentPrice - tradingInfo.orderPrice) * protectRate; // 止损
-        // 如果能成功盈利，那么回撤的保留利润必须能交手续费
-        // if (stopLoss < minProfitPrice) {
-        //     stopLoss = minProfitPrice;
-        // }
-        let stopProfit = _currentPrice + candleHeight / 3; // 止盈
-        gridPoints = [stopLoss, stopProfit];
+        const minProfitPrice = tradingInfo.orderPrice * 1.001;
+        if (isFirstGetProfit) {
+            let stopLoss = minProfitPrice;
+            gridPoints[0] = stopLoss;
+        } else {
+            let stopLoss = tradingInfo.orderPrice + (_currentPrice - tradingInfo.orderPrice) * profitProtectRate; // 止损
+            // 如果能成功盈利，那么回撤的保留利润必须能交手续费
+            if (stopLoss < minProfitPrice) {
+                stopLoss = minProfitPrice;
+            }
+            let stopProfit = _currentPrice + candleHeight; // 止盈
+            gridPoints = [stopLoss, stopProfit];
+        }
     }
 
     if (tradingInfo.trend === "down") {
-        // const minProfitPrice = tradingInfo.orderPrice * 0.999;
-        let stopLoss = tradingInfo.orderPrice - (tradingInfo.orderPrice - _currentPrice) * protectRate; // 止损
-        // 如果能成功盈利，那么回撤的保留利润必须能交手续费
-        // if (stopLoss > minProfitPrice) {
-        //     stopLoss = minProfitPrice;
-        // }
-        let stopProfit = _currentPrice - candleHeight / 3; // 止盈
-        gridPoints = [stopProfit, stopLoss];
+        const minProfitPrice = tradingInfo.orderPrice * 0.999;
+        if (isFirstGetProfit) {
+            let stopLoss = minProfitPrice;
+            gridPoints[1] = stopLoss; // candleHeight保证了最小0.001的比例
+        } else {
+            let stopLoss = tradingInfo.orderPrice - (tradingInfo.orderPrice - _currentPrice) * profitProtectRate; // 止损
+            // 如果能成功盈利，那么回撤的保留利润必须能交手续费
+            if (stopLoss > minProfitPrice) {
+                stopLoss = minProfitPrice;
+            }
+            let stopProfit = _currentPrice - candleHeight; // 止盈
+            gridPoints = [stopProfit, stopLoss];
+        }
     }
 
     saveGlobalVariables();
 
     loadingNewPoints = false;
-    console.log(
-        `已盈利，保留${protectRate * 10}成利润，重新绘制网格 _currentPrice, gridPoints :`,
-        currentPrice,
-        gridPoints,
-    );
+    console.log("已盈利，重新绘制网格 _currentPrice, gridPoints :", currentPrice, gridPoints);
 };
 
 // 5. 启动交易
@@ -938,7 +933,7 @@ const closeAllOrders = async ({ up, down }) => {
             testMoney +=
                 up.quantity * currentPrice -
                 up.orderPrice * up.quantity -
-                (up.quantity * currentPrice + up.orderPrice * up.quantity) * 0.005;
+                (up.quantity * currentPrice + up.orderPrice * up.quantity) * 0.0005;
             console.log("平多 closeAllOrders ~ testMoney:", testMoney);
             // }
             console.log("平多完成");
@@ -963,7 +958,7 @@ const closeAllOrders = async ({ up, down }) => {
             testMoney +=
                 down.quantity * down.orderPrice -
                 down.quantity * currentPrice -
-                (down.quantity * down.orderPrice + down.quantity * currentPrice) * 0.005;
+                (down.quantity * down.orderPrice + down.quantity * currentPrice) * 0.0005;
             console.log("平空 closeAllOrders ~ testMoney:", testMoney);
             // }
             console.log("平空完成");
@@ -985,53 +980,21 @@ const closeAllOrders = async ({ up, down }) => {
     hasOrder = false;
 };
 // 是否盈利超过5U
-const isProfitOver5U = (num = 5) => {
+const isProfitOver5U = () => {
     let res = false;
     const _currentPrice = currentPrice;
     if (tradingInfo.side === "BUY") {
-        if ((_currentPrice - tradingInfo.orderPrice) / tradingInfo.orderPrice >= 0.001 * num) {
+        if ((_currentPrice - tradingInfo.orderPrice) / tradingInfo.orderPrice >= 0.005) {
             res = true;
         }
     }
     if (tradingInfo.side === "SELL") {
-        if ((tradingInfo.orderPrice - _currentPrice) / tradingInfo.orderPrice >= 0.001 * num) {
+        if ((tradingInfo.orderPrice - _currentPrice) / tradingInfo.orderPrice >= 0.005) {
             return true;
         }
     }
-    // res && console.log("🚀 ~ file: 是否盈利超过5U:", res);
+    res && console.log("🚀 ~ file: 是否盈利超过5U:", res);
     return res;
-};
-
-// 保留利润，这样可以度过初期的盘整区域
-const getOver5UNewRate = () => {
-    let num = profitProtectRate * 10;
-
-    let sum = 0;
-    const _currentPrice = currentPrice;
-    if (tradingInfo.side === "BUY") {
-        sum = (_currentPrice - tradingInfo.orderPrice) / tradingInfo.orderPrice;
-    }
-    if (tradingInfo.side === "SELL") {
-        sum = (tradingInfo.orderPrice - _currentPrice) / tradingInfo.orderPrice;
-    }
-
-    if (sum >= 0.003 && sum < 0.005) {
-        num = 3;
-    } else if (sum >= 0.005 && sum < 0.01) {
-        num = 4.5;
-    } else if (sum >= 0.01 && sum < 0.015) {
-        num = 6;
-    } else if (sum >= 0.015 && sum < 0.03) {
-        num = 7;
-    } else if (sum >= 0.03 && sum < 50) {
-        num = 8;
-    } else if (sum >= 50) {
-        num = 9;
-    }
-
-    let _profitProtectRate = num / 10;
-    console.log(`🚀 ~ 大单子，达到${sum * 1000}盈利时，保留${_profitProtectRate}成利润`);
-    return _profitProtectRate;
 };
 // 是否到达止盈/止损点，平仓/移动止损位
 const gridPointClearTrading = async (_currentPrice) => {
@@ -1042,14 +1005,14 @@ const gridPointClearTrading = async (_currentPrice) => {
             // 止损平多
             await closeOrder("SELL", tradingInfo.quantity, () => {
                 // if (isTest) {
-                // 测试
+                //测试
                 testMoney +=
                     tradingInfo.quantity * currentPrice -
                     tradingInfo.quantity * tradingInfo.orderPrice -
                     (tradingInfo.quantity * currentPrice + tradingInfo.quantity * tradingInfo.orderPrice) * 0.0005;
-                console.log("平多 gridPointClearTrading ~ testMoney:", testMoney);
+                console.log("止损平多 gridPointClearTrading ~ testMoney:", testMoney);
                 // }
-                console.log("平多完成");
+                console.log("止损平多完成");
                 hasOrder = false;
 
                 // 发送邮件
@@ -1062,13 +1025,11 @@ const gridPointClearTrading = async (_currentPrice) => {
                     }),
                 });
             });
-            onGridPoint = false;
-            return;
         }
-        // 到达一定的盈利，重新绘制网格
-        if (_currentPrice >= point2) {
+        if (_currentPrice >= point2 || (isFirstGetProfit && isProfitOver5U())) {
             // 移动止损保留盈利
             modGridPoints();
+            isFirstGetProfit = false;
         }
     } else {
         if (_currentPrice >= point2) {
@@ -1080,9 +1041,9 @@ const gridPointClearTrading = async (_currentPrice) => {
                     tradingInfo.quantity * tradingInfo.orderPrice -
                     tradingInfo.quantity * currentPrice -
                     (tradingInfo.quantity * tradingInfo.orderPrice + tradingInfo.quantity * currentPrice) * 0.0005;
-                console.log("平空 gridPointClearTrading ~ testMoney:", testMoney);
+                console.log("止损平空 gridPointClearTrading ~ testMoney:", testMoney);
                 // }
-                console.log("平空完成");
+                console.log("止损平空完成");
                 hasOrder = false;
 
                 // 发送邮件
@@ -1095,13 +1056,11 @@ const gridPointClearTrading = async (_currentPrice) => {
                     }),
                 });
             });
-            onGridPoint = false;
-            return;
         }
-        // 到达一定的盈利，重新绘制网格
-        if (_currentPrice <= point1) {
+        if (_currentPrice <= point1 || (isFirstGetProfit && isProfitOver5U())) {
             // 移动止损保留盈利
             modGridPoints();
+            isFirstGetProfit = false;
         }
     }
     onGridPoint = false;
@@ -1339,9 +1298,9 @@ function isUpCross(kLine) {
     return res;
 }
 // 是否下垂线
-function isDownCross(kLine, ratio) {
+function isDownCross(kLine) {
     let res = false;
-    if (isCross(kLine, ratio)) {
+    if (isCross(kLine)) {
         const { open, close, high, low } = kLine;
         // 上引线
         let upTail = high - Math.max(open, close);
@@ -1442,26 +1401,24 @@ function isUpLinesGroup2(kLine2, kLine3) {
 // 三个k线合并看作下垂线
 function isDownLinesGroup3(kLine1, kLine2, kLine3) {
     let res = false;
-    res =
-        isDownCross({
-            open: kLine1.open,
-            close: kLine3.close,
-            high: Math.max(kLine1.high, kLine2.high, kLine3.high),
-            low: Math.min(kLine1.low, kLine2.low, kLine3.low),
-        }) && kLine3.close < Math.max(kLine1.close, kLine1.open) - Math.abs(kLine1.close - kLine1.open) / 2;
+    res = isDownCross({
+        open: kLine1.open,
+        close: kLine3.close,
+        high: Math.max(kLine1.high, kLine2.high, kLine3.high),
+        low: Math.min(kLine1.low, kLine2.low, kLine3.low),
+    });
     console.log("🚀 ~ 是否 三个k线合并看作下垂线 ~ res:", res);
     return res;
 }
 // 三根k线合并为上垂线
 function isUpLinesGroup3(kLine1, kLine2, kLine3) {
     let res = false;
-    res =
-        isUpCross({
-            open: kLine1.open,
-            close: kLine3.close,
-            high: Math.max(kLine1.high, kLine2.high, kLine3.high),
-            low: Math.min(kLine1.low, kLine2.low, kLine3.low),
-        }) && kLine3.close > Math.min(kLine1.close, kLine1.open) + Math.abs(kLine1.close - kLine1.open) / 2;
+    res = isUpCross({
+        open: kLine1.open,
+        close: kLine3.close,
+        high: Math.max(kLine1.high, kLine2.high, kLine3.high),
+        low: Math.min(kLine1.low, kLine2.low, kLine3.low),
+    });
     console.log("🚀 ~ 是否 三根k线合并为上垂线 ~ res:", res);
     return res;
 }
@@ -1672,7 +1629,7 @@ const isUpMacd = () => {
     } else {
         res = macd3 - macd2 > 0;
     }
-    console.log("🚀 ~ file: macd 指标向上:", res, macd2, macd3);
+    console.log("🚀 ~ file: macd 指标向上:", res);
     return res;
 };
 // macd 指标向下
@@ -1685,7 +1642,7 @@ const isDownMacd = () => {
     } else {
         res = macd3 - macd2 < 0;
     }
-    console.log("🚀 ~ file: macd 指标向下:", res, macd2, macd3);
+    console.log("🚀 ~ file: macd 指标向下:", res);
     return res;
 };
 
@@ -1696,10 +1653,8 @@ function isTrackTopReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLin
         kLine2.high > kLine3.high && kLine2.low < kLine3.low, // 孕线绝对不可以，机会多得是，放弃一次又怎样
         isAllDownTail(kLine1, kLine2, kLine3), // 有两个都是长下引线的不要
         curRsiMax > 65, // rsi（14） 在35-65之间
-        isUpCross(kLine3, 0.4),
-        isUpCross(kLine1, 0.4),
-        // isK1Swallow(kLine1, kLine2, kLine3), // k1 body吞没k2，k3
-        // isK1Swallow(kLine2, kLine1, kLine3) && kLine2.close > kLine2.open,
+        isK1Swallow(kLine1, kLine2, kLine3), // k1 body吞没k2，k3
+        isK1Swallow(kLine2, kLine1, kLine3) && kLine2.close > kLine2.open,
         kLine3.close - kLine3.low >= (kLine3.high - kLine3.low) * 0.5, // 当前k收盘方向引线不能大于整体0.5
         // tooManeyInTen(),
     ];
@@ -1712,8 +1667,7 @@ function isTrackTopReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLin
             curRsiMax < 65,
             isTopFractal(kLine1, kLine2, kLine3) || // 是否顶分形态
                 (isDownLinesGroup2(kLine2, kLine3) && (isDownCross(kLine3) || isBigAndYin(kLine3, 0.6))) || // 是否两个k形成垂线/光头阴
-                (isDownLinesGroup3(kLine1, kLine2, kLine3) &&
-                    (isBigAndYin(kLine3, 0.6) || isDownCross(kLine3, 0.45))) || // 是否三个k形成垂线
+                (isDownLinesGroup3(kLine1, kLine2, kLine3) && isBigAndYin(kLine3, 0.6)) || // 是否三个k形成垂线
                 (isDownSwallow(kLine2, kLine3) && kLine3.low < kLine1.low) || // 看跌吞没
                 (isDownSwallow(kLine1, kLine2) && isBigAndYin(kLine3, 0.6)) || // 看跌吞没 + 大阴k
                 (isDownLinesGroup2(kLine1, kLine2) && (isDownCross(kLine3) || isBigLine(kLine3, 0.6))) || // k1，k2刺透, k3垂线/光头阴
@@ -1734,13 +1688,12 @@ function isTrackBottomReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, k
     let reasonBack = [
         kLine3.close <= kLine3.open, // k3不能是阴线
         kLine2.high > kLine3.high && kLine2.low < kLine3.low, // 孕线绝对不可以，机会多得是，放弃一次又怎样
-        isDownCross(kLine3, 0.4),
-        isDownCross(kLine1, 0.4),
+        // isCross(kLine3),
         // tooManeyInTen(),
         isAllUpTail(kLine1, kLine2, kLine3), // 有两个都是长上引线的不要
         curRsiMax < 35,
-        // isK1Swallow(kLine1, kLine2, kLine3), // k1 body吞没k2，k3
-        // isK1Swallow(kLine2, kLine1, kLine3) && kLine2.close < kLine2.open,
+        isK1Swallow(kLine1, kLine2, kLine3), // k1 body吞没k2，k3
+        isK1Swallow(kLine2, kLine1, kLine3) && kLine2.close < kLine2.open,
         kLine3.high - kLine3.close >= (kLine3.high - kLine3.low) * 0.5, // 当前k收盘方向引线不能大于整体0.5
         upPao(kLine1, kLine2, kLine3), // 多方炮
     ];
@@ -1753,7 +1706,7 @@ function isTrackBottomReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, k
             curRsiMax > 35, // rsi（14） 在35-65之间
             isBottomFractal(kLine1, kLine2, kLine3) || // 是否底分形态
                 (isUpLinesGroup2(kLine2, kLine3) && (isUpCross(kLine1) || isBigAndYang(kLine1, 0.6))) || // 是否两个k形成垂线
-                (isUpLinesGroup3(kLine1, kLine2, kLine3) && (isBigAndYang(kLine3, 0.6) || isUpCross(kLine3, 0.45))) || // 是否三个k形成垂线
+                (isUpLinesGroup3(kLine1, kLine2, kLine3) && isBigAndYang(kLine3, 0.6)) || // 是否三个k形成垂线
                 (isUpSwallow(kLine2, kLine3) && kLine3.high > kLine1.high) || // 看涨吞没
                 (isUpSwallow(kLine1, kLine2) && isBigAndYang(kLine3, 0.6)) || // 看涨吞没 + 大阳k
                 (isUpLinesGroup2(kLine1, kLine2) && (isUpCross(kLine3) || isBigLine(kLine3, 0.6))) || // k1，k2刺透, k3垂线
@@ -1774,14 +1727,12 @@ function isBreakthroughSmaUp({ upperBand, sma, lowerBand }, { kLine1, kLine2, kL
     let curRsiMin = calculateRSI([...historyClosePrices], RSI_PERIOD_MIN);
     // let curEmaSlope = calculateEMASlope(emaArr, RSI_PERIOD_MIN / 2);
     // if (curEmaSlope < 0) {
-    //     //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>给个准确值，而且不是放在这里，放在开单处，而且顶/底，也需要这个判断，太平了就是横盘啊，突破交给了两外的逻辑的，别担心，也别贪心
     //     return false;
     // }
     let reasonBack = [
         kLine3.close <= kLine3.open, // k3不能是阴线
         kLine2.high > kLine3.high && kLine2.low < kLine3.low, // 孕线绝对不可以，机会多得是，放弃一次又怎样
-        isDownCross(kLine3, 0.4),
-        isDownCross(kLine1, 0.4),
+        isCross(kLine3),
         // tooManeyInTen(),
         isAllUpTail(kLine1, kLine2, kLine3), // 有两个都是长上引线的不要
         isK1Swallow(kLine1, kLine2, kLine3), // k1 body吞没k2，k3
@@ -1797,18 +1748,17 @@ function isBreakthroughSmaUp({ upperBand, sma, lowerBand }, { kLine1, kLine2, kL
         if (reasonBack.some((r) => r)) {
             return false;
         } else {
-            // const { trend } = calcEma1Ema2();
+            const { trend } = calcEma1Ema2();
             // let ma = calculateEMA([...historyClosePrices], 50);
             reasonPass = [
                 // isUpMa(kLine1, kLine2, kLine3, ma),
                 isUpMacd(),
-                // trend === "up",
+                trend === "up",
                 // curRsiMin > 40 && curRsiMin < 60, // rsi（6） 在40-60之间 >>> 没必要吧，干嘛要做横盘，目的是接住边轨漏掉的单子而已
                 (isHigherHigh(kLine1, kLine2, kLine3) && isBigLine(kLine3, 0.6)) || // 顶顶高 k3是光k / 三小连阳
                     isBottomFractal(kLine1, kLine2, kLine3) || // 是否底分形态
                     (isUpLinesGroup2(kLine2, kLine3) && (isUpCross(kLine1) || isBigAndYang(kLine1, 0.6))) || // 是否两个k形成垂线/光头阳
-                    (isUpLinesGroup3(kLine1, kLine2, kLine3) &&
-                        (isBigAndYang(kLine3, 0.6) || isUpCross(kLine3, 0.4))) || // 是否三个k形成垂线
+                    (isUpLinesGroup3(kLine1, kLine2, kLine3) && isBigAndYang(kLine3, 0.6)) || // 是否三个k形成垂线
                     (isUpSwallow(kLine2, kLine3) && kLine3.high > kLine1.high) || // 看涨吞没
                     (isUpSwallow(kLine1, kLine2) && isBigAndYang(kLine3, 0.6)) || // 看涨吞没 + 大阳k
                     (isUpLinesGroup2(kLine1, kLine2) && (isUpCross(kLine3) || isBigLine(kLine3, 0.6))) || // k1，k2刺透, k3垂线/光头阳
@@ -1835,8 +1785,7 @@ function isBreakthroughSmaDown({ upperBand, sma, lowerBand }, { kLine1, kLine2, 
     let reasonBack = [
         kLine3.close >= kLine3.open, // k3不能是阳线
         kLine2.high > kLine3.high && kLine2.low < kLine3.low, // 孕线绝对不可以，机会多得是，放弃一次又怎样
-        isUpCross(kLine3, 0.4),
-        isUpCross(kLine1, 0.4),
+        isCross(kLine3),
         // tooManeyInTen(),
         isAllDownTail(kLine1, kLine2, kLine3), // 有两个都是长下引线的不要
         isK1Swallow(kLine1, kLine2, kLine3), // k1 body吞没k2，k3
@@ -1852,18 +1801,17 @@ function isBreakthroughSmaDown({ upperBand, sma, lowerBand }, { kLine1, kLine2, 
         if (reasonBack.some((r) => r)) {
             return false;
         } else {
-            // const { trend } = calcEma1Ema2();
+            const { trend } = calcEma1Ema2();
             // let ma = calculateEMA([...historyClosePrices], 50);
             reasonPass = [
                 // isDownMa(kLine1, kLine2, kLine3, ma),
                 isDownMacd(),
-                // trend === "down",
+                trend === "down",
                 // curRsiMin > 40 && curRsiMin < 60, // rsi（6） 在40-60之间 >>> 没必要吧，干嘛要做横盘，目的是接住边轨漏掉的单子而已
                 (isLowerLow(kLine1, kLine2, kLine3) && isBigLine(kLine3, 0.6)) || // 顶顶高 k3是光k / 三小连阳
                     isTopFractal(kLine1, kLine2, kLine3) || // 是否顶分形态
                     (isDownLinesGroup2(kLine2, kLine3) && (isDownCross(kLine1) || isBigAndYin(kLine1, 0.6))) || // 是否两个k形成垂线/光头阴
-                    (isDownLinesGroup3(kLine1, kLine2, kLine3) &&
-                        (isBigAndYin(kLine3, 0.6) || isDownCross(kLine3, 0.4))) || // 是否三个k形成垂线
+                    (isDownLinesGroup3(kLine1, kLine2, kLine3) && isBigAndYin(kLine3, 0.6)) || // 是否三个k形成垂线
                     (isDownSwallow(kLine2, kLine3) && kLine3.low < kLine1.low) || // 看跌吞没
                     (isDownSwallow(kLine1, kLine2) && isBigAndYin(kLine3, 0.6)) || // 看跌吞没 + 大阴k
                     (isDownLinesGroup2(kLine1, kLine2) && (isDownCross(kLine3) || isBigLine(kLine3, 0.6))) || // k1，k2刺透, k3垂线/大k
@@ -1899,13 +1847,6 @@ function isAllDownTail(kLine1, kLine2, kLine3) {
     let num = 0;
     if (
         !isCross(kLine1) &&
-        (Math.min(kLine1.open, kLine1.close) - kLine1.low) / Math.abs(kLine1.open - kLine1.close) > 0.5
-    ) {
-        console.log("🚀 ~ k3长上引线 ~ 不能开单");
-        return true;
-    }
-    if (
-        !isCross(kLine1) &&
         (Math.min(kLine1.open, kLine1.close) - kLine1.low) / Math.abs(kLine1.open - kLine1.close) > 0.6
     ) {
         num++;
@@ -1929,19 +1870,6 @@ function isAllDownTail(kLine1, kLine2, kLine3) {
 function isAllUpTail(kLine1, kLine2, kLine3) {
     let num = 0;
     if (
-        !isCross(kLine3) &&
-        (kLine3.high - Math.max(kLine3.open, kLine3.close)) / Math.abs(kLine3.open - kLine3.close) > 0.5
-    ) {
-        console.log("🚀 ~ k3长上引线 ~ 不能开单");
-        return true;
-    }
-    if (
-        !isCross(kLine3) &&
-        (kLine3.high - Math.max(kLine3.open, kLine3.close)) / Math.abs(kLine3.open - kLine3.close) > 0.6
-    ) {
-        num++;
-    }
-    if (
         !isCross(kLine1) &&
         (kLine1.high - Math.max(kLine1.open, kLine1.close)) / Math.abs(kLine1.open - kLine1.close) > 0.6
     ) {
@@ -1950,6 +1878,12 @@ function isAllUpTail(kLine1, kLine2, kLine3) {
     if (
         !isCross(kLine2) &&
         (kLine2.high - Math.max(kLine2.open, kLine2.close)) / Math.abs(kLine2.open - kLine2.close) > 0.6
+    ) {
+        num++;
+    }
+    if (
+        !isCross(kLine3) &&
+        (kLine3.high - Math.max(kLine3.open, kLine3.close)) / Math.abs(kLine3.open - kLine3.close) > 0.6
     ) {
         num++;
     }
@@ -1973,22 +1907,41 @@ function calculateTradingSignal() {
     if (kLine3.high > upperBand && lowerBand > kLine3.low) {
         return { trend: "hold" };
     }
+    // 从上轨到中轨的、从下轨到中轨的、从中轨到上轨的、从中轨到下轨的都可能是横盘（影响胜率）
+    if (kLine3.high > upperBand && sma > kLine3.low) {
+        return { trend: "hold" };
+    }
+    if (kLine3.high > sma && lowerBand > kLine3.low) {
+        return { trend: "hold" };
+    }
 
     // 从上轨下来(看最后一根k，引线在外即可，只做线上反转，才能保证1:1盈亏比)
     if (
         kLine3.close < kLine3.open &&
         kLine3.close <= Math.max(kLine2.close, kLine2.open) - Math.abs(kLine2.close - kLine2.open) / 2 &&
-        max >= upperBand && // 避免错过机会
+        Math.max(kLine2.high, kLine3.high) >= upperBand && // 避免错过机会
         upperBand > kLine3.close &&
+        kLine3.close > sma &&
         min > sma
     ) {
         // 不能是从sma跨到upperBand上的
         // 是否上轨反转做空形态
-        if (isTrackTopReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
+        if (min > sma && isTrackTopReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
+            let stopLoss = max;
+
+            if ((stopLoss - currentPrice) / currentPrice < 0.001) {
+                console.log("stopLoss比太小");
+                return { trend: "hold" };
+            }
+            // 止损不超过上限才下单
+            // if ((stopLoss - currentPrice) / currentPrice > 0.05) {
+            //     console.log("stopLoss比太大"); // 可以用5U止盈法
+            //     return { trend: "hold" };
+            // }
             return {
                 trend: "down",
-                stopLoss: max,
-                stopProfit: currentPrice * 0.998,
+                stopLoss,
+                stopProfit: currentPrice - (stopLoss - currentPrice) * profitRate,
             };
         }
     }
@@ -1996,62 +1949,65 @@ function calculateTradingSignal() {
     if (
         kLine3.close > kLine3.open &&
         kLine3.close >= Math.min(kLine2.close, kLine2.open) + Math.abs(kLine2.close - kLine2.open) / 2 &&
-        min <= lowerBand && // 避免错过机会
+        Math.min(kLine2.low, kLine3.low) <= lowerBand && // 避免错过机会
         lowerBand < kLine3.close &&
+        kLine3.close < sma &&
         max < sma
     ) {
         // 不能是从sma跨到lowerBand下的
         // 是否下轨反转做多形态
-        if (isTrackBottomReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
+        if (max < sma && isTrackBottomReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
+            let stopLoss = min;
+            if ((currentPrice - stopLoss) / currentPrice < 0.001) {
+                console.log("stopLoss比太小");
+                return { trend: "hold" };
+            }
+            // if ((currentPrice - stopLoss) / currentPrice > 0.05) {
+            //     console.log("stopLoss比太大"); // 可以用5U止盈法
+            //     return { trend: "hold" };
+            // }
             return {
                 trend: "up",
-                stopLoss: min,
-                stopProfit: currentPrice * 1.002,
+                stopLoss,
+                stopProfit: currentPrice + (currentPrice - stopLoss) * profitRate,
             };
         }
-    }
-
-    // 中轨 ==> 上轨 || 下轨 ==> 中轨（做多）
-    if (
-        kLine3.close > kLine3.open &&
-        (isBigAndYang(kLine3, 0.8) || isUpCross(kLine3, 0.5)) &&
-        ((kLine3.low <= sma && upperBand < kLine3.high) || (kLine3.low <= lowerBand && sma < kLine3.high))
-    ) {
-        return {
-            trend: "up",
-            stopLoss: kLine3.low,
-            stopProfit: currentPrice * 1.002,
-        };
-    }
-    // 中轨 ==> 下轨 || 上轨 ==> 中轨 (做空)
-    if (
-        kLine3.close < kLine3.open &&
-        (isBigAndYin(kLine3, 0.8) || isDownCross(kLine3, 0.5)) &&
-        ((kLine3.low < lowerBand && sma <= kLine3.high) || (kLine3.low < sma && upperBand <= kLine3.high))
-    ) {
-        return {
-            trend: "down",
-            stopLoss: kLine3.high,
-            stopProfit: currentPrice * 0.998,
-        };
     }
     // 是否从下往上突破中轨做多(看最后一根k，实体穿过才算)
     if (kLine3.close > kLine3.open && kLine3.low <= sma && sma < kLine3.close) {
         if (max < upperBand && isBreakthroughSmaUp({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
+            let stopLoss = min;
+            if ((currentPrice - stopLoss) / currentPrice < 0.001) {
+                console.log("stopLoss比太小");
+                return { trend: "hold" };
+            }
+            // if ((currentPrice - stopLoss) / currentPrice > 0.05) {
+            //     console.log("stopLoss比太大"); // 可以用5U止盈法
+            //     return { trend: "hold" };
+            // }
             return {
                 trend: "up",
-                stopLoss: kLine3.low,
-                stopProfit: currentPrice * 1.002,
+                stopLoss,
+                stopProfit: currentPrice + ((currentPrice - stopLoss) * profitRate) / 2,
             };
         }
     }
     // 是否从上往下突破中轨做空(看最后一根k，实体穿过才算)
     if (kLine3.close < kLine3.open && kLine3.high >= sma && sma > kLine3.close) {
         if (min > lowerBand && isBreakthroughSmaDown({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
+            let stopLoss = max;
+            if ((stopLoss - currentPrice) / currentPrice < 0.001) {
+                console.log("stopLoss比太小");
+                return { trend: "hold" };
+            }
+            // if ((stopLoss - currentPrice) / currentPrice > 0.05) {
+            //     console.log("stopLoss比太大"); // 可以用5U止盈法 // 可以用画
+            //     return { trend: "hold" };
+            // }
             return {
                 trend: "down",
-                stopLoss: kLine3.high,
-                stopProfit: currentPrice * 0.998,
+                stopLoss,
+                stopProfit: currentPrice - ((stopLoss - currentPrice) * profitRate) / 2,
             };
         }
     }
@@ -2238,7 +2194,6 @@ function saveGlobalVariables() {
                 tradingInfo, // 订单数据
                 gridPoints, // 网格每个交易点
                 candleHeight: candleHeight,
-                isFirstGetProfit: isFirstGetProfit,
             });
             fs.writeFileSync(`data/${SYMBOL}.js`, `module.exports = ${data}`, { flag: "w" });
             console.log(`Global variables saved to data/${SYMBOL}.js`);

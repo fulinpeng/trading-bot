@@ -16,7 +16,7 @@ const {
     throttleImmediate,
     findFarthestNumber,
 } = require("./utils/functions.js");
-const config = require("./config.js");
+const config = require("./config-mading.js");
 
 let testMoney = 0;
 
@@ -26,23 +26,25 @@ const {
     availableMoney,
     invariableBalance,
     leverage,
+    numForAverage,
     maxRepeatNum,
     mixReversetime,
     howManyCandleHeight,
     minGridHight,
     maxGridHight,
-    acrossPointLimit,
+    stopLossRate,
     times,
     profitRate,
     EMA_PERIOD,
     klineStage,
     logsFolder,
     errorsFolder,
-} = config["ckb"];
+    overNumber,
+} = config["wld"];
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
-const isTest = false; // 将此标志设置为  true 使用沙盒环境
+const isTest = true; // 将此标志设置为  false/true 使用沙盒环境
 const api = "https://api.binance.com/api";
 const fapi = "https://fapi.binance.com/fapi";
 const apiKey = process.env.BINANCE_API_KEY; // 获取API密钥
@@ -123,10 +125,9 @@ let historyEntryPoints = [];
 let currentPrice = 0; // 记录当前价格
 let prePrice = 0; // 记录当前价格的前一个
 let gridPoints = []; // 网格每个交易点
+let gridPoints2 = []; // 网格每个交易点 利润奔跑模式使用
 let currentPriceEma; // 当前价格的EMA值
-let confirmationTimer = null; // 订单确认定时器
 let serverTimeOffset = 0; // 服务器时间偏移
-let confirmNum = 3; // 下单后确认时间（分钟）
 let historyClosePrices = []; // 历史收盘价，用来计算EMA
 let curGridPoint = undefined; // 当前网格
 let prePointIndex = undefined; // 上一个网格
@@ -135,91 +136,65 @@ let tradingDatas = {}; // 订单数据
 let allPositionDetail = {}; // 当前仓位信息
 let candleHeight = 0; // 蜡烛高度
 let gridHight = minGridHight; // 网格高度
+let overNumberOrderArr = []; // 超过 overNumber 手数的单子集合
+let isOldOrder = false; // 是不是老单子
+let oldOrder = {};
+let isProfitRun = false; // 让利润奔跑起来
 
-const shadowBodyRate = 2; // 插针时，引线/实体
-
-let curProfitRate = profitRate;
-
-const wobvPeriod = 15; // 你想要的移动平均周期
-const atrPeriod = 14; // 你想要的 ATR 计算周期
-
-let dynamicWOBVResult = [];
-let wobv_maResult = [];
-let atrResult = [];
-
-// let preArrivePointTime = 0; // 到达不同网格的时间
-// let curArrivePointTime = 0; // 到达不同网格的时间
-
-let reverseTradeTimeMargin = []; // 反手时间间隔
-let reverseTradePriceMargin = []; // 反手价格间隔
-let preReverseTradeTime = -99999999999999999; // 上一次反手时间
-let preReverseTradePrice = 0; // 上一次反手价格
-
-let lastInvokeReverseTime = 0; // 反手执行时间
-let reverseTimer = null; // 反手节流的 timer
-let clearReverseTimer = null; // 90s的清除反手 timer
-
-let continuouNum = 3; // 连续几次反手就切换成双开模式
-
-let curMaxPrice = 0; // 当前这一轮的二线最高价
-let curMinPrice = 0; // 当前这一轮的二线最低价
-
-let curEma1 = 0;
-let curEma2 = 0;
-let curRsi = 0;
-let curInBollBands = false; // 默认模式为1，所以默认不在布林带
-
-// 这些指标，都不能预测，都马后炮
-const THRESHOLD = gridHight * 0.015; // 阈值
-const overboughtThreshold = 69.5;
-const oversoldThreshold = 31.5;
-
-const STD_MULTIPLIER = 1.2; // 用来确定布林带的宽度
-const BOLL_PERIOD = 10;
-const RSI_PERIOD = 10; // RSI计算周期
-
-let model = 2; // 模式： 1 单开， 2 双开
-let preModel = 1; // 模式： 1 单开， 2 双开
-let repeatPointCount = {}; // ema 模糊的次数
-
-let rsiArr = [];
-let ema1Arr = [];
-let ema2Arr = [];
-let ema3Arr = [];
-
-const klineTimeRange = klineStage * 60 * 1000; // k线单位时间
-let emaMargin = [];
-
-// 日志
-let logStream = null;
-let errorStream = null;
-
-// mode === 1 时，最新交易信息
-let purchaseInfo = {
-    currentPointIndex,
+// 最新交易信息 利润奔跑模式使用
+let tradingInfo = {
     trend: "", // "up" 表示上升趋势，"down" 表示下降趋势，'' 表示无趋势
     side: "", // "BUY" 表示做多（多单），"SELL" 表示做空（空单）
     orderPrice: 0,
     quantity: 0,
     times: 0,
 };
+const resetTradingDatas = () => {
+    tradingInfo = {
+        // trend: "", // "up" 表示上升趋势，"down" 表示下降趋势，'' 表示无趋势
+        // side: "", // "BUY" 表示做多（多单），"SELL" 表示做空（空单）
+        // orderPrice: 0,
+        // quantity: 0,
+        // times: 0,
+    };
+};
+const shadowBodyRate = 2; // 插针时，引线/实体
+
+let curProfitRate = profitRate;
+
+let firsttradeTime = 0;
+
+let curMaxPrice = 0; // 当前这一轮的二线最高价
+let curMinPrice = 0; // 当前这一轮的二线最低价
+
+// 这些指标，都不能预测，都马后炮
+const THRESHOLD = gridHight * 0.015; // 阈值
+const RSI_PERIOD = 10; // RSI计算周期
+
+let rsiArr = [];
+let ema1Arr = [];
+let ema2Arr = [];
+let ema3Arr = [];
+
+let emaMargin = [];
+
+// 日志
+let logStream = null;
+let errorStream = null;
 
 // loading
 let loadingPlaceOrder = false; // 下单
 let loadingCloseOrder = false; // 平仓
 let loadingReverseTrade = false; // 反手
 let loadingForehandTrade = false; // 顺手
-let loadingNewPoints = false; // 修改网格
 let onGridPoint = false; // 网格上
-let isSwitch = false;
 let loadingInit = false;
-let loadingBoth = false;
+let loadingNewPoints = false;
 
 const isLoading = () => {
     return (
         loadingInit ||
-        loadingBoth ||
-        isSwitch ||
+        loadingNewPoints ||
         loadingPlaceOrder ||
         loadingCloseOrder ||
         loadingReverseTrade ||
@@ -322,27 +297,7 @@ const getHistoryClosePrices = async () => {
 
     candleHeight = calculateCandleHeight(kLineData);
     let _gridHight = candleHeight * howManyCandleHeight;
-    console.log("计算出实际蜡烛高度 candleHeight:", _gridHight);
-    if (_gridHight < minGridHight) {
-        gridHight = minGridHight;
-    } else if (_gridHight > maxGridHight) {
-        gridHight = maxGridHight;
-    } else {
-        gridHight = _gridHight;
-    }
-    console.log("最终 ~ gridHight:", gridHight);
-
-    // let preCloseTime = kLineData[kLineData.length - 1].closeTime;
-    // let nextCloseTime = preCloseTime + klineStage;
-    // let x = nextCloseTime - Date.now();
-    // 0.000048
-    // 0.00009
-    // console.log("k线最后一个蜡烛的收盘时间差 preCloseTime, nextCloseTime, x:", preCloseTime, nextCloseTime, x);
-
-    // setTimeout(() => {
-    //     refreshPrice();
-    //     refreshHistoryClosePrices(); // 开始刷新最新价格，这一步非常重要
-    // }, x);
+    gridHight = _gridHight;
 };
 const initRsi = () => {
     for (let i = RSI_PERIOD + 1; i <= historyClosePrices.length; i++) {
@@ -357,49 +312,13 @@ const getCurrentPriceEma = async () => {
     currentPriceEma = await setEmaArr(historyClosePrices, EMA_PERIOD);
     console.log("🚀 ~ file: gridBot5.js:396 ~ ws.on ~ currentPriceEma:", currentPriceEma);
 };
-
-const setEveryIndexData = (curKLine) => {
-    const dynamicWOBV = "";
-    const wobv_ma = "";
-    const atr = "";
-    const rsi = "";
-    const macd = "";
-
-    kLineData.length >= 30 && kLineData.shift();
-    historyClosePrices.length >= 30 && historyClosePrices.shift();
-    dynamicWOBVResult.length >= 30 && dynamicWOBVResult.shift();
-    wobv_maResult.length >= 30 && wobv_maResult.shift();
-    atrResult.length >= 30 && atrResult.shift();
-
-    kLineData.push(curKLine);
-    historyClosePrices.push(curKLine.close);
-    dynamicWOBVResult.push(dynamicWOBV);
-    wobv_maResult.push(wobv_ma);
-    atrResult.push(atr);
-
-    console.log("封盘时间到，当前指标:", {
-        kLineData,
-        historyClosePrices,
-        dynamicWOBVResult,
-        wobv_maResult,
-        atrResult,
+const pushOverNumberOrderArr = (count) => {
+    overNumberOrderArr.push({
+        count,
+        gridHight: gridPoints[2] - gridPoints[1],
     });
-};
-// 这个价格每分钟更新一次，比引线要短一点
-const setMaxAndMin = (curKLine) => {
-    const { high, low } = curKLine;
-    if (high > curMaxPrice) {
-        const _curMaxPrice = high - gridHight / 20;
-        if (_curMaxPrice > curMaxPrice) {
-            curMaxPrice = _curMaxPrice;
-        }
-    }
-    if (low < curMinPrice) {
-        const _curMinPrice = low + gridHight / 20;
-        if (_curMinPrice < curMinPrice) {
-            curMinPrice = _curMinPrice;
-        }
-    }
+    console.log("🚀 ~ file: pushOverNumberOrderArr ~ overNumberOrderArr:", overNumberOrderArr);
+    saveGlobalVariables();
 };
 
 const _refreshPrice = (curKLine) => {
@@ -410,72 +329,13 @@ const _refreshPrice = (curKLine) => {
     kLineData.push(curKLine);
     historyClosePrices.push(curKLine.close);
 
-    // 每分钟都设置一次二次修正线，等到1，2交易点就开始根据它调整网格
-    setMaxAndMin(curKLine);
-    // const atr=calculateATR(kLineData, atrPeriod);
-
-    // atrResult.push(atr);
-
     // 更新平均蜡烛高度
     candleHeight = calculateCandleHeight(kLineData);
     let _gridHight = candleHeight * howManyCandleHeight;
-    console.log("计算出实际蜡烛高度 candleHeight:", _gridHight);
-    if (_gridHight < minGridHight) {
-        gridHight = minGridHight;
-    } else if (_gridHight > maxGridHight) {
-        gridHight = maxGridHight;
-    } else {
-        gridHight = _gridHight;
-    }
-    console.log("最终 ~ gridHight:", gridHight);
 
-    // console.log("封盘时间到，当前kLineData:", {
-    //     kLineData,
-    //     historyClosePrices,
-    //     // atrResult,
-    // });
-
-    // 更新ema
-    // setEmaArr(historyClosePrices, EMA_PERIOD);
-    // 更新rsi
-    // setRsiArr(); // 测试>>>>> 好看rsi数据
-    // judgeAndTrading(); // model1 才放开
+    gridHight = _gridHight;
 };
 
-// 初始获取获取historyClosePrices后，后面就自己来弄，避免频繁请求太慢，本地实现比http获取更快
-const refreshPrice = () => {
-    // 刷新 收盘价格
-    historyClosePrices.shift();
-    historyClosePrices.push(currentPrice);
-
-    // 更新平均蜡烛高度
-    candleHeight = calculateCandleHeight(historyClosePrices);
-    let _gridHight = candleHeight * howManyCandleHeight;
-    gridHight = _gridHight < minGridHight ? minGridHight : _gridHight;
-    console.log("收盘后计算gridHight:", gridHight);
-
-    console.log("封盘时间到，当前currentPrice:", currentPrice, "historyClosePrices:", historyClosePrices);
-};
-const refreshHistoryClosePrices = () => {
-    setTimeout(() => {
-        refreshPrice();
-        refreshHistoryClosePrices();
-    }, klineTimeRange);
-};
-
-// 查询持仓模式
-const getPositionSideModel = async () => {
-    // await getServerTimeOffset(); // 测试后删除
-    let timestamp = Date.now() + serverTimeOffset;
-    const params = {
-        recvWindow: 6000, // 请求的超时时间
-        timestamp,
-    };
-    const signedParams = signRequest(params);
-    const positionResponse = await axiosInstance.get(`${fapi}/v1/positionSide/dual?${signedParams}`);
-    // "true": 双向持仓模式；"false": 单向持仓模式
-    console.log("🚀 ~ file: gridBot6.js:200 ~ getPositionSideModel ~ positionResponse:", positionResponse.data);
-};
 // 获取持仓风险，这里要改成村本地
 const getPositionRisk = async () => {
     try {
@@ -697,39 +557,28 @@ const placeOrder = async (side, quantity, resetTradingDatas) => {
         if (response && response.data && response.data.orderId) {
             const { origQty } = response.data;
             const trend = side === "BUY" ? "up" : "down";
-            if (model === 2) {
-                const index = side === "BUY" ? 2 : 1;
-                if (resetTradingDatas) {
-                    tradingDatas = {};
-                    currentPointIndex = index;
-                    await recordTradingDatas(index, trend, {
-                        trend,
-                        side,
-                        orderPrice: _currentPrice,
-                        quantity: Math.abs(origQty),
-                        // orderTime: Date.now(),
-                    });
-                } else {
-                    await recordTradingDatas(index, trend, {
-                        trend,
-                        side,
-                        orderPrice: _currentPrice,
-                        quantity: Math.abs(origQty),
-                        // orderTime: Date.now(),
-                    });
-                }
-                saveGlobalVariables();
-                console.log("placeOrder ~ 下单成功 currentPointIndex tradingDatas:", currentPointIndex, tradingDatas);
-            } else {
-                purchaseInfo = {
-                    currentPointIndex,
+            const index = side === "BUY" ? 2 : 1;
+            if (resetTradingDatas) {
+                tradingDatas = {};
+                currentPointIndex = index;
+                await recordTradingDatas(index, trend, {
                     trend,
                     side,
                     orderPrice: _currentPrice,
                     quantity: Math.abs(origQty),
-                };
-                console.log("placeOrder ~ purchaseInfo:", purchaseInfo);
+                    // orderTime: Date.now(),
+                });
+            } else {
+                await recordTradingDatas(index, trend, {
+                    trend,
+                    side,
+                    orderPrice: _currentPrice,
+                    quantity: Math.abs(origQty),
+                    // orderTime: Date.now(),
+                });
             }
+            saveGlobalVariables();
+            console.log("placeOrder ~ 下单成功 currentPointIndex tradingDatas:", currentPointIndex, tradingDatas);
 
             // {
             //     orderId: 1044552751,
@@ -791,7 +640,7 @@ const closeOrder = async (side, quantity, cb) => {
         if (isTest) {
             response = {
                 data: {
-                    origQty: quantity
+                    origQty: quantity,
                 },
             };
         } else {
@@ -800,7 +649,6 @@ const closeOrder = async (side, quantity, cb) => {
 
         if (response && response.data && response.data.origQty) {
             cb && cb();
-            purchaseInfo = {};
             saveGlobalVariables();
             console.log("🚀 ~ 平仓：平", side === "BUY" ? "空" : "多", response.data.origQty);
         } else {
@@ -818,65 +666,6 @@ const closeOrder = async (side, quantity, cb) => {
             " error::",
             error && error.response ? error.response.data : error,
         );
-        process.exit(1);
-    }
-};
-// 全部平仓 并调用init函数
-const closeAllPositionsAndInit = async () => {
-    try {
-        // 记录方便调试
-        let _currentPrice = currentPrice;
-        let res = Object.values(tradingDatas)
-            .filter((v) => v.up || v.down)
-            .map((v) => [v.up, v.down])
-            .map(([up, down]) => {
-                let res = [];
-                if (up) res.push(up);
-                if (down) res.push(down);
-                return res;
-            })
-            .reduce((res, cur) => [...res, ...cur], []);
-        res.map((v) => {
-            if (v.trend == "up") {
-                testMoney += _currentPrice - v.orderPrice;
-            } else {
-                testMoney += v.orderPrice - _currentPrice;
-            }
-        });
-
-        console.log("closeAllPositionsAndInit 全部平仓 ~ testMoney:", testMoney);
-
-        if (isTest) {
-            // 测试
-            tradingDatas = {};
-            historyEntryPoints = [];
-            purchaseInfo = {};
-
-            console.log("全部仓完成，重新开始");
-            await initializeTrading();
-            return;
-        }
-
-        allPositionDetail = await getPositionRisk(); // 获取当前仓位信息
-        console.log("全部仓位信息 allPositionDetail:", allPositionDetail);
-        const { up, down } = allPositionDetail;
-        let closeFetchs = [];
-        if (up) {
-            // 平多
-            closeFetchs.push(closeOrder("SELL", up.quantity));
-        }
-        if (down) {
-            // 平空
-            closeFetchs.push(closeOrder("BUY", down.quantity));
-        }
-        tradingDatas = {};
-        historyEntryPoints = [];
-        purchaseInfo = {};
-
-        console.log("全部仓完成，重新开始");
-        await Promise.all([...closeFetchs, initializeTrading()]); // 买/卖 并发
-    } catch (error) {
-        console.error("closeAllPositionsAndInit Error:", error);
         process.exit(1);
     }
 };
@@ -899,46 +688,6 @@ const teadeSell = async (times, resetTradingDatas) => {
         console.error("teadeBuy err::", error);
         process.exit(1);
     }
-};
-
-// 双向开单
-const teadeBoth = async () => {
-    loadingBoth = true;
-    const promises = [];
-    // 当前是否有多单
-    if (!(tradingDatas[currentPointIndex] && tradingDatas[currentPointIndex].up)) {
-        console.log("当前currentPointIndex没有多单，开多", currentPointIndex);
-        promises.push(teadeBuy());
-    }
-    // 当前是否有空单
-    if (!(tradingDatas[currentPointIndex] && tradingDatas[currentPointIndex].down)) {
-        console.log("当前currentPointIndex没有空单，开空", currentPointIndex);
-        promises.push(teadeSell());
-    }
-    await Promise.all(promises);
-    loadingBoth = false;
-};
-// 单向开单
-const teadeBothByEma = async (trend) => {
-    const promises = [];
-    if (trend) {
-        if (trend == "up") {
-            // 当前是否有多单
-            if (!(tradingDatas[currentPointIndex] && tradingDatas[currentPointIndex].up)) {
-                console.log("当前currentPointIndex没有多单，开多", currentPointIndex);
-                promises.push(teadeBuy());
-            }
-        } else {
-            // 当前是否有空单
-            if (!(tradingDatas[currentPointIndex] && tradingDatas[currentPointIndex].down)) {
-                console.log("当前currentPointIndex没有空单，开空", currentPointIndex);
-                promises.push(teadeSell());
-            }
-        }
-    } else {
-        promises.push(teadeBoth());
-    }
-    await Promise.all(promises);
 };
 
 // 更新购买信息
@@ -973,29 +722,51 @@ const initializeTrading = async () => {
         const { trend } = await calcEma1Ema2({ threshold: 0 });
         if (trend) {
             if (trend === "up") {
-                await restDatas("up");
+                restDatas("up");
                 await teadeBuy(1);
             } else {
-                await restDatas("down");
+                restDatas("down");
                 await teadeSell(1);
             }
         } else {
-            await restDatas("up");
+            restDatas("up");
             await teadeBuy(1);
         }
+        firsttradeTime = Date.now(); // 重置 firsttradeTime
         loadingInit = false;
     } catch (error) {
         console.error("initializeTrading header::", error);
         process.exit(1);
     }
 };
+const getMinH = (curP, h) => {
+    let left = 0;
+    let right = 0;
+    let n = 0;
+    // 推导过程见演草本
+    while (left >= right && h / curP < 0.05 && n < 100) {
+        h += candleHeight / 2;
+        let zongKui = (341 * h) / curP + (170 * h) / (curP - h);
+        let kaiCang = 1023;
+        let pingCang =
+            1023 -
+            h / curP +
+            (2 * h) / (curP - h) -
+            (4 * h) / curP +
+            (8 * h) / (curP - h) -
+            (16 * h) / curP +
+            (32 * h) / (curP - h) -
+            (64 * h) / curP +
+            (128 * h) / (curP - h) -
+            (256 * h) / curP -
+            (512 * 2 * h) / (curP - h);
+        left = zongKui + (kaiCang + pingCang) * 0.0005;
+        right = (512 * profitRate * h) / curP; // 两倍利润
 
-// 清除所有延时下单/反手/平仓等交易定时器
-const clearAllTimer = () => {
-    clearTimeout(reverseTimer);
-    clearTimeout(clearReverseTimer);
+        n++; // 避免死循环
+    }
+    return h;
 };
-
 // 初始化
 const setInitData = async ({ up, down }) => {
     console.log("🚀 ~ file: gridBot6-13.js:913 ~ setInitData ~ up, down:", up, down);
@@ -1012,7 +783,13 @@ const setInitData = async ({ up, down }) => {
             currentPointIndex: __currentPointIndex, // 当前网格
             tradingDatas: __tradingDatas, // 订单数据
             gridPoints: __gridPoints, // 网格每个交易点
+            tradingInfo: __tradingInfo,
             gridHight: __gridHight,
+            overNumberOrderArr: __overNumberOrderArr, // 超过 overNumber 手数的单子集合
+            isOldOrder: __isOldOrder, // 是不是老单子
+            oldOrder: __oldOrder,
+            isProfitRun: __isProfitRun,
+            gridPoints2: __gridPoints2,
         } = require(`./data/${SYMBOL}.js`);
         console.log("上一次停止程序时，交易情况", {
             __historyEntryPoints,
@@ -1024,41 +801,20 @@ const setInitData = async ({ up, down }) => {
             __tradingDatas,
             __gridPoints,
             __gridHight,
+            __overNumberOrderArr,
+            __isOldOrder,
+            __oldOrder,
+            __isProfitRun,
+            __gridPoints2,
+            __tradingInfo,
         });
 
-        // if (up) {
-        //     let orderPrice = up.orderPrice;
-        //     __prePointIndex = 0;
-        //     let min = Math.abs(__gridPoints[0] - orderPrice);
-        //     for (let i = 1; i < 4; i++) {
-        //         let match = Math.abs(__gridPoints[0] - orderPrice);
-        //         if (min < match) {
-        //             min = match;
-        //             __prePointIndex = i;
-        //         }
-        //     }
-        // }
-        // if (down) {
-        //     let orderPrice = down.orderPrice;
-        //     __prePointIndex = 0;
-        //     let min = Math.abs(__gridPoints[0] - orderPrice);
-        //     for (let i = 1; i < 4; i++) {
-        //         let match = Math.abs(__gridPoints[0] - orderPrice);
-        //         if (min < match) {
-        //             min = match;
-        //             __prePointIndex = i;
-        //         }
-        //     }
-        // }
-
-        // const curPosition = __tradingDatas[__currentPointIndex] || {};
         if (
             __historyEntryPoints.length > 0 &&
             __currentPrice != 0 &&
             __prePrice != 0 &&
-            !isNonEmpty(__tradingDatas) &&
-            __gridPoints.length > 0 &&
-            __historyEntryPoints.length < 5
+            (!isNonEmpty(__tradingDatas) || !isNonEmpty(__tradingInfo)) &&
+            __gridPoints.length > 0
         ) {
             historyEntryPoints = __historyEntryPoints;
             currentPrice = __currentPrice;
@@ -1071,26 +827,37 @@ const setInitData = async ({ up, down }) => {
             gridHight = __gridHight;
             gridPoints[3] = curMaxPrice = gridPoints[2] + gridHight;
             gridPoints[0] = curMinPrice = gridPoints[1] - gridHight;
+            overNumberOrderArr = __overNumberOrderArr;
+            isOldOrder = __isOldOrder;
+            oldOrder = __oldOrder;
+            isProfitRun = __isProfitRun;
+            gridPoints2 = __gridPoints2;
+            tradingInfo = __tradingInfo;
 
-            // 兼容 currentPointIndex === 0 或者 currentPointIndex === 3 的情况
-            if (__currentPointIndex === 3 && currentPrice > gridPoints[2] && currentPrice < gridPoints[3]) {
-                currentPointIndex = 2;
-                prePointIndex = 2;
-                if (__historyEntryPoints[__historyEntryPoints.length - 1] === 3) __historyEntryPoints.pop();
-            }
-            if (__currentPointIndex === 0 && currentPrice > gridPoints[0] && currentPrice < gridPoints[1]) {
-                currentPointIndex = 1;
-                prePointIndex = 1;
-                if (__historyEntryPoints[__historyEntryPoints.length - 1] === 0) __historyEntryPoints.pop();
-            }
+            if (__isProfitRun) {
+                console.log("上次停止程序时处于利润奔跑模式，当前重启后继续奔跑");
+                // await closeOrder(tradingInfo.side, tradingInfo.quantity);
+            } else {
+                // 兼容 currentPointIndex === 0 或者 currentPointIndex === 3 的情况
+                if (__currentPointIndex === 3 && currentPrice > gridPoints[2] && currentPrice < gridPoints[3]) {
+                    currentPointIndex = 2;
+                    prePointIndex = 2;
+                    if (__historyEntryPoints[__historyEntryPoints.length - 1] === 3) __historyEntryPoints.pop();
+                }
+                if (__currentPointIndex === 0 && currentPrice > gridPoints[0] && currentPrice < gridPoints[1]) {
+                    currentPointIndex = 1;
+                    prePointIndex = 1;
+                    if (__historyEntryPoints[__historyEntryPoints.length - 1] === 0) __historyEntryPoints.pop();
+                }
 
-            await checkOverGrid({ up, down });
-            console.log(
-                `setInitData初始化数据完成 当前 currentPointIndex historyEntryPoints tradingDatas:`,
-                currentPointIndex,
-                historyEntryPoints,
-                tradingDatas,
-            );
+                await checkOverGrid({ up, down });
+                console.log(
+                    `setInitData初始化数据完成 当前 currentPointIndex historyEntryPoints tradingDatas:`,
+                    currentPointIndex,
+                    historyEntryPoints,
+                    tradingDatas,
+                );
+            }
         } else {
             console.log("该币现有仓位和上次保留的数据不符合，先平仓再重新初始化！！！");
             await closeAllOrders({ up, down });
@@ -1104,18 +871,15 @@ const setInitData = async ({ up, down }) => {
 };
 
 const checkOverGrid = async ({ up, down }) => {
-    // 这里为了让断开过的程序尽快平仓，取1:1盈亏比
-    if (currentPrice <= curMinPrice || currentPrice >= curMaxPrice) {
-        if (currentPrice <= curMinPrice) {
-            console.log(`初始化时，价格超出网格区间，重置仓位（盈利），当前价格小于gridPoints[0]`);
-            await closeAllOrders({ up, down });
-            await initializeTrading();
-        }
-        if (currentPrice >= curMaxPrice) {
-            console.log(`初始化时，价格超出网格区间，重置仓位（盈利），当前价格大于gridPoints[3]`);
-            await closeAllOrders({ up, down });
-            await initializeTrading();
-        }
+    if (currentPrice <= curMinPrice) {
+        console.log(`初始化时，价格超出网格区间，重置仓位（盈利），当前价格小于gridPoints[0]`);
+        await closeAllOrders({ up, down });
+        await initializeTrading();
+    }
+    if (currentPrice >= curMaxPrice) {
+        console.log(`初始化时，价格超出网格区间，重置仓位（盈利），当前价格大于gridPoints[3]`);
+        await closeAllOrders({ up, down });
+        await initializeTrading();
     }
 };
 
@@ -1123,21 +887,32 @@ const checkOverGrid = async ({ up, down }) => {
 const setGridPointsToCurPriceCenter = (trend, _currentPrice) => {
     console.log("开始绘制网格~ trend, _currentPrice gridHight:", trend, _currentPrice, gridHight);
 
-    loadingNewPoints = true;
-
     let _gridHight = gridHight;
+
+    if (isOldOrder) {
+        _gridHight = oldOrder.gridHight > gridHight ? oldOrder.gridHight : gridHight;
+    }
+
     let priceUp = 0;
     let priceDown = 0;
     let priceUpClose = 0;
     let priceDownClose = 0;
 
     if (trend === "up") {
+        const minH = getMinH(_currentPrice, gridHight);
+        if (_gridHight < minH) {
+            _gridHight = minH;
+        }
         priceUp = _currentPrice;
         prePrice = priceUp;
         priceDown = priceUp - _gridHight;
         priceUpClose = priceUp + _gridHight * curProfitRate;
         priceDownClose = priceDown - _gridHight * curProfitRate;
     } else {
+        const minH = getMinH(_currentPrice, gridHight);
+        if (_gridHight < minH) {
+            _gridHight = minH;
+        }
         priceDown = _currentPrice;
         prePrice = priceDown;
         priceUp = priceDown + _gridHight;
@@ -1148,12 +923,11 @@ const setGridPointsToCurPriceCenter = (trend, _currentPrice) => {
     gridPoints = [priceDownClose, priceDown, priceUp, priceUpClose];
 
     // 设置完网格之后重置初始的最高值和最低值
-    curMaxPrice = priceUp + _gridHight * 1.75; // 当前这一轮的最高价
-    curMinPrice = priceDown - _gridHight * 1.75; // 当前这一轮的最低价
+    curMaxPrice = priceUp; // 当前这一轮的最高价
+    curMinPrice = priceDown; // 当前这一轮的最低价
 
     saveGlobalVariables();
 
-    loadingNewPoints = false;
     console.log(
         "绘制网格 _currentPrice ，currentPointIndex, curGridPoint, gridPoints :",
         currentPrice,
@@ -1177,31 +951,87 @@ const setHistoryEntryPoints = (point) => {
 
     console.log("进入交易点的历史记录 historyEntryPoints:", historyEntryPoints);
 };
-// 进入交易点的历史时间
-const setHistoryArrivePointTimeGaps = (point) => {
-    const last = preArrivePointTime;
-    const now = Date.now();
-    if (historyArrivePointTimeGaps.length < 10) {
-        historyArrivePointTimeGaps.push(point);
-    } else {
-        historyArrivePointTimeGaps.shift();
-        historyArrivePointTimeGaps.push(point);
-    }
-    console.log("进入交易点的时间记录 historyEntryPoints:", historyEntryPoints);
-};
-const restDatas = async (trend) => {
+
+const restDatas = (trend, oldOrderCount) => {
     const _currentPrice = currentPrice * 0.999999999;
+    let _historyEntryPoints = null;
+    if (isOldOrder) {
+        _historyEntryPoints = new Array(oldOrderCount).fill(-1);
+    }
     if (trend === "up") {
         currentPointIndex = 2;
-        historyEntryPoints = [2];
+        historyEntryPoints = isOldOrder ? [..._historyEntryPoints, 2] : [2];
     } else {
         currentPointIndex = 1;
-        historyEntryPoints = [1];
+        historyEntryPoints = isOldOrder ? [..._historyEntryPoints, 1] : [1];
     }
     curGridPoint = _currentPrice;
-    prePointIndex = 1;
     if (!trend) console.log("#####################");
     setGridPointsToCurPriceCenter(trend, _currentPrice);
+};
+// 设置网格
+const setGridPoints = (trend, stopLoss, stopProfit) => {
+    const _currentPrice = currentPrice;
+    console.log("开始绘制网格~ trend, _currentPrice:", trend, _currentPrice);
+
+    loadingNewPoints = true;
+
+    if (trend === "up") {
+        let _stopLoss = stopLoss * 0.9999999999; // 止损
+        let _stopProfit = stopProfit * 0.9999999999; // 止盈
+        gridPoints2 = [_stopLoss, _stopProfit];
+    }
+
+    if (trend === "down") {
+        let _stopLoss = stopLoss * 0.9999999999; // 止损
+        let _stopProfit = stopProfit * 0.9999999999; // 止盈
+        gridPoints2 = [_stopProfit, _stopLoss];
+    }
+
+    saveGlobalVariables();
+
+    loadingNewPoints = false;
+    console.log("绘制网格 _currentPrice, gridPoints2 :", currentPrice, gridPoints2);
+};
+
+// 更新止损位
+const modGridPoints = () => {
+    const _currentPrice = currentPrice;
+
+    loadingNewPoints = true;
+
+    const [point1, point2] = gridPoints2;
+
+    if (tradingInfo.trend === "up") {
+        let stopLoss = point1 + (_currentPrice - point1) * 0.45; // 止损
+        let stopProfit = _currentPrice + candleHeight * 2.5; // 止盈
+        gridPoints2 = [stopLoss, stopProfit];
+
+        const _testMoney =
+            testMoney +
+            tradingInfo.quantity * _currentPrice -
+            tradingInfo.orderPrice * tradingInfo.quantity -
+            (tradingInfo.quantity * _currentPrice + tradingInfo.orderPrice * tradingInfo.quantity) * 0.0005;
+        console.log(`已盈利(${_testMoney})，重新绘制网格 _currentPrice, gridPoints :`, currentPrice, gridPoints2);
+    }
+
+    if (tradingInfo.trend === "down") {
+        let stopLoss = point2 - (point2 - _currentPrice) * 0.45; // 止损
+
+        let stopProfit = _currentPrice - candleHeight + candleHeight * 2.5; // 止盈
+        gridPoints2 = [stopProfit, stopLoss];
+
+        const _testMoney =
+            testMoney +
+            tradingInfo.quantity * tradingInfo.orderPrice -
+            tradingInfo.quantity * _currentPrice -
+            (tradingInfo.quantity * tradingInfo.orderPrice + tradingInfo.quantity * _currentPrice) * 0.0005;
+        console.log(`已盈利(${_testMoney})，重新绘制网格 _currentPrice, gridPoints :`, currentPrice, gridPoints2);
+    }
+
+    saveGlobalVariables();
+
+    loadingNewPoints = false;
 };
 // 5. 启动交易
 const startTrading = async () => {
@@ -1244,31 +1074,23 @@ const startTrading = async () => {
 };
 // 获取下单量
 const getQuantity = (times = 1) => {
-    return Math.round((availableMoney * times) / currentPrice);
-};
-
-// 把tradingDataArr的都平了
-const closeAllPointsOrderAndBuy = async (_currentPointIndex, pointIndexHistory) => {
-    const promises = [];
-    const len = pointIndexHistory.length;
-    console.log(`跨${len}个交易点，平掉所有不是本交易点的订单`);
-    promises.push(closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex));
-
-    promises.push(teadeBoth());
-
-    await Promise.all(promises);
+    return Math.round(((availableMoney * times) / currentPrice) * 100) / 100;
 };
 
 // 交易点所有订单平仓
 const closePointOrders = async (pointIndex) => {
-    console.log("🚀 ~ file: gridBot6-13.js:1073 ~ closePointOrders ~ pointIndex:", onGridPoint, isLoading());
+    // console.log("🚀 ~ file: gridBot6-13.js:1073 ~ closePointOrders ~ pointIndex:", onGridPoint, isLoading());
     if (tradingDatas[pointIndex]) {
         if (tradingDatas[pointIndex].up) {
+            const { quantity, orderPrice } = tradingDatas[pointIndex].up;
             // 平多
-            await closeOrder("SELL", tradingDatas[pointIndex].up.quantity, () => {
+            await closeOrder("SELL", quantity, () => {
                 if (isTest) {
-                    //测试
-                    testMoney += currentPrice - tradingDatas[pointIndex].up.orderPrice;
+                    // 测试
+                    testMoney +=
+                        currentPrice * quantity -
+                        orderPrice * quantity -
+                        (currentPrice * quantity + orderPrice * quantity) * 0.0005;
                     console.log("平多 closePointOrders ~ testMoney:", testMoney);
                 }
                 tradingDatas[pointIndex].up = null;
@@ -1276,11 +1098,15 @@ const closePointOrders = async (pointIndex) => {
             });
         }
         if (tradingDatas[pointIndex].down) {
+            const { quantity, orderPrice } = tradingDatas[pointIndex].down;
             // 平空
-            await closeOrder("BUY", tradingDatas[pointIndex].down.quantity, () => {
+            await closeOrder("BUY", quantity, () => {
                 if (isTest) {
                     // 测试
-                    testMoney += tradingDatas[pointIndex].down.orderPrice - currentPrice;
+                    testMoney +=
+                        orderPrice * quantity -
+                        currentPrice * quantity -
+                        (currentPrice * quantity + orderPrice * quantity) * 0.0005;
                     console.log("平空 closePointOrders ~ testMoney:", testMoney);
                 }
                 tradingDatas[pointIndex].down = null;
@@ -1291,46 +1117,7 @@ const closePointOrders = async (pointIndex) => {
         console.log("该交易点没有任何订单", pointIndex);
     }
 };
-// 其他交易点所有正向订单平仓
-const closeOtherPointYesOrders = async (pointIndexHistory, curIndex) => {
-    let promises = [];
-    pointIndexHistory.forEach((index) => {
-        if (index !== curIndex) {
-            if (index < curIndex) {
-                if (tradingDatas[index].up) {
-                    // 平多
-                    promises.push(
-                        closeOrder("SELL", tradingDatas[index].up.quantity, () => {
-                            if (isTest) {
-                                // 测试
-                                testMoney += currentPrice - tradingDatas[index].up.orderPrice;
-                                console.log("低于当前交易点的 平多 closePointOrders ~ testMoney:", testMoney);
-                            }
-                            tradingDatas[index].up = null;
-                            console.log("平多完成, tradingDatas", tradingDatas);
-                        }),
-                    );
-                }
-            } else {
-                if (tradingDatas[index].down) {
-                    // 平空
-                    promises.push(
-                        closeOrder("BUY", tradingDatas[index].down.quantity, () => {
-                            if (isTest) {
-                                // 测试
-                                testMoney += tradingDatas[index].down.orderPrice - currentPrice;
-                                console.log("高于当前交易点的 平空 closePointOrders ~ testMoney:", testMoney);
-                            }
-                            tradingDatas[index].down = null;
-                            console.log("平空完成, tradingDatas", tradingDatas);
-                        }),
-                    );
-                }
-            }
-        }
-    });
-    await Promise.all(promises);
-};
+
 // 其他交易点所有订单平仓
 const closeOtherPointAllOrders = async (pointIndexHistory, curIndex) => {
     let promises = [];
@@ -1349,7 +1136,10 @@ const closeAllOrders = async ({ up, down }) => {
         const upPromise = closeOrder("SELL", up.quantity, () => {
             if (isTest) {
                 //测试
-                testMoney += currentPrice - up.orderPrice;
+                testMoney +=
+                    currentPrice * up.quantity -
+                    up.orderPrice * up.quantity -
+                    (currentPrice * up.quantity + up.orderPrice * up.quantity) * 0.0005;
                 console.log("平多 closeAllOrders ~ testMoney:", testMoney);
             }
             console.log("平多完成");
@@ -1361,7 +1151,10 @@ const closeAllOrders = async ({ up, down }) => {
         const downPromise = closeOrder("BUY", down.quantity, () => {
             if (isTest) {
                 // 测试
-                testMoney += down.orderPrice - currentPrice;
+                testMoney +=
+                    down.orderPrice * down.quantity -
+                    currentPrice * down.quantity -
+                    (currentPrice * down.quantity + down.orderPrice * down.quantity) * 0.0005;
                 console.log("平空 closeAllOrders ~ testMoney:", testMoney);
             }
             console.log("平空完成");
@@ -1372,233 +1165,19 @@ const closeAllOrders = async ({ up, down }) => {
     await Promise.all(promises);
 };
 
-// 3. 启动3分钟确认定时器
-const startConfirmationTimer = (orderInfo, time = confirmNum) => {
-    console.log("启动3分钟确认定时器");
-    clearTimeout(confirmationTimer);
-    confirmationTimer = setTimeout(() => confirmOrder(orderInfo), time * 60 * 1000);
-};
-
-// 4. 确认订单
-const confirmOrder = async (orderInfo) => {
-    console.log("3分钟时间到，确认订单:");
-    try {
-        let trend = "";
-        if (orderInfo.trend) {
-            if (currentPrice > orderInfo.orderPrice) {
-                // 当前价格大于上次交易价，走势为：上升
-                trend = "up";
-                console.log("当前价格大于上次交易价，走势为：上升", trend);
-            } else if (currentPrice < orderInfo.orderPrice) {
-                // 当前价格小于上次交易价，走势为：下降
-                trend = "down";
-                console.log("当前价格小于上次交易价，走势为：下降", trend);
-            } else {
-                // // 如果价格相等用 ema 指标判断走势
-                // const ema1 = calculateEMA([...historyClosePrices, currentPrice], EMA_PERIOD[0]);
-                // const ema2 = calculateEMA([...historyClosePrices, currentPrice], EMA_PERIOD[1]);
-                // trend = ema1 > ema2 ? "up" : "down";
-                console.log("3分钟确认时，价格相等================");
-            }
-
-            if (trend !== orderInfo.trend) {
-                console.log("价格走势和订单多空状态背离需要反手");
-                await reverseTrade(orderInfo.trend);
-            } else {
-                console.log(`价格走势和订单多空状态一致，无需其他操作, curGridPoint: ${curGridPoint}`);
-            }
-        } else {
-            initializeTrading();
-        }
-        // startConfirmationTimer();
-    } catch (error) {
-        console.error("confirmOrder error::", error);
-        process.exit(1);
+const setOldOrder = () => {
+    if (isOldOrder) {
+        isOldOrder = false;
     }
-};
-// 反手交易
-const reverseTrade = async (originTrend) => {
-    let fetchs = [];
-    if (originTrend === "up") {
-        fetchs.push(
-            closeOrder("SELL", purchaseInfo.quantity, () => {
-                if (isTest) {
-                    testMoney += currentPrice - purchaseInfo.orderPrice;
-                    console.log("👌👌👌 平多 reverseTrade ~ testMoney:", testMoney);
-                }
-            }),
-        ); // 平多
-        fetchs.push(placeOrder("SELL", getQuantity())); // 开空
-    } else {
-        fetchs.push(
-            closeOrder("BUY", purchaseInfo.quantity, () => {
-                if (isTest) {
-                    testMoney += purchaseInfo.orderPrice - currentPrice;
-                    console.log("👌👌👌 平空 reverseTrade ~  testMoney:", testMoney);
-                }
-            }),
-        ); // 平空
-        fetchs.push(placeOrder("BUY", getQuantity())); // 开多
-    }
-    await Promise.all(fetchs);
-};
-// 顺手交易
-const forehandTrade = async (originTrend) => {
-    let fetchs = [];
-    if (originTrend === "up") {
-        fetchs.push(closeOrder("SELL", purchaseInfo.quantity)); // 平多
-        fetchs.push(placeOrder("BUY", getQuantity())); // 开多
-    } else {
-        fetchs.push(closeOrder("BUY", purchaseInfo.quantity)); // 平空
-        fetchs.push(placeOrder("SELL", getQuantity())); // 开空
-    }
-    await Promise.all(fetchs);
-};
-const setRepeatPointCount = () => {
-    console.log("到达相同交易点setRepeatPointCount:", currentPointIndex);
-};
-
-// 记录反手时间间隔
-const setReverseTimeMargin = () => {
-    const nowtime = Date.now();
-    if (reverseTradeTimeMargin.length < 5) {
-        reverseTradeTimeMargin.push(nowtime - preReverseTradeTime);
-    } else {
-        reverseTradeTimeMargin.shift();
-        reverseTradeTimeMargin.push(nowtime - preReverseTradeTime);
-    }
-    preReverseTradeTime = nowtime;
-    console.log("反手时间间隔 reverseTradeTimeMargin:", reverseTradeTimeMargin);
-};
-// 记录反手价格间隔
-const setReversePriceMargin = () => {
-    const _currentPrice = currentPrice;
-    if (reverseTradePriceMargin.length < 5) {
-        reverseTradePriceMargin.push(Math.abs(_currentPrice - preReverseTradePrice));
-    } else {
-        reverseTradePriceMargin.shift();
-        reverseTradePriceMargin.push(Math.abs(_currentPrice - preReverseTradePrice));
-    }
-    preReverseTradePrice = _currentPrice;
-    console.log("反手价格间隔 reverseTradePriceMargin:", reverseTradePriceMargin);
-};
-const wrapReverse = async () => {
-    const { trend } = await calcEma1Ema2({ threshold: 0 });
-    if (trend) {
-        // 不符合趋势才反手
-        if (purchaseInfo.trend !== trend) {
-            console.log("反手节流时间到，确认需要反手，立即执行");
-            await reverseTrade(purchaseInfo.trend);
-        } else {
-            console.log("反手节流时间到，确认不需要反手");
-        }
-    } else {
-        console.log("反手节流时间到，90s趋势都还不明确多半横盘了，不反手");
-    }
-};
-
-const throttleReverseTrade = async () => {
-    // lastInvokeReverseTime 反手执行时间
-    // reverseTimer  反手节流的 timer
-    // clearReverseTimer 90s的清除节流定时器
-    let delay = 180000; // 3分钟
-    const now = Date.now();
-    const elapsedTime = now - lastInvokeReverseTime;
-
-    const shouldInvoke = elapsedTime >= delay;
-
-    // clearTimeout(clearReverseTimer);
-
-    if (shouldInvoke) {
-        lastInvokeReverseTime = now;
-        try {
-            await wrapReverse(); // 用ema判断后再反手
-            // // 了1分钟后后执行（相当于加强版的立即执行）
-            // clearReverseTimer = setTimeout(async () => {
-            //     await wrapReverse(); // 用ema判断后再反手
-            // }, delay / 2);
-        } catch (error) {
-            console.error("throttleReverseTrade 1 ~ error:", error);
-            process.exit(1);
-        }
-    } else {
-        // 如果在 3分钟 时间内再次触发，清除之前的定时器，重新设置
-        clearTimeout(reverseTimer);
-        reverseTimer = setTimeout(async () => {
-            try {
-                lastInvokeReverseTime = Date.now(); // immediate ? Date.now() : lastInvokeReverseTime;
-                await wrapReverse(); // 用ema判断后再反手
-            } catch (error) {
-                console.error("throttleReverseTrade 2 ~ error:", error);
-                process.exit(1);
-            }
-        }, delay);
-    }
-};
-// 封盘时间到，判断+交易
-const judgeAndTrading = async () => {
-    if (purchaseInfo.orderPrice) {
-        const len = ema1Arr.length;
-        const isUpTrend = ema1Arr[len - 1] > ema2Arr[len - 1]; // 判断价格趋势
-        // 上升趋势
-        if (isUpTrend) {
-            console.log("🚀 ~ 现在:👆");
-            // 如果当前价格趋势是上升，若之前开的空单则须反手
-            if (purchaseInfo.trend === "down") {
-                console.log("价格走势和订单多空状态背离，需要反手，原来为:", purchaseInfo.trend);
-                setReverseTimeMargin();
-                setReversePriceMargin();
-                // 这里反手因该是节流不能防抖，不能防抖，不能防抖
-                await throttleReverseTrade();
-            } else {
-                // 没有背离就看看是否有订单，如果没得要怎么办???????
-                console.log("订单空多情况和市场走势一致，无需操作");
-            }
-        } else {
-            console.log("🚀 ~ 现在:👇");
-            // 如果当前价格趋势是下降，若之前开的多单则须反手
-            if (purchaseInfo.trend === "up") {
-                console.log("价格走势和订单多空状态背离，需要反手，原来为:", purchaseInfo.trend);
-                setReverseTimeMargin();
-                setReversePriceMargin();
-                // 这里反手因该是节流不能防抖，不能防抖，不能防抖
-                await throttleReverseTrade();
-            } else {
-                // 没有背离就看看是否有订单，如果没得要怎么办??????
-                console.log("订单空多情况和市场走势一致，无需操作");
-            }
-        }
-    } else {
-        await initializeTrading();
-    }
-};
-
-// const ema1SubEma2Arrs = [];
-
-// // 设置 ema1 - ema2 差值数组
-// const setEma1SubEma2Arrs = (val) => {
-//     if (ema1SubEma2Arrs.length < 14) {
-//         ema1SubEma2Arrs.push(val);
-//     } else {
-//         ema1SubEma2Arrs.shift();
-//         ema1SubEma2Arrs.push(val);
-//     }
-//     console.log("设置 ema1 - ema2 差值数组 ema1SubEma2Arrs:", ema1SubEma2Arrs);
-// };
-
-const teadeWrap = async () => {
-    // const { trend } = await calcEma1Ema2();
-    // 指标周期别太长，因为是短线高频
-    const needEma = false; // ema指标清晰 && rsi斜率很大时 && atr指标清晰 && obv指标清晰 && macd指标清晰
-    if (needEma) {
-        await teadeBothByEma();
-    } else {
-        await teadeBoth();
+    if (overNumberOrderArr.length) {
+        oldOrder = overNumberOrderArr.shift();
+        isOldOrder = true;
     }
 };
 // 双向开单模式
 const gridPointTrading2 = async () => {
     onGridPoint = true;
+    const _currentPrice = currentPrice;
     // currentPointIndex historyEntryPoint是不是不应该存，该取出最新的哦，这样才能保证插针时快速获取>>>>>>
     const _currentPointIndex = currentPointIndex;
     const _historyEntryPoints = historyEntryPoints;
@@ -1610,7 +1189,7 @@ const gridPointTrading2 = async () => {
     const len = pointIndexHistory.length;
     const promises = [];
     if (len === 1) {
-        // console.log(`到了第1个交易点`, tradingDatas);
+        console.log(`在第1个交易点`, tradingDatas);
     } else if (len === 3) {
         console.log(
             "##########不可能，到了第3个交易点, 平掉所有不是本交易点的订单，盈利！！！ pointIndexHistory historyEntryPoints tradingDatas:",
@@ -1618,15 +1197,17 @@ const gridPointTrading2 = async () => {
             _historyEntryPoints,
             tradingDatas,
         );
-
+        let _time = 1;
         if (_currentPointIndex === 0) {
             await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
-            await teadeSell(1, true);
-            await restDatas("down");
+            await teadeSell(_time, true);
+            isOldOrder = false;
+            restDatas("down");
         } else if (_currentPointIndex === 3) {
             await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
-            await restDatas("up");
-            await teadeBuy(1, true);
+            isOldOrder = false;
+            restDatas("up");
+            await teadeBuy(_time, true);
         }
         console.log(
             `到了第3个交易点，已实现盈利，新的historyEntryPoints, tradingDataArr`,
@@ -1643,86 +1224,145 @@ const gridPointTrading2 = async () => {
         );
 
         let allPoints = _historyEntryPoints.length;
-        // if (allPoints >= 7) {
-        //     // 超过5就全平，可能亏可能赚(比原来的一定会亏好点)
-        //     if (_currentPointIndex === 1) {
-        //         console.log(`交替穿过${allPoints}次交易点，重置仓位（盈利），当前index为1`);
-        //         await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
-        //         // 继续反着开仓，因为之前0.6都到不了，_currentPointIndex 不是0/3，肯定是横盘
-        //         await restDatas("up");
-        //         await teadeBuy(1, true);
-        //         onGridPoint = false;
-        //         return; // 全平仓，退出
-        //     } else if (_currentPointIndex === 2) {
-        //         console.log(`交替穿过${allPoints}次交易点，重置仓位（盈利），当前index为2`);
-        //         await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
-        //         // 继续反着开仓，因为之前0.8都到不了，_currentPointIndex 不是0/3，肯定是横盘
-        //         await restDatas("down");
-        //         await teadeSell(1, true);
-        //         onGridPoint = false;
-        //         return; // 全平仓，退出
-        //     }
-        //     // 不能把return写这里
-        // }
 
         // 2 个交易点之间交替
         if (_currentPointIndex === 0) {
-            console.log(`交替穿过${allPoints}次交易点，是 1~0，重置仓位（盈利）！！！，并当前继续开空`);
-            await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
-            await restDatas("down");
-            await teadeSell(1, true);
+            if (!overNumberOrderArr.length && allPoints >= overNumber) {
+                console.log("开启利润奔跑模式！！！ down");
+                tradingInfo = tradingDatas[_currentPointIndex].down;
+                tradingDatas[_currentPointIndex].down = null; // 清空上马丁模式数据
+                let stopLoss = tradingInfo.orderPrice - (tradingInfo.orderPrice - _currentPrice) * 0.9;
+                let stopProfit = _currentPrice - gridHight;
+                setGridPoints("down", stopLoss, stopProfit);
+                isProfitRun = true;
+            } else {
+                console.log(`交替穿过${allPoints}次交易点，是 1~0，重置仓位（盈利）！！！，并当前继续开空`);
+                let _time = 1;
+                setOldOrder();
+                if (isOldOrder) {
+                    _time = times[oldOrder.count];
+                }
+                await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
+                restDatas("down", oldOrder.count);
+                await teadeSell(_time, true);
+
+                firsttradeTime = Date.now(); // 重置 firsttradeTime
+            }
             onGridPoint = false;
             return;
         } else if (_currentPointIndex === 3) {
-            console.log(`交替穿过${allPoints}次交易点，是 2~3，重置仓位（盈利）！！！，并当前继续开多`);
-            await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
-            await restDatas("up");
-            await teadeBuy(1, true);
+            if (!overNumberOrderArr.length && allPoints >= overNumber) {
+                console.log("开启利润奔跑模式！！！ up");
+                tradingInfo = tradingDatas[_currentPointIndex].up;
+                tradingDatas[_currentPointIndex].up = null; // 清空上马丁模式数据
+                let stopLoss = tradingInfo.orderPrice + (_currentPrice - tradingInfo.orderPrice) * 0.9;
+                let stopProfit = _currentPrice + gridHight;
+                setGridPoints("up", stopLoss, stopProfit);
+                isProfitRun = true;
+            } else {
+                console.log(`交替穿过${allPoints}次交易点，是 2~3，重置仓位（盈利）！！！，并当前继续开多`);
+                let _time = 1;
+                setOldOrder();
+                if (isOldOrder) {
+                    _time = times[oldOrder.count];
+                }
+                await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
+                restDatas("up", oldOrder.count);
+                await teadeBuy(_time, true);
+
+                firsttradeTime = Date.now(); // 重置 firsttradeTime
+            }
             onGridPoint = false;
             return;
         } else if (_currentPointIndex === 1) {
+            let _times = times[allPoints - 1];
+            if (allPoints >= overNumber) {
+                isOldOrder = false;
+                pushOverNumberOrderArr(allPoints - 1);
+                console.log(
+                    "仓位过大，暂存该交易，重新开始：curMinPrice, gridPoints, overNumberOrderArr",
+                    curMinPrice,
+                    gridPoints,
+                    overNumberOrderArr,
+                );
+                await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
+                restDatas("down");
+                await teadeSell(1, true);
+                onGridPoint = false;
+                return;
+            }
             console.log(`交替穿过${allPoints}次交易点，并且当前index为1，当前交易点的仓位加倍`);
-            promises.push(
-                closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex),
-                teadeSell(times[allPoints - 1]),
-            );
+            promises.push(closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex), teadeSell(_times));
             await Promise.all(promises);
-            // 在1交易完后，后根据最二线最高值，设置3
-            gridPoints[3] = curMaxPrice;
-            curMaxPrice =
-                gridPoints[2] + (gridPoints[2] - gridPoints[1]) * (allPoints >= 4 ? (allPoints >= 6 ? 1 : 1.25) : 1.5);
-            console.log("绘制网格 二线第3个交易点改变：", gridPoints);
+            // if (allPoints % 2 === 0) {
+            //     const _gridHight = gridPoints[2] - gridPoints[1];
+            //     if (Math.abs(_gridHight / _currentPrice) < 0.01) {
+            //         if (allPoints === 2 && Date.now() - firsttradeTime <= (howManyCandleHeight + 1) * 60 * 1000) {
+            //             // 短时间到达第二个点，距离太短，1下移0.5个单位
+            //             // 此时不用改第0个交易点位置
+            //             gridPoints[1] -= _gridHight * 0.5;
+            //             // gridPoints[0] = gridPoints[1] - (gridPoints[2] - gridPoints[1]) * profitRate; // 不能用 _gridHeight，要实时算
+            //             console.log("时间小于两分钟，绘制网格 0/1交易点改变：gridPoints:", gridPoints);
+            //         } else {
+            //             // 在1交易完后，后根据最二线最高值，设置3
+            //             gridPoints[2] = curMaxPrice * 0.999999999;
+            //             gridPoints[3] = gridPoints[2] + (gridPoints[2] - gridPoints[1]) * profitRate; // 不能用 _gridHeight，要实时算
+            //             console.log("绘制网格 2/3交易点改变：", curMaxPrice, gridPoints);
+            //         }
+            //     } else {
+            //         gridPoints[3] = gridPoints[2] + (gridPoints[2] - gridPoints[1]) * profitRate; // 不能用 _gridHeight，要实时算
+            //     }
+            // } else {
+            //     gridPoints[3] = gridPoints[2] + (gridPoints[2] - gridPoints[1]) * stopLossRate; // 不能用 _gridHeight，要实时算
+            //     console.log("绘制网格 3交易点改变：", gridPoints);
+            // }
+            // curMaxPrice = gridPoints[2];
         } else if (_currentPointIndex === 2) {
+            let _times = times[allPoints - 1];
+            if (allPoints >= overNumber) {
+                isOldOrder = false;
+                pushOverNumberOrderArr(allPoints - 1);
+                console.log(
+                    "仓位过大，暂存该交易，重新开始：curMinPrice, gridPoints, overNumberOrderArr",
+                    curMinPrice,
+                    gridPoints,
+                    overNumberOrderArr,
+                );
+                await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
+                restDatas("up");
+                await teadeBuy(1, true);
+                onGridPoint = false;
+                return;
+            }
             console.log(`交替穿过${allPoints}次交易点，并且当前index为2，当前交易点的仓位加倍`);
-            promises.push(
-                closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex),
-                teadeBuy(times[allPoints - 1]),
-            );
+            promises.push(closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex), teadeBuy(_times));
             await Promise.all(promises);
-            // 在2交易完后，后根据最二线最低值，设置0
-            gridPoints[0] = curMinPrice;
-            curMinPrice =
-                gridPoints[1] - (gridPoints[2] - gridPoints[1]) * (allPoints >= 4 ? (allPoints >= 6 ? 1 : 1.25) : 1.5);
-            console.log("绘制网格 二线第0个交易点改变：", gridPoints);
+            // if (allPoints % 2 === 0) {
+            //     const _gridHight = gridPoints[2] - gridPoints[1];
+            //     if (Math.abs(_gridHight / _currentPrice) < 0.01) {
+            //         if (allPoints === 2 && Date.now() - firsttradeTime <= (howManyCandleHeight + 1) * 60 * 1000) {
+            //             // 短时间到达第二个点，距离太短，2 上移0.5个单位
+            //             gridPoints[2] += _gridHight * 0.5;
+            //             // gridPoints[3] = gridPoints[2] + (gridPoints[2] - gridPoints[1]) * profitRate; // 不能用 _gridHeight，要实时算
+            //             console.log("时间小于两分钟，绘制网格 2/3交易点改变：gridPoints:", gridPoints);
+            //         } else {
+            //             // 在2交易完后，后根据最二线最小值，设置0
+            //             gridPoints[1] = curMinPrice * 0.999999999;
+            //             gridPoints[0] = gridPoints[1] - (gridPoints[2] - gridPoints[1]) * profitRate; // 不能用 _gridHeight，要实时算
+            //             console.log("绘制网格 0/1交易点改变：", curMinPrice, gridPoints);
+            //         }
+            //     } else {
+            //         gridPoints[0] = gridPoints[1] - (gridPoints[2] - gridPoints[1]) * profitRate; // 不能用 _gridHeight，要实时算
+            //     }
+            // } else {
+            //     gridPoints[0] = gridPoints[1] - (gridPoints[2] - gridPoints[1]) * stopLossRate; // 不能用 _gridHeight，要实时算
+            //     console.log("绘制网格 0交易点改变：", gridPoints);
+            // }
+            // curMinPrice = gridPoints[1];
         }
-
-        // 让订单快速成交，反正如果走势继续保持的话，这里也能hold住，行情再次反转也相当于来了一次测试（这里可以作为阻力点）
-        // if (allPoints === 2) {
-        //     gridPoints[0] = gridPoints[1] - gridHight * 1.1;
-        //     gridPoints[3] = gridPoints[2] + gridHight * 1.1;
-        //     console.log(`交替到达${allPoints}个交易点，重新设置止盈区间（盈0.6: gridPoints`, gridPoints);
-        // } else if (allPoints === 3) {
-        //     gridPoints[0] = gridPoints[1] - gridHight * 1.1;
-        //     gridPoints[3] = gridPoints[2] + gridHight * 1.1;
-        //     console.log(`交替到达${allPoints}个交易点，重新设置止盈区间（盈0.8: gridPoints`, gridPoints);
-        // } else if (allPoints === 4) {
-        //     gridPoints[0] = gridPoints[1] - gridHight;
-        //     gridPoints[3] = gridPoints[2] + gridHight;
-        //     console.log(`交替到达${allPoints}个交易点，重新设置止盈区间（盈1: gridPoints`, gridPoints);
-        // }
     } else {
         console.log(
-            "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@就1-3个交易点，是不是错了啊，啥都不干直接平仓吧，可能亏了",
+            "@@@@@@ 就1-3个交易点，是不是错了啊，啥都不干直接平仓吧，可能亏了",
             pointIndexHistory,
             _historyEntryPoints,
             tradingDatas,
@@ -1733,84 +1373,6 @@ const gridPointTrading2 = async () => {
     onGridPoint = false;
 };
 
-// 切换模式
-const changeModel = async (newModel) => {
-    if (model !== newModel) {
-        if (newModel === 2) {
-            // 清除所有延时下单/反手/平仓等交易定时器
-            clearAllTimer();
-        }
-        preModel = model;
-        model = newModel;
-        console.log("changeModel ~ 切换模式，先平仓:");
-        await closeAllPositionsAndInit(); // 全平仓>>>>>>后面需要改为平半仓
-        if (model === 2) {
-            console.log("切换为双开模式");
-        }
-        if (model === 1) {
-            console.log("切换为单开模式");
-        }
-    }
-};
-// 进入单开模式前的判断
-const beforeGridPointTrading1 = async () => {
-    // 频繁反手
-    const isTooManyReversByTime = reverseTradeTimeMargin.filter((t) => t <= mixReversetime).length >= continuouNum;
-    // 反手时价格差距连续很小
-    const isTooManyReversBySpace = reverseTradePriceMargin.filter((s) => s < gridHight).length >= continuouNum;
-    // 重复到达交易点超过maxRepeatNum
-    const isOverRepeatNum = repeatPointCount[currentPointIndex] >= maxRepeatNum;
-    // 当发现横盘，就切换为双开模式
-    if (isTooManyReversByTime || isTooManyReversBySpace || isOverRepeatNum) {
-        console.log(
-            "beforeGridPointTrading1 ~ isTooManyReversByTime, isTooManyReversBySpace, isOverRepeatNum:",
-            isTooManyReversByTime,
-            isTooManyReversBySpace,
-            isOverRepeatNum,
-        );
-        setGridPointsToCurPriceCenter(); // 重新画格子
-        repeatPointCount = {}; // 重置 repeatPointCount
-        reverseTradeTimeMargin = [];
-        reverseTradePriceMargin = [];
-        await changeModel(2);
-        return false;
-    }
-    return true;
-};
-// 进入双开模式前的判断
-const beforeGridPointTrading2 = async () => {
-    if (currentPointIndex === undefined) return false;
-
-    // if (
-    //     tradingDatas[currentPointIndex] &&
-    //     (tradingDatas[currentPointIndex].up || tradingDatas[currentPointIndex].down)
-    // ) {
-    //     return false; // 该交易点有单子，退出交易
-    // } else {
-    //     return true; // 该交易点无单子，都可以继续交易
-    // }
-};
-
-const calcEma1Ema2ByHistoryPrice = async () => {
-    const len = ema1Arr.length;
-    const ema1 = ema1Arr[len - 1];
-    const ema2 = ema2Arr[len - 1];
-    const emaGap = Math.abs(ema1 - ema2) > THRESHOLD; // THRESHOLD 这里还需要调整参与对比才行？？？？?????>>>>>
-
-    let trend = "";
-
-    if (emaGap && currentPrice > ema1 && ema1 > ema2) {
-        trend = "up";
-    }
-    if (emaGap && currentPrice < ema1 && ema1 < ema2) {
-        trend = "down";
-    }
-    return {
-        ema1,
-        ema2,
-        trend,
-    };
-};
 const calcEma1Ema2 = async (params = {}) => {
     const initParams = { emaPeriod1: EMA_PERIOD[0], emaPeriod2: EMA_PERIOD[1], threshold: THRESHOLD };
     const { emaPeriod1, emaPeriod2, threshold } = { ...initParams, ...params };
@@ -1840,32 +1402,7 @@ const calcEma1Ema2 = async (params = {}) => {
         trend,
     };
 };
-const gridPointSwitch = async () => {
-    console.log("🚀 ~ file: gridBot6-13.js:1649 ~ gridPointSwitch ~ gridPointSwitch:");
-    isSwitch = true;
 
-    // 如果是双向开单
-    if (model === 2) {
-        // 直接进入
-        await gridPointTrading2();
-    }
-    // 如果是单向开单
-    else {
-        // 交易前，校验是否需要切换模式
-        const valid = await beforeGridPointTrading1();
-        console.log("gridPointSwitch 中 beforeGridPointTrading1 ~ valid:", valid);
-    }
-    isSwitch = false;
-};
-// 10s记录一次
-const throttleRecordSamePoint = throttleImmediate(setRepeatPointCount, 10000);
-const throttlestartRunGridlog = throttleImmediate((_currentPointIndex, gridPoints) => {
-    console.log(
-        "遍历 gridPoints 后: gridBot6-13.js:1669 ~ _currentPointIndex, gridPoints:",
-        _currentPointIndex,
-        gridPoints,
-    );
-}, 10000);
 // 跑网格
 const startRunGrid = async (_prePrice, _currentPrice) => {
     // 插针时速度很快可能会垮多个格子>>>>>>
@@ -1897,33 +1434,109 @@ const startRunGrid = async (_prePrice, _currentPrice) => {
             currentPointIndex = _currentPointIndex;
 
             setHistoryEntryPoints(currentPointIndex); // 实时交易点历史记录
-            await gridPointSwitch(); // 判断+交易
+            await gridPointTrading2(); // 交易
         } else {
             // 相同交易点
-            // throttleRecordSamePoint();
         }
     }
+};
+// 是否到达止盈/止损点，平仓/移动止损位
+const gridPointClearTrading = async (_currentPrice) => {
+    onGridPoint = true;
+    const [point1, point2] = gridPoints2;
+    if (tradingInfo.side === "BUY") {
+        // 直接平仓
+        if (_currentPrice <= point1) {
+            // 止损平多
+            await closeOrder("SELL", tradingInfo.quantity, () => {
+                // if (isTest) {
+                //测试
+                testMoney +=
+                    tradingInfo.quantity * currentPrice -
+                    tradingInfo.quantity * tradingInfo.orderPrice -
+                    (tradingInfo.quantity * currentPrice + tradingInfo.quantity * tradingInfo.orderPrice) * 0.0005;
+                console.log("平多 gridPointClearTrading ~ testMoney:", testMoney);
+                // }
+                console.log("平多完成");
+                isProfitRun = false;
+
+                // 发送邮件
+                sendMail({
+                    subject: `${tradingInfo.orderPrice < _currentPrice ? "✅" : "❌"}${B_SYMBOL}有一单平仓`,
+                    text: JSON.stringify({
+                        profitMoney: testMoney,
+                        tradingInfo: { ...tradingInfo },
+                        gridPoints: [...gridPoints],
+                    }),
+                });
+            });
+
+            // 继续跑马丁网格，反着开
+            restDatas("up");
+            await teadeBuy(1, true);
+            firsttradeTime = Date.now(); // 重置 firsttradeTime
+            resetTradingDatas();
+            onGridPoint = false;
+            return;
+        }
+        // 到达止盈点，重新绘制网格
+        if (_currentPrice >= point2) {
+            // 移动止损保留盈利
+            modGridPoints();
+            onGridPoint = false;
+            return;
+        }
+    } else {
+        // 直接平仓
+        if (_currentPrice >= point2) {
+            // 止损平空
+            await closeOrder("BUY", tradingInfo.quantity, () => {
+                // if (isTest) {
+                // 测试
+                testMoney +=
+                    tradingInfo.quantity * tradingInfo.orderPrice -
+                    tradingInfo.quantity * currentPrice -
+                    (tradingInfo.quantity * tradingInfo.orderPrice + tradingInfo.quantity * currentPrice) * 0.0005;
+                console.log("平空 gridPointClearTrading ~ testMoney:", testMoney);
+                // }
+                console.log("平空完成");
+                isProfitRun = false;
+
+                // 发送邮件
+                sendMail({
+                    subject: `${tradingInfo.orderPrice > _currentPrice ? "✅" : "❌"}${B_SYMBOL}有一单平仓`,
+                    text: JSON.stringify({
+                        profitMoney: testMoney,
+                        tradingInfo: { ...tradingInfo },
+                        gridPoints: [...gridPoints],
+                    }),
+                });
+            });
+
+            // 继续跑马丁网格，反着开
+            restDatas("down");
+            await teadeSell(1, true);
+            firsttradeTime = Date.now(); // 重置 firsttradeTime
+            resetTradingDatas();
+
+            onGridPoint = false;
+            return;
+        }
+        // 到达止盈点，重新绘制网格
+        if (_currentPrice <= point1) {
+            // 移动止损保留盈利
+            modGridPoints();
+            onGridPoint = false;
+            return;
+        }
+    }
+    onGridPoint = false;
 };
 
 const consolePrice = throttle(() => {
     console.log("currentPrice:", currentPrice);
 }, 3000);
 
-// 判断是否横盘
-const angleBetweenVectors = (arr1, arr2) => {
-    if (arr1.length !== arr2.length) {
-        throw new Error("Array lengths must be the same");
-    }
-
-    const dotProduct = arr1.reduce((acc, val, i) => acc + val * arr2[i], 0);
-    const magnitude1 = Math.sqrt(arr1.reduce((acc, val) => acc + val * val, 0));
-    const magnitude2 = Math.sqrt(arr2.reduce((acc, val) => acc + val * val, 0));
-
-    const cosTheta = dotProduct / (magnitude1 * magnitude2);
-    const theta = Math.acos(cosTheta);
-
-    return theta; // Angle in radians
-};
 // 计算RSI的函数
 // RSI（相对强弱指数）的一般标准范围是 0 到 100。通常，传统的理解是：
 // RSI 小于 30：被认为是超卖状态，可能出现反弹的机会，市场可能过度卖出。
@@ -2009,192 +1622,6 @@ function isPriceInBollingerBands(price, bands) {
     return price >= bands.lowerBand && price <= bands.upperBand;
 }
 
-// 计算 MACD 指标
-function calculateMACD(historyClosePrices, periods) {
-    const [shortPeriod, longPeriod, signalPeriod] = periods;
-    // 计算短期EMA
-    const shortEMA = calculateEMA(historyClosePrices, shortPeriod);
-    // 计算长期EMA
-    const longEMA = calculateEMA(historyClosePrices, longPeriod);
-    // 计算 DIF（快速线）
-    const dif = shortEMA.map((value, index) => value - longEMA[index]);
-    // 计算 DEA（慢速线）
-    const dea = calculateEMA(dif, signalPeriod);
-    // 计算 MACD 柱状图
-    const macd = dif.map((value, index) => value - dea[index]);
-    return { dif, dea, macd };
-}
-function calculateTradingSignal(dif, dea, macd, priceTrend, macdHistogram, currentPrice) {
-    // 定义权重
-    const weights = {
-        difDeaCross: 2, // DIF 与 DEA 交叉点权重
-        difZeroCross: 1.5, // DIF、DEA 与零轴交叉权重
-        macdZeroCross: 1, // MACD 柱状图与零轴交叉权重
-        macdHistogramTrend: 1, // MACD 柱状图趋势权重
-        priceTrend: 1, // 价格趋势权重
-        priceAndDifRelation: 2, // 价格和 DIF 关系权重
-    };
-
-    // 初始化信号值
-    let signalValue = 0;
-
-    // DIF 与 DEA 交叉点
-    if (dif > dea) {
-        signalValue += weights.difDeaCross;
-    } else {
-        signalValue -= weights.difDeaCross;
-    }
-
-    // DIF、DEA 与零轴交叉
-    if (dif > 0 && dea > 0) {
-        signalValue += weights.difZeroCross;
-    } else {
-        signalValue -= weights.difZeroCross;
-    }
-
-    // MACD 柱状图与零轴交叉
-    if (macd > 0) {
-        signalValue += weights.macdZeroCross;
-    } else {
-        signalValue -= weights.macdZeroCross;
-    }
-
-    // MACD 柱状图趋势
-    if (macdHistogram > 0) {
-        signalValue += weights.macdHistogramTrend;
-    } else {
-        signalValue -= weights.macdHistogramTrend;
-    }
-
-    // 价格趋势
-    if (priceTrend === "up") {
-        signalValue += weights.priceTrend;
-    } else {
-        signalValue -= weights.priceTrend;
-    }
-
-    // 价格和 DIF 关系
-    if (currentPrice > dif) {
-        signalValue += weights.priceAndDifRelation;
-    } else {
-        signalValue -= weights.priceAndDifRelation;
-    }
-
-    // 根据信号值判断买入或卖出
-    if (signalValue > 0) {
-        return "up"; // 买入信号
-    } else if (signalValue < 0) {
-        return "down"; // 卖出信号
-    } else {
-        return "hold"; // 无明显信号，持有状态
-    }
-}
-
-// 价格趋势（当前价格和3分钟内平均价格比较）
-// const priceTrend = "up";
-// MACD 柱状趋势（当前价格和3分钟内平均价格比较）越大信号较强
-// const macdHistogramValue = 0.0005;
-
-// const { dif, dea, macd } = calculateMACD(historyClosePrices, [12, 26, 9]);
-
-// const signal = calculateTradingSignal(dif, dea, macd, priceTrend, macdHistogramValue, currentPrice);
-// console.log("Trading Signal:", signal);
-
-function calculateDynamicWOBV(klines) {
-    let wobv = 0;
-
-    for (let i = 0; i < klines.length; i++) {
-        const open = klines[i].open;
-        const close = klines[i].close;
-        const high = klines[i].high;
-        const low = klines[i].low;
-        const volume = klines[i].volume;
-
-        // 计算权重
-        const weight = Math.abs((close - open) / (high - low));
-
-        // 如果当前收盘价高于当前的开盘价，则加上成交量乘以权重
-        if (close > open) {
-            wobv += volume * weight;
-        }
-        // 如果当前收盘价低于当前的开盘价，则加上成交量乘以负权重
-        else if (close < open) {
-            wobv -= volume * weight;
-        }
-        // 如果当前收盘价等于当前的开盘价，则 WOBV 保持不变
-        // （这一步可以省略，因为 wobv 默认为 0，所以加减 0 效果相同）
-    }
-
-    return wobv;
-}
-
-function calculateWOBV_MA(klines, period) {
-    const wobvArray = []; // 存储每日的 WOBV
-    const wobv_maArray = []; // 存储 WOBV 移动平均值
-
-    for (let i = 0; i < klines.length; i++) {
-        const open = klines[i].open;
-        const close = klines[i].close;
-        const high = klines[i].high;
-        const low = klines[i].low;
-        const volume = klines[i].volume;
-
-        const weight = Math.abs((close - open) / (high - low));
-
-        if (close > open) {
-            wobvArray.push(volume * weight);
-        } else if (close < open) {
-            wobvArray.push(-volume * weight);
-        } else {
-            wobvArray.push(0);
-        }
-
-        // 计算移动平均值
-        if (wobvArray.length > period) {
-            const sum = wobvArray.slice(-period).reduce((acc, val) => acc + val, 0);
-            const wobv_ma = sum / period;
-            wobv_maArray.push(wobv_ma);
-        }
-    }
-
-    return wobv_maArray;
-}
-
-function calculateATR(klines, period) {
-    const atr = [];
-
-    for (let i = 0; i < klines.length; i++) {
-        const high = klines[i].high;
-        const low = klines[i].low;
-        const close = klines[i].close;
-
-        if (i === 0) {
-            atr.push(high - low); // 初始 ATR 为当日的高低价差
-        } else {
-            const tr = Math.max(high - low, Math.abs(high - klines[i - 1].close), Math.abs(low - klines[i - 1].close));
-
-            atr = (atr * (period - 1) + tr) / period;
-        }
-    }
-
-    return atr;
-}
-
-const throttlestartWebSocket_on = throttleImmediate(() => {
-    console.log(
-        "🚀 ~ file: gridBot6-13.js:1987 ~ throttlestartWebSocket_on :",
-        isLoading(),
-        historyEntryPoints,
-        currentPrice, // 记录当前价格
-        prePrice, // 记录当前价格的前一个
-        curGridPoint, // 当前网格
-        prePointIndex, // 上一个网格
-        currentPointIndex, // 当前网格
-        tradingDatas, // 订单数据
-        gridPoints, // 网格每个交易点
-    );
-}, 30000);
-
 // let testTime = Date.now();
 // WebSocket 事件
 const startWebSocket = async () => {
@@ -2223,14 +1650,6 @@ const startWebSocket = async () => {
         prePrice = currentPrice; // 不能删除
         currentPrice = Number(close) || 0;
 
-        // 模拟插针 >>>>>>>
-        // if (Date.now() - testTime === 5 * 60 * 1000) {
-        //     currentPrice = close + gridHight * 2;
-        // }
-        // if (Date.now() - testTime === 10 * 60 * 1000) {
-        //     currentPrice = close - gridHight * 2;
-        // }
-
         if (isNewLine) {
             const curKLine = {
                 openTime, // 这根K线的起始时间
@@ -2245,11 +1664,16 @@ const startWebSocket = async () => {
             };
             _refreshPrice(curKLine);
         }
-        // throttlestartWebSocket_on();
         // 相等的话直接退出，因为它到不了任何交易点，继续执行也没有意义
-        if (isLoading() || prePrice === currentPrice) return;
-
-        await startRunGrid(prePrice, currentPrice); // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
+        if (isLoading() || prePrice === currentPrice) {
+            return;
+        } else {
+            if (isProfitRun) {
+                await gridPointClearTrading(currentPrice);
+            } else {
+                await startRunGrid(prePrice, currentPrice); // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
+            }
+        }
     });
     // ws.on("message", async (data) => {
     //     const trade = JSON.parse(data);
@@ -2284,7 +1708,7 @@ const createLogs = () => {
     }
 
     // 重定向 console.log 到文件
-    logStream = fs.createWriteStream(`${logsFolder}/${SYMBOL}-${getDate()}.log`, { flags: "a" });
+    logStream = fs.createWriteStream(`${logsFolder}/mading-${SYMBOL}-${getDate()}.log`, { flags: "a" });
     // 保存原始的 console.log 函数
     const originalConsoleLog = console.log;
 
@@ -2311,7 +1735,7 @@ const createLogs = () => {
         fs.mkdirSync(errorsFolder);
     }
     // 重定向 console.error 到文件
-    errorStream = fs.createWriteStream(`${errorsFolder}/${SYMBOL}-${getDate()}.error`, { flags: "a" });
+    errorStream = fs.createWriteStream(`${errorsFolder}/mading-${SYMBOL}-${getDate()}.error`, { flags: "a" });
     // 保存原始的 console.error 函数
     const originalConsoleError = console.error;
 
@@ -2387,11 +1811,17 @@ function saveGlobalVariables() {
                 prePointIndex, // 上一个网格
                 currentPointIndex, // 当前网格
                 tradingDatas, // 订单数据
+                tradingInfo, // 订单数据 利润奔跑模式
                 gridPoints, // 网格每个交易点
                 gridHight: gridPoints[2] - gridPoints[1],
+                overNumberOrderArr, // 超过 overNumber 手数的单子集合
+                isOldOrder, // 是不是老单子
+                oldOrder,
+                isProfitRun,
+                gridPoints2,
             });
-            fs.writeFileSync(`data/${SYMBOL}.js`, `module.exports = ${data}`, { flag: "w" });
-            console.log(`Global variables saved to data/${SYMBOL}.js`);
+            fs.writeFileSync(`data/mading-${SYMBOL}.js`, `module.exports = ${data}`, { flag: "w" });
+            // console.log(`Global variables saved to data/${SYMBOL}.js`);
         }
     }, 0);
 }

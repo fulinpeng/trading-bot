@@ -35,7 +35,7 @@ const {
     errorsFolder,
     profitProtectRate,
     xAngle,
-} = config["sol"];
+} = config["eth"];
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
@@ -56,8 +56,8 @@ console.log(isTest ? "测试环境～～～" : "正式环境～～～");
 // let socksProxyAgent=new SocksProxyAgent("socks5://127.0.0.1:7890");
 
 // mac 小地球仪
-// let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
-// let socksProxyAgent = new SocksProxyAgent("socks5://127.0.0.1:31550");
+let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
+let socksProxyAgent = new SocksProxyAgent("socks5://127.0.0.1:31550");
 
 // win 小地球仪
 // let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:15715");
@@ -83,12 +83,12 @@ const axiosInstance = axios.create({
         "Content-Type": "application/json",
         "X-MBX-APIKEY": apiKey,
     },
-    // httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
+    httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
 });
 
 // WebSocket连接，用于获取实时交易信息
-// const ws = new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineStage}m`, { agent: socksProxyAgent });
-const ws = new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineStage}m`);
+const ws = new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineStage}m`, { agent: socksProxyAgent });
+// const ws = new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineStage}m`);
 // {
 //     "e": "kline",     // 事件类型
 //     "E": 123456789,   // 事件时间
@@ -856,35 +856,43 @@ const modGridPoints = (protectRate = profitProtectRate) => {
     loadingNewPoints = true;
 
     if (tradingInfo.trend === "up") {
-        // const minProfitPrice = tradingInfo.orderPrice * 1.001;
+        const minProfitPrice = tradingInfo.orderPrice * 1.001;
         let stopLoss = tradingInfo.orderPrice + (_currentPrice - tradingInfo.orderPrice) * protectRate; // 止损
         // 如果能成功盈利，那么回撤的保留利润必须能交手续费
-        // if (stopLoss < minProfitPrice) {
-        //     stopLoss = minProfitPrice;
-        // }
+        if (stopLoss < minProfitPrice) {
+            stopLoss = minProfitPrice;
+        }
         let stopProfit = _currentPrice + candleHeight / 3; // 止盈
         gridPoints = [stopLoss, stopProfit];
+
+        const _testMoney =
+            testMoney +
+            tradingInfo.quantity * _currentPrice -
+            tradingInfo.orderPrice * tradingInfo.quantity -
+            (tradingInfo.quantity * _currentPrice + tradingInfo.orderPrice * tradingInfo.quantity) * 0.005;
+        console.log(`已盈利(${_testMoney})，重新绘制网格 _currentPrice, gridPoints :`, currentPrice, gridPoints);
     }
 
     if (tradingInfo.trend === "down") {
-        // const minProfitPrice = tradingInfo.orderPrice * 0.999;
+        const minProfitPrice = tradingInfo.orderPrice * 0.999;
         let stopLoss = tradingInfo.orderPrice - (tradingInfo.orderPrice - _currentPrice) * protectRate; // 止损
         // 如果能成功盈利，那么回撤的保留利润必须能交手续费
-        // if (stopLoss > minProfitPrice) {
-        //     stopLoss = minProfitPrice;
-        // }
+        if (stopLoss > minProfitPrice) {
+            stopLoss = minProfitPrice;
+        }
         let stopProfit = _currentPrice - candleHeight / 3; // 止盈
         gridPoints = [stopProfit, stopLoss];
+        const _testMoney =
+            testMoney +
+            tradingInfo.quantity * tradingInfo.orderPrice -
+            tradingInfo.quantity * _currentPrice -
+            (tradingInfo.quantity * tradingInfo.orderPrice + tradingInfo.quantity * _currentPrice) * 0.005;
+        console.log(`已盈利(${_testMoney})，重新绘制网格 _currentPrice, gridPoints :`, currentPrice, gridPoints);
     }
 
     saveGlobalVariables();
 
     loadingNewPoints = false;
-    console.log(
-        `已盈利，保留${protectRate * 10}成利润，重新绘制网格 _currentPrice, gridPoints :`,
-        currentPrice,
-        gridPoints,
-    );
 };
 
 // 5. 启动交易
@@ -1503,24 +1511,33 @@ function isBreakUp(kLine1, kLine2, kLine3) {
 }
 // 黄昏星
 function isDownStar(kLine1, kLine2, kLine3) {
+    const k1Body = Math.abs(kLine1.close - kLine1.open);
+    const k2Body = Math.abs(kLine2.close - kLine2.open);
+    const k3Body = Math.abs(kLine3.close - kLine3.open);
     const res =
         kLine1.open < kLine1.close &&
         kLine3.open > kLine3.close &&
-        kLine1.open + (kLine1.close - kLine1.open) / 2 > kLine3.close && // k1实体的中间位 要高于k3的收盘价
+        k1Body > k2Body &&
+        k3Body > k2Body &&
+        kLine1.open + k1Body / 2 > kLine3.low &&
         kLine2.low > kLine3.low &&
-        (isDownSwallow(kLine1, kLine3) || isBigAndYin(kLine3, 0.8));
+        (isDownSwallow(kLine1, kLine3) || isBigAndYin(kLine3, 0.8) || isDownCross(kLine1, kLine3));
     console.log("🚀 ~ 是否 黄昏星 ~ res:", res);
     return res;
 }
 // 启明星
 function isUpStar(kLine1, kLine2, kLine3) {
+    const k1Body = Math.abs(kLine1.close - kLine1.open);
+    const k2Body = Math.abs(kLine2.close - kLine2.open);
+    const k3Body = Math.abs(kLine3.close - kLine3.open);
     const res =
         kLine1.open > kLine1.close &&
-        kLine1.open < kLine1.close &&
-        kLine1.close + (kLine1.open - kLine1.close) / 2 < kLine3.close &&
+        kLine3.open < kLine3.close &&
+        k1Body > k2Body &&
+        k3Body > k2Body &&
+        kLine1.close + k1Body / 2 < kLine3.high &&
         kLine2.high < kLine3.high &&
-        isCross(kLine2) &&
-        (isUpSwallow(kLine1, kLine3) || isBigAndYang(kLine3, 0.8));
+        (isUpSwallow(kLine1, kLine3) || isBigAndYang(kLine3, 0.8) || isUpCross(kLine1, kLine3));
     console.log("🚀 ~ 是否 启明星 ~ res:", res);
     return res;
 }
@@ -1630,7 +1647,7 @@ const upPao = (one, two, three) => {
         isBigAndYang(three) &&
         twoBody < Math.abs(one.open - one.close) &&
         twoBody < Math.abs(three.open - three.close) &&
-        three.close < Math.max(one.high, two.high)
+        three.close > Math.max(one.high, two.high)
     ) {
         res = true;
     }
@@ -1695,7 +1712,7 @@ function isTrackTopReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLin
         kLine3.close >= kLine3.open, // k3不能是阳线
         kLine2.high > kLine3.high && kLine2.low < kLine3.low, // 孕线绝对不可以，机会多得是，放弃一次又怎样
         isAllDownTail(kLine1, kLine2, kLine3), // 有两个都是长下引线的不要
-        curRsiMax > 65, // rsi（14） 在35-65之间
+        curRsiMax > 70, // rsi（14） 在35-65之间
         isUpCross(kLine3, 0.4),
         isUpCross(kLine1, 0.4),
         // isK1Swallow(kLine1, kLine2, kLine3), // k1 body吞没k2，k3
@@ -1709,7 +1726,7 @@ function isTrackTopReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLin
         return false;
     } else {
         reasonPass = [
-            curRsiMax < 65,
+            curRsiMax < 70, // 挣小钱不需要这个
             isTopFractal(kLine1, kLine2, kLine3) || // 是否顶分形态
                 (isDownLinesGroup2(kLine2, kLine3) && (isDownCross(kLine3) || isBigAndYin(kLine3, 0.6))) || // 是否两个k形成垂线/光头阴
                 (isDownLinesGroup3(kLine1, kLine2, kLine3) &&
@@ -1738,7 +1755,7 @@ function isTrackBottomReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, k
         isDownCross(kLine1, 0.4),
         // tooManeyInTen(),
         isAllUpTail(kLine1, kLine2, kLine3), // 有两个都是长上引线的不要
-        curRsiMax < 35,
+        curRsiMax < 30, // 挣小钱不需要这个
         // isK1Swallow(kLine1, kLine2, kLine3), // k1 body吞没k2，k3
         // isK1Swallow(kLine2, kLine1, kLine3) && kLine2.close < kLine2.open,
         kLine3.high - kLine3.close >= (kLine3.high - kLine3.low) * 0.5, // 当前k收盘方向引线不能大于整体0.5
@@ -1750,7 +1767,7 @@ function isTrackBottomReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, k
         return false;
     } else {
         reasonPass = [
-            curRsiMax > 35, // rsi（14） 在35-65之间
+            curRsiMax > 30, // rsi（14） 在35-65之间
             isBottomFractal(kLine1, kLine2, kLine3) || // 是否底分形态
                 (isUpLinesGroup2(kLine2, kLine3) && (isUpCross(kLine1) || isBigAndYang(kLine1, 0.6))) || // 是否两个k形成垂线
                 (isUpLinesGroup3(kLine1, kLine2, kLine3) && (isBigAndYang(kLine3, 0.6) || isUpCross(kLine3, 0.45))) || // 是否三个k形成垂线
@@ -1993,68 +2010,68 @@ function calculateTradingSignal() {
         }
     }
     // 从下轨上来(看最后一根k，引线在外即可)
-    if (
-        kLine3.close > kLine3.open &&
-        kLine3.close >= Math.min(kLine2.close, kLine2.open) + Math.abs(kLine2.close - kLine2.open) / 2 &&
-        min <= lowerBand && // 避免错过机会
-        lowerBand < kLine3.close &&
-        max < sma
-    ) {
-        // 不能是从sma跨到lowerBand下的
-        // 是否下轨反转做多形态
-        if (isTrackBottomReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
-            return {
-                trend: "up",
-                stopLoss: min,
-                stopProfit: currentPrice * 1.002,
-            };
-        }
-    }
+    // if (
+    //     kLine3.close > kLine3.open &&
+    //     kLine3.close >= Math.min(kLine2.close, kLine2.open) + Math.abs(kLine2.close - kLine2.open) / 2 &&
+    //     min <= lowerBand && // 避免错过机会
+    //     lowerBand < kLine3.close &&
+    //     max < sma
+    // ) {
+    //     // 不能是从sma跨到lowerBand下的
+    //     // 是否下轨反转做多形态
+    //     if (isTrackBottomReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
+    //         return {
+    //             trend: "up",
+    //             stopLoss: min,
+    //             stopProfit: currentPrice * 1.002,
+    //         };
+    //     }
+    // }
 
     // 中轨 ==> 上轨 || 下轨 ==> 中轨（做多）
-    if (
-        kLine3.close > kLine3.open &&
-        (isBigAndYang(kLine3, 0.8) || isUpCross(kLine3, 0.5)) &&
-        ((kLine3.low <= sma && upperBand < kLine3.high) || (kLine3.low <= lowerBand && sma < kLine3.high))
-    ) {
-        return {
-            trend: "up",
-            stopLoss: kLine3.low,
-            stopProfit: currentPrice * 1.002,
-        };
-    }
+    // if (
+    //     kLine3.close > kLine3.open &&
+    //     (isBigAndYang(kLine3, 0.8) || isUpCross(kLine3, 0.5)) &&
+    //     ((kLine3.low <= sma && upperBand < kLine3.high) || (kLine3.low <= lowerBand && sma < kLine3.high))
+    // ) {
+    //     return {
+    //         trend: "up",
+    //         stopLoss: kLine3.low,
+    //         stopProfit: currentPrice * 1.002,
+    //     };
+    // }
     // 中轨 ==> 下轨 || 上轨 ==> 中轨 (做空)
-    if (
-        kLine3.close < kLine3.open &&
-        (isBigAndYin(kLine3, 0.8) || isDownCross(kLine3, 0.5)) &&
-        ((kLine3.low < lowerBand && sma <= kLine3.high) || (kLine3.low < sma && upperBand <= kLine3.high))
-    ) {
-        return {
-            trend: "down",
-            stopLoss: kLine3.high,
-            stopProfit: currentPrice * 0.998,
-        };
-    }
+    // if (
+    //     kLine3.close < kLine3.open &&
+    //     (isBigAndYin(kLine3, 0.8) || isDownCross(kLine3, 0.5)) &&
+    //     ((kLine3.low < lowerBand && sma <= kLine3.high) || (kLine3.low < sma && upperBand <= kLine3.high))
+    // ) {
+    //     return {
+    //         trend: "down",
+    //         stopLoss: kLine3.high,
+    //         stopProfit: currentPrice * 0.998,
+    //     };
+    // }
     // 是否从下往上突破中轨做多(看最后一根k，实体穿过才算)
-    if (kLine3.close > kLine3.open && kLine3.low <= sma && sma < kLine3.close) {
-        if (max < upperBand && isBreakthroughSmaUp({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
-            return {
-                trend: "up",
-                stopLoss: kLine3.low,
-                stopProfit: currentPrice * 1.002,
-            };
-        }
-    }
+    // if (kLine3.close > kLine3.open && kLine3.low <= sma && sma < kLine3.close) {
+    //     if (max < upperBand && isBreakthroughSmaUp({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
+    //         return {
+    //             trend: "up",
+    //             stopLoss: kLine3.low,
+    //             stopProfit: currentPrice * 1.002,
+    //         };
+    //     }
+    // }
     // 是否从上往下突破中轨做空(看最后一根k，实体穿过才算)
-    if (kLine3.close < kLine3.open && kLine3.high >= sma && sma > kLine3.close) {
-        if (min > lowerBand && isBreakthroughSmaDown({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
-            return {
-                trend: "down",
-                stopLoss: kLine3.high,
-                stopProfit: currentPrice * 0.998,
-            };
-        }
-    }
+    // if (kLine3.close < kLine3.open && kLine3.high >= sma && sma > kLine3.close) {
+    //     if (min > lowerBand && isBreakthroughSmaDown({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
+    //         return {
+    //             trend: "down",
+    //             stopLoss: kLine3.high,
+    //             stopProfit: currentPrice * 0.998,
+    //         };
+    //     }
+    // }
     return { trend: "hold" }; // 默认为 hold
 }
 
