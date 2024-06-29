@@ -1227,7 +1227,7 @@ const gridPointTrading2 = async () => {
 
         // 2 个交易点之间交替
         if (_currentPointIndex === 0) {
-            if (!overNumberOrderArr.length && allPoints >= overNumber) {
+            if (!overNumberOrderArr.length && allPoints - 1 >= overNumber) {
                 console.log("开启利润奔跑模式！！！ down");
                 tradingInfo = tradingDatas[_currentPointIndex].down;
                 tradingDatas[_currentPointIndex].down = null; // 清空上马丁模式数据
@@ -1251,7 +1251,7 @@ const gridPointTrading2 = async () => {
             onGridPoint = false;
             return;
         } else if (_currentPointIndex === 3) {
-            if (!overNumberOrderArr.length && allPoints >= overNumber) {
+            if (!overNumberOrderArr.length && allPoints - 1 >= overNumber) {
                 console.log("开启利润奔跑模式！！！ up");
                 tradingInfo = tradingDatas[_currentPointIndex].up;
                 tradingDatas[_currentPointIndex].up = null; // 清空上马丁模式数据

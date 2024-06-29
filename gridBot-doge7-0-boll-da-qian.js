@@ -843,6 +843,7 @@ const setInitData = async ({ up, down }) => {
             candleHeight: __candleHeight,
             isFirstGetProfit: __isFirstGetProfit,
             firstGetProfitMaxPrice: __firstGetProfitMaxPrice,
+            testMoney: __testMoney,
         } = require(`./data/${SYMBOL}.js`);
         console.log("上一次停止程序时，交易情况", {
             __currentPrice,
@@ -852,6 +853,7 @@ const setInitData = async ({ up, down }) => {
             __candleHeight,
             __isFirstGetProfit,
             __firstGetProfitMaxPrice,
+            __testMoney,
         });
 
         if (__currentPrice != 0 && __prePrice != 0 && !isNonEmpty(__tradingInfo) && __gridPoints.length > 0) {
@@ -863,6 +865,7 @@ const setInitData = async ({ up, down }) => {
             isFirstGetProfit = __isFirstGetProfit;
             firstGetProfitMaxPrice = __firstGetProfitMaxPrice;
             hasOrder = true; // 有仓位直接用
+            testMoney = __testMoney;
             console.log(`setInitData初始化数据完成 当前 tradingInfo:`, tradingInfo);
         } else {
             console.log("该币现有仓位和上次保留的数据不符合，先平仓再重新初始化！！！");
@@ -2368,6 +2371,7 @@ function saveGlobalVariables() {
                 gridPoints, // 网格每个交易点
                 candleHeight: candleHeight,
                 isFirstGetProfit: isFirstGetProfit,
+                testMoney,
             });
             fs.writeFileSync(`data/boll-daqian-${SYMBOL}.js`, `module.exports = ${data}`, { flag: "w" });
             console.log(`Global variables saved to data/${SYMBOL}.js`);
