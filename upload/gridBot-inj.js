@@ -1,5 +1,6 @@
 // 版本5
 require("dotenv").config(); // 引入dotenv模块，用于加载环境变量
+const sendMail = require("./mailer.js");
 const axios = require("axios"); // HTTP请求库
 const crypto = require("crypto"); // 加密模块
 const WebSocket = require("ws"); // WebSocket库
@@ -1706,7 +1707,13 @@ const startWebSocket = async () => {
         process.exit(1);
     });
 };
-
+// 自定义函数将 Error 对象转为字符串
+function errorToString(error) {
+    if (error instanceof Error) {
+        return `${error.name}: ${error.message}\n${error.stack}`;
+    }
+    return error;
+}
 // logs
 const createLogs = () => {
     // 创建 logs 文件夹
@@ -1753,7 +1760,9 @@ const createLogs = () => {
         errorStream.write(
             `${getDate()}: ${args
                 .map((v) => {
-                    if (typeof v === "object") {
+                    if (v instanceof Error) {
+                        return errorToString(v);
+                    } else if (typeof v === "object") {
                         return JSON.stringify(v);
                     } else {
                         return v;

@@ -2275,7 +2275,13 @@ const startWebSocket = async () => {
         process.exit(1);
     });
 };
-
+// 自定义函数将 Error 对象转为字符串
+function errorToString(error) {
+    if (error instanceof Error) {
+        return `${error.name}: ${error.message}\n${error.stack}`;
+    }
+    return error;
+}
 // logs
 const createLogs = () => {
     // 创建 logs 文件夹
