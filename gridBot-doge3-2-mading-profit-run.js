@@ -40,7 +40,7 @@ const {
     logsFolder,
     errorsFolder,
     overNumber,
-} = config["wld"];
+} = config["zk"];
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
@@ -739,30 +739,34 @@ const initializeTrading = async () => {
         process.exit(1);
     }
 };
-const getMinH = (curP, h) => {
+
+const checkH = (curP, h) => {
     let left = 0;
     let right = 0;
+    let zongKui = (341 * h) / curP + (170 * h) / (curP - h);
+    let kaiCang = 1023;
+    let pingCang =
+        1023 -
+        h / curP +
+        (2 * h) / (curP - h) -
+        (4 * h) / curP +
+        (8 * h) / (curP - h) -
+        (16 * h) / curP +
+        (32 * h) / (curP - h) -
+        (64 * h) / curP +
+        (128 * h) / (curP - h) -
+        (256 * h) / curP -
+        (512 * 2 * h) / (curP - h);
+    left = zongKui + (kaiCang + pingCang) * 0.0005;
+    right = (512 * profitRate * h) / curP; // 两倍利润
+    return left >= right;
+};
+const getMinH = (curP, h) => {
     let n = 0;
     // 推导过程见演草本
-    while (left >= right && h / curP < 0.05 && n < 100) {
-        h += candleHeight / 2;
-        let zongKui = (341 * h) / curP + (170 * h) / (curP - h);
-        let kaiCang = 1023;
-        let pingCang =
-            1023 -
-            h / curP +
-            (2 * h) / (curP - h) -
-            (4 * h) / curP +
-            (8 * h) / (curP - h) -
-            (16 * h) / curP +
-            (32 * h) / (curP - h) -
-            (64 * h) / curP +
-            (128 * h) / (curP - h) -
-            (256 * h) / curP -
-            (512 * 2 * h) / (curP - h);
-        left = zongKui + (kaiCang + pingCang) * 0.0005;
-        right = (512 * profitRate * h) / curP; // 两倍利润
-
+    while (h / curP < 0.05 && n < 100 && checkH(curP, h)) {
+        h += candleHeight / 10;
+        console.log("🚀 ~ file: H不合适 getMinH ~ 新的h:", h);
         n++; // 避免死循环
     }
     return h;
@@ -1232,8 +1236,8 @@ const gridPointTrading2 = async () => {
         if (_currentPointIndex === 0) {
             if (!overNumberOrderArr.length && allPoints - 1 >= overNumber) {
                 console.log("开启利润奔跑模式！！！ down");
-                tradingInfo = tradingDatas[_currentPointIndex].down;
-                tradingDatas[_currentPointIndex].down = null; // 清空上马丁模式数据
+                tradingInfo = tradingDatas[1].down;
+                tradingDatas[1].down = null; // 清空上马丁模式数据
                 let stopLoss = tradingInfo.orderPrice - (tradingInfo.orderPrice - _currentPrice) * 0.9;
                 let stopProfit = _currentPrice - gridHight;
                 setGridPoints("down", stopLoss, stopProfit);
@@ -1256,8 +1260,8 @@ const gridPointTrading2 = async () => {
         } else if (_currentPointIndex === 3) {
             if (!overNumberOrderArr.length && allPoints - 1 >= overNumber) {
                 console.log("开启利润奔跑模式！！！ up");
-                tradingInfo = tradingDatas[_currentPointIndex].up;
-                tradingDatas[_currentPointIndex].up = null; // 清空上马丁模式数据
+                tradingInfo = tradingDatas[2].up;
+                tradingDatas[2].up = null; // 清空上马丁模式数据
                 let stopLoss = tradingInfo.orderPrice + (_currentPrice - tradingInfo.orderPrice) * 0.9;
                 let stopProfit = _currentPrice + gridHight;
                 setGridPoints("up", stopLoss, stopProfit);

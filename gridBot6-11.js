@@ -919,30 +919,30 @@ const closeAllPointsOrderAndBuy = async (_currentPointIndex, pointIndexHistory, 
         console.log(`跨${len}个交易点，平掉所有不是本交易点的订单，本交易点保留ema同趋势的订单`);
         if (trend) {
             if (trend === "up") {
-                if (tradingDatas[_currentPointIndex].down) {
+                if (tradingDatas[1].down) {
                     //>>>> 测试
-                    testMoney += tradingDatas[_currentPointIndex].down.orderPrice - currentPrice;
+                    testMoney += tradingDatas[1].down.orderPrice - currentPrice;
                     console.log("平空 closeAllPointsOrderAndBuy ~ testMoney:", testMoney);
 
                     // 平空
-                    promises.push(closeOrder("BUY", tradingDatas[_currentPointIndex].down.quantity));
-                    tradingDatas[_currentPointIndex].down = null;
+                    promises.push(closeOrder("BUY", tradingDatas[1].down.quantity));
+                    tradingDatas[1].down = null;
                 }
-                if (!tradingDatas[_currentPointIndex].up) {
+                if (!tradingDatas[2].up) {
                     promises.push(teadeBuy());
                 }
             }
             if (trend === "down") {
-                if (tradingDatas[_currentPointIndex].up) {
+                if (tradingDatas[2].up) {
                     //>>>> 测试
-                    testMoney += currentPrice - tradingDatas[_currentPointIndex].up.orderPrice;
+                    testMoney += currentPrice - tradingDatas[2].up.orderPrice;
                     console.log("平多 closeAllPointsOrderAndBuy ~ testMoney:", testMoney);
 
                     // 平多
-                    promises.push(closeOrder("SELL", tradingDatas[_currentPointIndex].up.quantity));
-                    tradingDatas[_currentPointIndex].up = null;
+                    promises.push(closeOrder("SELL", tradingDatas[2].up.quantity));
+                    tradingDatas[2].up = null;
                 }
-                if (!tradingDatas[_currentPointIndex].down) {
+                if (!tradingDatas[1].down) {
                     promises.push(teadeSell());
                 }
             }
