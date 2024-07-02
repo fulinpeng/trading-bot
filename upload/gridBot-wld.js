@@ -1,7 +1,7 @@
 // 版本5
 require("dotenv").config(); // 引入dotenv模块，用于加载环境变量
-const sendMail = require("./mailer.js");
 const axios = require("axios"); // HTTP请求库
+const sendMail = require("./mailer.js");
 const crypto = require("crypto"); // 加密模块
 const WebSocket = require("ws"); // WebSocket库
 const { HttpsProxyAgent } = require("https-proxy-agent");
@@ -141,6 +141,7 @@ let overNumberOrderArr = []; // 超过 overNumber 手数的单子集合
 let isOldOrder = false; // 是不是老单子
 let oldOrder = {};
 let isProfitRun = false; // 让利润奔跑起来
+let isFirstGetProfit = false; // 是否利润奔跑后的第一次盈利
 
 // 最新交易信息 利润奔跑模式使用
 let tradingInfo = {
@@ -1008,33 +1009,43 @@ const modGridPoints = () => {
 
     loadingNewPoints = true;
 
-    const [point1, point2] = gridPoints2;
+    const [point1, point2] = gridPoints;
 
     if (tradingInfo.trend === "up") {
-        let stopLoss = point1 + (_currentPrice - point1) * 0.45; // 止损
-        let stopProfit = _currentPrice + candleHeight * 2.5; // 止盈
-        gridPoints2 = [stopLoss, stopProfit];
+        let stopLoss = 0;
+        if (isFirstGetProfit) {
+            stopLoss = tradingInfo.orderPrice + (point2 - tradingInfo.orderPrice) * 0.9; // 止损
+        } else {
+            stopLoss = point1 + (point2 - point1) * 0.45; // 止损
+        }
+        let stopProfit = point2 + candleHeight * 2; // 止盈
+        gridPoints = [stopLoss, stopProfit];
 
         const _testMoney =
             testMoney +
             tradingInfo.quantity * _currentPrice -
             tradingInfo.orderPrice * tradingInfo.quantity -
             (tradingInfo.quantity * _currentPrice + tradingInfo.orderPrice * tradingInfo.quantity) * 0.0005;
-        console.log(`已盈利(${_testMoney})，重新绘制网格 _currentPrice, gridPoints :`, currentPrice, gridPoints2);
+        console.log(`已盈利(${_testMoney})，重新绘制网格 _currentPrice, gridPoints :`, currentPrice, gridPoints);
     }
 
     if (tradingInfo.trend === "down") {
-        let stopLoss = point2 - (point2 - _currentPrice) * 0.45; // 止损
+        let stopLoss = 0;
+        if (isFirstGetProfit) {
+            stopLoss = tradingInfo.orderPrice - (tradingInfo.orderPrice - point1) * 0.9; // 止损
+        } else {
+            stopLoss = point2 - (point2 - point1) * 0.45; // 止损
+        }
 
-        let stopProfit = _currentPrice - candleHeight + candleHeight * 2.5; // 止盈
-        gridPoints2 = [stopProfit, stopLoss];
+        let stopProfit = point1 - candleHeight * 2; // 止盈
+        gridPoints = [stopProfit, stopLoss];
 
         const _testMoney =
             testMoney +
             tradingInfo.quantity * tradingInfo.orderPrice -
             tradingInfo.quantity * _currentPrice -
             (tradingInfo.quantity * tradingInfo.orderPrice + tradingInfo.quantity * _currentPrice) * 0.0005;
-        console.log(`已盈利(${_testMoney})，重新绘制网格 _currentPrice, gridPoints :`, currentPrice, gridPoints2);
+        console.log(`已盈利(${_testMoney})，重新绘制网格 _currentPrice, gridPoints :`, currentPrice, gridPoints);
     }
 
     saveGlobalVariables();
@@ -1243,6 +1254,7 @@ const gridPointTrading2 = async () => {
                 let stopProfit = _currentPrice - gridHight;
                 setGridPoints("down", stopLoss, stopProfit);
                 isProfitRun = true;
+                isFirstGetProfit = true;
             } else {
                 console.log(`交替穿过${allPoints}次交易点，是 1~0，重置仓位（盈利）！！！，并当前继续开空`);
                 let _time = 1;
@@ -1267,6 +1279,7 @@ const gridPointTrading2 = async () => {
                 let stopProfit = _currentPrice + gridHight;
                 setGridPoints("up", stopLoss, stopProfit);
                 isProfitRun = true;
+                isFirstGetProfit = true;
             } else {
                 console.log(`交替穿过${allPoints}次交易点，是 2~3，重置仓位（盈利）！！！，并当前继续开多`);
                 let _time = 1;
@@ -1491,6 +1504,7 @@ const gridPointClearTrading = async (_currentPrice) => {
         if (_currentPrice >= point2) {
             // 移动止损保留盈利
             modGridPoints();
+            isFirstGetProfit = false;
             onGridPoint = false;
             return;
         }
@@ -1534,6 +1548,7 @@ const gridPointClearTrading = async (_currentPrice) => {
         if (_currentPrice <= point1) {
             // 移动止损保留盈利
             modGridPoints();
+            isFirstGetProfit = false;
             onGridPoint = false;
             return;
         }
@@ -1707,6 +1722,7 @@ const startWebSocket = async () => {
         process.exit(1);
     });
 };
+
 // 自定义函数将 Error 对象转为字符串
 function errorToString(error) {
     if (error instanceof Error) {

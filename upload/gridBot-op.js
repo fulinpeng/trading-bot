@@ -901,7 +901,6 @@ const setGridPoints = (trend, stopLoss, stopProfit) => {
     console.log("绘制网格 _currentPrice, gridPoints :", currentPrice, gridPoints);
 };
 
-// 更新止损位
 const modGridPoints = () => {
     const _currentPrice = currentPrice;
 
@@ -912,11 +911,11 @@ const modGridPoints = () => {
     if (tradingInfo.trend === "up") {
         let stopLoss = 0;
         if (isFirstGetProfit) {
-            stopLoss = point1 + (_currentPrice - point1) * 0.9; // 止损
+            stopLoss = tradingInfo.orderPrice + (point2 - tradingInfo.orderPrice) * 0.9; // 止损
         } else {
-            stopLoss = point1 + (_currentPrice - point1) * 0.45; // 止损
+            stopLoss = point1 + (point2 - point1) * 0.45; // 止损
         }
-        let stopProfit = _currentPrice + candleHeight; // 止盈
+        let stopProfit = point2 + candleHeight; // 止盈
         gridPoints = [stopLoss, stopProfit];
 
         const _testMoney =
@@ -930,12 +929,12 @@ const modGridPoints = () => {
     if (tradingInfo.trend === "down") {
         let stopLoss = 0;
         if (isFirstGetProfit) {
-            stopLoss = point2 - (point2 - _currentPrice); // 止损
+            stopLoss = tradingInfo.orderPrice - (tradingInfo.orderPrice - point1) * 0.9; // 止损
         } else {
-            stopLoss = point2 - (point2 - _currentPrice) * 0.45; // 止损
+            stopLoss = point2 - (point2 - point1) * 0.45; // 止损
         }
 
-        let stopProfit = _currentPrice - candleHeight + candleHeight * 2.5; // 止盈
+        let stopProfit = point1 - candleHeight; // 止盈
         gridPoints = [stopProfit, stopLoss];
 
         const _testMoney =

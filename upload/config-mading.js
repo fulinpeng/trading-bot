@@ -266,7 +266,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 1.2, 2.4, 4.8, 9.6, 19.2, 38.4, 76.8, 153.6, 307.2], // [1, 2, 4, 8, 16, 32, 64, 128]
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
     },
     uni: {
         howManyCandleHeight: 3,
@@ -292,7 +292,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         backIndex: 99,
         profitProtectRate: 0.6,
@@ -322,7 +322,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -351,7 +351,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -380,7 +380,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -409,7 +409,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -438,7 +438,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -467,7 +467,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -496,7 +496,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -525,7 +525,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -554,7 +554,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -583,7 +583,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -612,7 +612,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -641,7 +641,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -670,7 +670,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -699,7 +699,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -728,7 +728,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -757,7 +757,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -786,7 +786,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -815,7 +815,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 1.5,
-        overNumber: 4,
+        overNumber: 5,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
