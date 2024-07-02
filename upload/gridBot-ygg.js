@@ -2055,12 +2055,6 @@ function calculateTradingSignal() {
     // const bodyMin = Math.min(kLine1.close, kLine2.open, kLine2.close, kLine3.open, kLine3.close);
 
     const { atr } = calculateATR([...kLineData], 14);
-    console.log(
-        "🚀 ~ file: gridBot-doge7-0-zheng-da-qian.js:2011 ~ calculateTradingSignal ~ atr:",
-        atr,
-        currentPrice,
-        atr / currentPrice,
-    );
     // 跨越上下轨的不做，很可能是横盘或者插针
     if (atr / currentPrice < 0.005 || (kLine3.high > upperBand && lowerBand > kLine3.low)) {
         return { trend: "hold" };
