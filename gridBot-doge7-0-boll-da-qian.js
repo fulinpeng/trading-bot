@@ -2081,7 +2081,7 @@ function calculateTradingSignal() {
         // 是否上轨反转做空形态
         if (isTrackTopReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
             let stopLoss = max + atr; // 少亏损
-            let stopProfit = currentPrice - (stopLoss - currentPrice) * profitRate * 3;
+            let stopProfit = currentPrice - (stopLoss - currentPrice) * profitRate * 2; // 1:3太难达到
 
             if ((currentPrice - stopProfit) / currentPrice < 0.001) {
                 console.log("盈利太小");
@@ -2106,7 +2106,7 @@ function calculateTradingSignal() {
         // 是否下轨反转做多形态
         if (isTrackBottomReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
             let stopLoss = min - atr; // 少亏损
-            let stopProfit = currentPrice + (currentPrice - stopLoss) * profitRate * 3;
+            let stopProfit = currentPrice + (currentPrice - stopLoss) * profitRate * 2; // 1:3太难达到
             if ((stopProfit - currentPrice) / currentPrice < 0.001) {
                 console.log("盈利太小");
                 return { trend: "hold" };

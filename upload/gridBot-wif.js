@@ -2071,7 +2071,7 @@ function calculateTradingSignal() {
         if (isTrackTopReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
             return {
                 trend: "down",
-                stopLoss: max + atr,
+                stopLoss: kLine3.high - Math.abs(kLine3.high - kLine3.low) * 0.4,
                 stopProfit: currentPrice * 0.998,
             };
         }
@@ -2089,7 +2089,7 @@ function calculateTradingSignal() {
         if (isTrackBottomReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
             return {
                 trend: "up",
-                stopLoss: min - atr,
+                stopLoss: kLine3.low + Math.abs(kLine3.high - kLine3.low) * 0.4,
                 stopProfit: currentPrice * 1.002,
             };
         }
@@ -2141,7 +2141,6 @@ function calculateTradingSignal() {
     // }
     return { trend: "hold" }; // 默认为 hold
 }
-
 // let testTime = Date.now();
 // WebSocket 事件
 const startWebSocket = async () => {
