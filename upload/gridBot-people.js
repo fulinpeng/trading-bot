@@ -768,7 +768,6 @@ const getMinH = (curP, h) => {
     // 推导过程见演草本
     while (h / curP < 0.05 && n < 100 && checkH(curP, h)) {
         h += candleHeight / 10;
-        console.log("🚀 ~ file: H不合适 getMinH ~ 新的h:", h);
         n++; // 避免死循环
     }
     return h;
@@ -1009,7 +1008,7 @@ const modGridPoints = () => {
 
     loadingNewPoints = true;
 
-    const [point1, point2] = gridPoints;
+    const [point1, point2] = gridPoints2;
 
     if (tradingInfo.trend === "up") {
         let stopLoss = 0;
@@ -1019,14 +1018,14 @@ const modGridPoints = () => {
             stopLoss = point1 + (point2 - point1) * 0.45; // 止损
         }
         let stopProfit = point2 + candleHeight * 2; // 止盈
-        gridPoints = [stopLoss, stopProfit];
+        gridPoints2 = [stopLoss, stopProfit];
 
         const _testMoney =
             testMoney +
             tradingInfo.quantity * _currentPrice -
             tradingInfo.orderPrice * tradingInfo.quantity -
             (tradingInfo.quantity * _currentPrice + tradingInfo.orderPrice * tradingInfo.quantity) * 0.0005;
-        console.log(`已盈利(${_testMoney})，重新绘制网格 _currentPrice, gridPoints :`, currentPrice, gridPoints);
+        console.log(`已盈利(${_testMoney})，重新绘制网格 _currentPrice, gridPoints2 :`, currentPrice, gridPoints2);
     }
 
     if (tradingInfo.trend === "down") {
@@ -1038,14 +1037,14 @@ const modGridPoints = () => {
         }
 
         let stopProfit = point1 - candleHeight * 2; // 止盈
-        gridPoints = [stopProfit, stopLoss];
+        gridPoints2 = [stopProfit, stopLoss];
 
         const _testMoney =
             testMoney +
             tradingInfo.quantity * tradingInfo.orderPrice -
             tradingInfo.quantity * _currentPrice -
             (tradingInfo.quantity * tradingInfo.orderPrice + tradingInfo.quantity * _currentPrice) * 0.0005;
-        console.log(`已盈利(${_testMoney})，重新绘制网格 _currentPrice, gridPoints :`, currentPrice, gridPoints);
+        console.log(`已盈利(${_testMoney})，重新绘制网格 _currentPrice, gridPoints2 :`, currentPrice, gridPoints2);
     }
 
     saveGlobalVariables();
@@ -1247,11 +1246,11 @@ const gridPointTrading2 = async () => {
         // 2 个交易点之间交替
         if (_currentPointIndex === 0) {
             if (!overNumberOrderArr.length && allPoints - 1 >= overNumber) {
-                console.log("开启利润奔跑模式！！！ down");
                 tradingInfo = tradingDatas[1].down;
+                console.log("开启利润奔跑模式！！！ down tradingInfo", tradingInfo);
                 tradingDatas[1].down = null; // 清空上马丁模式数据
                 let stopLoss = tradingInfo.orderPrice - (tradingInfo.orderPrice - _currentPrice) * 0.9;
-                let stopProfit = _currentPrice - gridHight;
+                let stopProfit = _currentPrice - candleHeight * 1.5;
                 setGridPoints("down", stopLoss, stopProfit);
                 isProfitRun = true;
                 isFirstGetProfit = true;
@@ -1272,11 +1271,11 @@ const gridPointTrading2 = async () => {
             return;
         } else if (_currentPointIndex === 3) {
             if (!overNumberOrderArr.length && allPoints - 1 >= overNumber) {
-                console.log("开启利润奔跑模式！！！ up");
                 tradingInfo = tradingDatas[2].up;
+                console.log("开启利润奔跑模式！！！ up tradingInfo", tradingInfo);
                 tradingDatas[2].up = null; // 清空上马丁模式数据
                 let stopLoss = tradingInfo.orderPrice + (_currentPrice - tradingInfo.orderPrice) * 0.9;
-                let stopProfit = _currentPrice + gridHight;
+                let stopProfit = _currentPrice + candleHeight * 1.5;
                 setGridPoints("up", stopLoss, stopProfit);
                 isProfitRun = true;
                 isFirstGetProfit = true;
@@ -1493,10 +1492,11 @@ const gridPointClearTrading = async (_currentPrice) => {
             });
 
             // 继续跑马丁网格，反着开
-            restDatas("up");
-            await teadeBuy(1, true);
+            restDatas("down");
+            await teadeSell(1, true);
             firsttradeTime = Date.now(); // 重置 firsttradeTime
             resetTradingDatas();
+
             onGridPoint = false;
             return;
         }
@@ -1536,11 +1536,10 @@ const gridPointClearTrading = async (_currentPrice) => {
             });
 
             // 继续跑马丁网格，反着开
-            restDatas("down");
-            await teadeSell(1, true);
+            restDatas("up");
+            await teadeBuy(1, true);
             firsttradeTime = Date.now(); // 重置 firsttradeTime
             resetTradingDatas();
-
             onGridPoint = false;
             return;
         }
