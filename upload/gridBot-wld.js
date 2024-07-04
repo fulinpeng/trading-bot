@@ -41,7 +41,7 @@ const {
     logsFolder,
     errorsFolder,
     overNumber,
-} = config["zk"];
+} = config["wld"];
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
@@ -1109,7 +1109,7 @@ const closePointOrders = async (pointIndex) => {
                         currentPrice * quantity -
                         orderPrice * quantity -
                         (currentPrice * quantity + orderPrice * quantity) * 0.0005;
-                    console.log("平多 closePointOrders ~ testMoney:", testMoney);
+                    console.log("平多 closePointOrders ~ currentPrice testMoney:", currentPrice, testMoney);
                 }
                 tradingDatas[pointIndex].up = null;
                 console.log("平多完成, closePointOrders ~ tradingDatas", tradingDatas);
@@ -1125,7 +1125,7 @@ const closePointOrders = async (pointIndex) => {
                         orderPrice * quantity -
                         currentPrice * quantity -
                         (currentPrice * quantity + orderPrice * quantity) * 0.0005;
-                    console.log("平空 closePointOrders ~ testMoney:", testMoney);
+                    console.log("平空 closePointOrders ~ currentPrice testMoney:", currentPrice, testMoney);
                 }
                 tradingDatas[pointIndex].down = null;
                 console.log("平空完成, tradingDatas", tradingDatas);
@@ -1158,7 +1158,7 @@ const closeAllOrders = async ({ up, down }) => {
                     currentPrice * up.quantity -
                     up.orderPrice * up.quantity -
                     (currentPrice * up.quantity + up.orderPrice * up.quantity) * 0.0005;
-                console.log("平多 closeAllOrders ~ testMoney:", testMoney);
+                console.log("平多 closeAllOrders ~ currentPrice testMoney:", currentPrice, testMoney);
             }
             console.log("平多完成");
         });
@@ -1173,7 +1173,7 @@ const closeAllOrders = async ({ up, down }) => {
                     down.orderPrice * down.quantity -
                     currentPrice * down.quantity -
                     (currentPrice * down.quantity + down.orderPrice * down.quantity) * 0.0005;
-                console.log("平空 closeAllOrders ~ testMoney:", testMoney);
+                console.log("平空 closeAllOrders ~ currentPrice testMoney:", currentPrice, testMoney);
             }
             console.log("平空完成");
         });
@@ -1475,7 +1475,7 @@ const gridPointClearTrading = async (_currentPrice) => {
                     tradingInfo.quantity * currentPrice -
                     tradingInfo.quantity * tradingInfo.orderPrice -
                     (tradingInfo.quantity * currentPrice + tradingInfo.quantity * tradingInfo.orderPrice) * 0.0005;
-                console.log("平多 gridPointClearTrading ~ testMoney:", testMoney);
+                console.log("平多 gridPointClearTrading ~ currentPrice testMoney:", currentPrice, testMoney);
                 // }
                 console.log("平多完成");
                 isProfitRun = false;
@@ -1519,7 +1519,7 @@ const gridPointClearTrading = async (_currentPrice) => {
                     tradingInfo.quantity * tradingInfo.orderPrice -
                     tradingInfo.quantity * currentPrice -
                     (tradingInfo.quantity * tradingInfo.orderPrice + tradingInfo.quantity * currentPrice) * 0.0005;
-                console.log("平空 gridPointClearTrading ~ testMoney:", testMoney);
+                console.log("平空 gridPointClearTrading ~ currentPrice testMoney:", currentPrice, testMoney);
                 // }
                 console.log("平空完成");
                 isProfitRun = false;

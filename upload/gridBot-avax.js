@@ -41,7 +41,7 @@ const {
     logsFolder,
     errorsFolder,
     overNumber,
-} = config["op"];
+} = config["avax"];
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();

@@ -564,7 +564,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "opUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 100000, // 可用的USDT数量
+        availableMoney: 1000, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -593,7 +593,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "yggUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 100000, // 可用的USDT数量
+        availableMoney: 1000, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
