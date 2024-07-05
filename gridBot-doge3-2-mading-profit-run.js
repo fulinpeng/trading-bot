@@ -173,12 +173,20 @@ let curMinPrice = 0; // 当前这一轮的二线最低价
 const THRESHOLD = gridHight * 0.015; // 阈值
 const RSI_PERIOD = 10; // RSI计算周期
 
-let rsiArr = [];
+const maxKLinelen = 200; // 储存kLine最大数量
+const STD_MULTIPLIER = 2; // 用来确定布林带的宽度
+const BOLL_PERIOD = 20;
+const RSI_PERIOD_MIN = 14; // RSI计算周期
+const RSI_PERIOD_MAX = 100; // RSI计算周期
+
+let emaArr = [];
+let macdArr = [];
+let rsiGroupArr = [];
 let ema1Arr = [];
 let ema2Arr = [];
 let ema3Arr = [];
 
-let emaMargin = [];
+const MACD_PERIOD = [80, 160, 9];
 
 // 日志
 let logStream = null;
@@ -293,27 +301,18 @@ const calculateCandleHeight = (klines) => {
 // 获取收盘价
 const getHistoryClosePrices = async () => {
     // 在getKLineData方法中获取至少15分钟内的价格数据
-    kLineData = await getKLineData(B_SYMBOL, `${klineStage}m`, 15);
+    kLineData = await getKLineData(B_SYMBOL, `${klineStage}m`, maxKLinelen);
     historyClosePrices = kLineData.map((data) => data.close); // K线数据有一个close字段表示收盘价，根据实际情况调整
     // console.log("k线收盘价:", historyClosePrices);
+
+    // 初始化指标
+    initEveryIndex();
 
     candleHeight = calculateCandleHeight(kLineData);
     let _gridHight = candleHeight * howManyCandleHeight;
     gridHight = _gridHight;
 };
-const initRsi = () => {
-    for (let i = RSI_PERIOD + 1; i <= historyClosePrices.length; i++) {
-        const prices = historyClosePrices.slice(0, i);
-        rsiArr.push(calculateRSI(prices, RSI_PERIOD));
-    }
-    console.log(" initRsi ~ rsiArr:", rsiArr);
-};
-// 获取EMA（指数移动平均线）值
-const getCurrentPriceEma = async () => {
-    // 传递至calculateEMA函数
-    currentPriceEma = await setEmaArr(historyClosePrices, EMA_PERIOD);
-    console.log("🚀 ~ file: gridBot5.js:396 ~ ws.on ~ currentPriceEma:", currentPriceEma);
-};
+
 /**
  * 计算单个真实范围（True Range, TR）
  * @param {number} high 当前最高价
@@ -375,9 +374,8 @@ const pushOverNumberOrderArr = (count) => {
 };
 
 const _refreshPrice = (curKLine) => {
-    kLineData.length >= 15 && kLineData.shift();
-    historyClosePrices.length >= 30 && historyClosePrices.shift();
-    // atrResult.length >= 15 && atrResult.shift();
+    kLineData.length >= maxKLinelen && kLineData.shift();
+    historyClosePrices.length >= maxKLinelen && historyClosePrices.shift();
 
     kLineData.push(curKLine);
     historyClosePrices.push(curKLine.close);
@@ -387,8 +385,85 @@ const _refreshPrice = (curKLine) => {
     let _gridHight = candleHeight * howManyCandleHeight;
 
     gridHight = _gridHight;
+
+    // 设置各种指标
+    setEveryIndex([...historyClosePrices]);
 };
 
+const setEveryIndex = (prices) => {
+    // 计算 ema
+    // setSimpleEmaArr(historyClosePrices, BOLL_PERIOD);
+
+    // 计算macd
+    setMacdArr(prices);
+
+    // 计算rsi
+    setRsiGroupArr(prices);
+};
+
+const setSimpleEmaArr = (prices, period) => {
+    if (emaArr.length >= 50) {
+        emaArr.shift();
+    }
+    emaArr.push(calculateEMA(prices, period));
+};
+const setMacdArr = (prices, period) => {
+    if (macdArr.length >= 50) {
+        macdArr.shift();
+    }
+    macdArr.push(calculateMACD(prices, period));
+};
+const setRsiGroupArr = (prices) => {
+    if (rsiGroupArr.length >= 50) {
+        rsiGroupArr.shift();
+    }
+    rsiGroupArr.push({
+        short: calculateRSI(prices, RSI_PERIOD_MIN),
+        long: calculateRSI(prices, RSI_PERIOD_MAX),
+    });
+};
+
+function calculateEmaArr(prices, period) {
+    const k = 2 / (period + 1);
+    let emaArray = [prices[0]];
+    for (let i = 1; i < prices.length; i++) {
+        const ema = prices[i] * k + emaArray[i - 1] * (1 - k);
+        emaArray.push(ema);
+    }
+    return emaArray;
+}
+
+// 计算 MACD 指标
+function calculateMACD(prices, periods) {
+    const [shortPeriod, longPeriod, signalPeriod] = periods || MACD_PERIOD;
+    if (prices.length < longPeriod) {
+        throw new Error("价格数组的长度必须大于长周期");
+    }
+
+    const shortEMA = calculateEmaArr(prices, shortPeriod);
+    const longEMA = calculateEmaArr(prices, longPeriod);
+
+    const macdLine = shortEMA.map((value, index) => value - longEMA[index]);
+
+    const signalLine = calculateEmaArr(macdLine.slice(longPeriod - shortPeriod), signalPeriod);
+    const histogram = macdLine.slice(longPeriod - shortPeriod).map((value, index) => value - signalLine[index]);
+
+    // 返回最新一组MACD值
+    // DIF 对应 macdLine：这是快线，即短周期EMA与长周期EMA的差。
+    // DEA 对应 signalLine：这是慢线，即DIF的信号线（DIF的EMA）。
+    // MACD 对应 histogram：这是柱状图，即DIF与DEA的差。
+    return {
+        dif: macdLine[macdLine.length - 1],
+        dea: signalLine[signalLine.length - 1],
+        macd: histogram[histogram.length - 1],
+    };
+}
+const initEveryIndex = () => {
+    const len = historyClosePrices.length;
+    for (let index = 0; index < 10; index++) {
+        setEveryIndex(historyClosePrices.slice(0, len - 10));
+    }
+};
 // 获取持仓风险，这里要改成村本地
 const getPositionRisk = async () => {
     try {
@@ -539,31 +614,6 @@ const calculateEMA = (prices, period) => {
     }
 
     return ema;
-};
-const setEmaArr = (prices, [period1, period2]) => {
-    if (ema1Arr.length >= 10) {
-        ema1Arr.shift();
-        ema2Arr.shift();
-        // ema3Arr.shift();
-    }
-    // if (emaMargin.length >= 3) {
-    //     emaMargin.shift();
-    // }
-    ema1Arr.push(calculateEMA(prices, period1));
-    ema2Arr.push(calculateEMA(prices, period2));
-    // ema3Arr.push(calculateEMA(prices, period1 + period2));
-
-    // emaMargin.push(ema1Arr[ema1Arr.length - 1] - ema2Arr[ema2Arr.length - 1]);
-    // console.log("setEmaArr: ema1Arr, ema2Arr", ema1Arr, ema2Arr);
-    // console.log("setEmaArr: emaMargin", emaMargin);
-};
-const setRsiArr = () => {
-    if (rsiArr.length >= 15) {
-        rsiArr.shift();
-    }
-    rsi = calculateRSI(historyClosePrices, RSI_PERIOD);
-    rsiArr.push(rsi);
-    console.log("setRsiArr ~ rsiArr:", rsiArr);
 };
 // 下单（开多操作/开空操作）
 const placeOrder = async (side, quantity, resetTradingDatas) => {
@@ -772,7 +822,7 @@ const initializeTrading = async () => {
             console.log("ema1Arr / currentPrice 为空", historyClosePrices, currentPrice);
             throw new Error("ema1Arr / currentPrice 为空，请重新启动");
         }
-        const { trend } = await calcEma1Ema2({ threshold: 0 });
+        const trend = judgeTrend();
         if (trend) {
             if (trend === "up") {
                 restDatas("up");
@@ -1238,13 +1288,32 @@ const closeAllOrders = async ({ up, down }) => {
 };
 
 const setOldOrder = () => {
-    if (isOldOrder) {
-        isOldOrder = false;
-    }
+    isOldOrder = false;
     if (overNumberOrderArr.length) {
         oldOrder = overNumberOrderArr.shift();
         isOldOrder = true;
     }
+};
+
+function getLastFromArr(arr, num = 3) {
+    let res = [];
+    const len = arr.length;
+    while (num > 0) {
+        res.push(arr[len - num]);
+        num--;
+    }
+    return res;
+}
+
+const judgeTrend = () => {
+    const [macd1, macd2, macd3] = getLastFromArr(macdArr, 3);
+    let trend = "hold";
+    if (macd1.macd > 0 && macd1.macd < macd2.macd && macd2.macd < macd3.macd) {
+        trend = "up";
+    } else if (macd1.macd < 0 && macd1.macd > macd2.macd && macd2.macd > macd3.macd) {
+        trend = "down";
+    }
+    return trend;
 };
 // 双向开单模式
 const gridPointTrading2 = async () => {
@@ -1308,6 +1377,7 @@ const gridPointTrading2 = async () => {
                 setGridPoints("down", stopLoss, stopProfit);
                 isProfitRun = true;
                 isFirstGetProfit = true;
+                isOldOrder = false; // 此时，isOldOrder需要重置，避免奔跑完成再次开单时isOldOrder还为true（有三个地方在开单）
             } else {
                 console.log(`交替穿过${allPoints}次交易点，是 1~0，重置仓位（盈利）！！！，并当前继续开空`);
                 let _time = 1;
@@ -1333,6 +1403,7 @@ const gridPointTrading2 = async () => {
                 setGridPoints("up", stopLoss, stopProfit);
                 isProfitRun = true;
                 isFirstGetProfit = true;
+                isOldOrder = false; // 此时，isOldOrder需要重置，避免奔跑完成再次开单时isOldOrder还为true（有三个地方在开单）
             } else {
                 console.log(`交替穿过${allPoints}次交易点，是 2~3，重置仓位（盈利）！！！，并当前继续开多`);
                 let _time = 1;
@@ -1445,36 +1516,6 @@ const gridPointTrading2 = async () => {
     }
 
     onGridPoint = false;
-};
-
-const calcEma1Ema2 = async (params = {}) => {
-    const initParams = { emaPeriod1: EMA_PERIOD[0], emaPeriod2: EMA_PERIOD[1], threshold: THRESHOLD };
-    const { emaPeriod1, emaPeriod2, threshold } = { ...initParams, ...params };
-    let ema1 = calculateEMA([...historyClosePrices, currentPrice], emaPeriod1);
-    let ema2 = calculateEMA([...historyClosePrices, currentPrice], emaPeriod2);
-
-    // let curRsi = calculateRSI([...historyClosePrices, currentPrice], RSI_PERIOD);
-
-    // // 计算布林带
-    // const bollingerBands = calculateBollingerBands([...historyClosePrices, currentPrice], BOLL_PERIOD, STD_MULTIPLIER);
-    // curInBollBands = isPriceInBollingerBands(currentPrice, bollingerBands);
-
-    const emaGap = Math.abs(ema1 - ema2) > threshold; // threshold 这里还需要调整参与对比才行？？？？?????>>>>>
-
-    let trend = "";
-
-    if (emaGap && ema1 > ema2) {
-        trend = "up";
-    }
-    if (emaGap && ema1 < ema2) {
-        trend = "down";
-    }
-
-    return {
-        ema1,
-        ema2,
-        trend,
-    };
 };
 
 // 跑网格
@@ -1618,42 +1659,47 @@ const consolePrice = throttle(() => {
 // RSI 小于 30：被认为是超卖状态，可能出现反弹的机会，市场可能过度卖出。
 // RSI 大于 70：被认为是超买状态，可能会有下跌的机会，市场可能过度买入。
 // 当 RSI 处于 30 到 70 之间时，市场被认为是在正常范围内，没有明显的超买或超卖信号，可能处于横盘状态。
+
 function calculateRSI(prices, period) {
-    const changes = [];
-    const gains = [];
-    const losses = [];
-    const len = prices.length;
-
-    // 检查数组长度是否足够
-    if (len <= period) {
-        throw new Error("数组长度不足以计算RSI。");
+    if (prices.length < period + 1) {
+        throw new Error("数据不足，无法计算 RSI");
     }
 
-    // 计算价格变动
-    for (let i = 1; i < len; i++) {
-        changes.push(prices[i] - prices[i - 1]);
-    }
+    let gains = 0;
+    let losses = 0;
 
-    // 将正数和负数分别存入gains和losses数组
-    changes.forEach((change) => {
+    // 计算第一期的平均上涨和平均下跌
+    for (let i = 1; i <= period; i++) {
+        let change = prices[i] - prices[i - 1];
         if (change > 0) {
-            gains.push(change);
-            losses.push(0);
+            gains += change;
         } else {
-            gains.push(0);
-            losses.push(-change);
+            losses -= change;
         }
-    });
+    }
 
-    // 计算平均增益和平均损失
-    const avgGain = calculateAverage(gains, period);
-    const avgLoss = calculateAverage(losses, period);
+    let averageGain = gains / period;
+    let averageLoss = losses / period;
 
-    // 计算相对强弱指数
-    const rs = avgGain / avgLoss;
-    const rsi = 100 - 100 / (1 + rs);
+    let RS = averageGain / averageLoss;
+    let RSI = 100 - 100 / (1 + RS);
 
-    return rsi;
+    // 计算后续时期的平均上涨和平均下跌
+    for (let i = period + 1; i < prices.length; i++) {
+        let change = prices[i] - prices[i - 1];
+        if (change > 0) {
+            averageGain = (averageGain * (period - 1) + change) / period;
+            averageLoss = (averageLoss * (period - 1)) / period;
+        } else {
+            averageGain = (averageGain * (period - 1)) / period;
+            averageLoss = (averageLoss * (period - 1) - change) / period;
+        }
+
+        RS = averageGain / averageLoss;
+        RSI = 100 - 100 / (1 + RS);
+    }
+
+    return RSI;
 }
 
 // 计算简单移动平均线

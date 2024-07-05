@@ -162,12 +162,8 @@ let macdArr = [];
 let rsiGroupArr = [];
 let ema1Arr = [];
 let ema2Arr = [];
-let ema3Arr = [];
 
 const MACD_PERIOD = [40, 80, 9];
-
-const klineTimeRange = klineStage * 60 * 1000; // k线单位时间
-let emaMargin = [];
 
 // 日志
 let logStream = null;
@@ -292,7 +288,7 @@ const calculateCandleHeight = (klines) => {
 // 获取收盘价
 const getHistoryClosePrices = async () => {
     // 在getKLineData方法中获取至少15分钟内的价格数据
-    kLineData = await getKLineData(B_SYMBOL, `${klineStage}m`, 200);
+    kLineData = await getKLineData(B_SYMBOL, `${klineStage}m`, maxKLinelen);
     historyClosePrices = kLineData.map((data) => data.close); // K线数据有一个close字段表示收盘价，根据实际情况调整
     console.log("k线收盘价:", historyClosePrices);
 
@@ -1329,8 +1325,8 @@ function calculateEmaArr(prices, period) {
 }
 
 // 计算 MACD 指标
-function calculateMACD(prices, periods = MACD_PERIOD) {
-    const [shortPeriod, longPeriod, signalPeriod] = periods;
+function calculateMACD(prices, periods) {
+    const [shortPeriod, longPeriod, signalPeriod] = periods || MACD_PERIOD;
     if (prices.length < longPeriod) {
         throw new Error("价格数组的长度必须大于长周期");
     }
