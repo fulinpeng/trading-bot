@@ -1296,7 +1296,7 @@ const gridPointTrading2 = async () => {
             return;
         } else if (_currentPointIndex === 1) {
             let _times = times[allPoints - 1];
-            if (allPoints >= overNumber) {
+            if (isOldOrder ? allPoints >= oldOrder.count + 3 : allPoints >= overNumber) {
                 isOldOrder = false;
                 pushOverNumberOrderArr(allPoints - 1);
                 console.log(
@@ -1339,7 +1339,7 @@ const gridPointTrading2 = async () => {
             // curMaxPrice = gridPoints[2];
         } else if (_currentPointIndex === 2) {
             let _times = times[allPoints - 1];
-            if (allPoints >= overNumber) {
+            if (isOldOrder ? allPoints >= oldOrder.count + 3 : allPoints >= overNumber) {
                 isOldOrder = false;
                 pushOverNumberOrderArr(allPoints - 1);
                 console.log(

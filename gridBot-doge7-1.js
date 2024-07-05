@@ -303,7 +303,7 @@ const getHistoryClosePrices = async () => {
     if (candleHeight / currentPrice > 0.01) {
         candleHeight = currentPrice * 0.01;
     }
-    console.log("计算出实际蜡烛高度 candleHeight:", candleHeight);
+    // console.log("计算出实际蜡烛高度 candleHeight:", candleHeight);
 
     // let preCloseTime = kLineData[kLineData.length - 1].closeTime;
     // let nextCloseTime = preCloseTime + klineStage;
@@ -348,7 +348,7 @@ const refreshKLine = (curKLine) => {
 
     // 更新平均蜡烛高度
     candleHeight = calculateCandleHeight(kLineData);
-    console.log("计算出实际蜡烛高度 candleHeight:", candleHeight);
+    // console.log("计算出实际蜡烛高度 candleHeight:", candleHeight);
 
     // 更新ema
     setSimpleEmaArr(historyClosePrices, BOLL_PERIOD);

@@ -9,7 +9,7 @@ const { SocksProxyAgent } = require("socks-proxy-agent");
 // const Binance = require("node-binance-api");
 const fs = require("fs");
 const { getDate, isNonEmpty, calculateAverage, calculateSlope } = require("./utils/functions.js");
-const config = require("./config-boll.js");
+const config = require("./config-rsi.js");
 
 let testMoney = 0;
 
@@ -35,7 +35,7 @@ const {
     errorsFolder,
     profitProtectRate,
     xAngle,
-} = config["op"];
+} = config["eth"];
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
@@ -150,20 +150,21 @@ let curRsi = 0;
 const overboughtThreshold = 69.5;
 const oversoldThreshold = 31.5;
 
-const maxKLinelen = 50; // 储存kLine最大数量
+const maxKLinelen = 200; // 储存kLine最大数量
 const STD_MULTIPLIER = 2; // 用来确定布林带的宽度
 const BOLL_PERIOD = 20;
-const RSI_PERIOD_MIN = 6; // RSI计算周期
-const RSI_PERIOD_MAX = 14; // RSI计算周期
+const RSI_PERIOD_MIN = 14; // RSI计算周期
+const RSI_PERIOD_MAX = 100; // RSI计算周期
 
 let rsiArr = [];
 let emaArr = [];
+let macdArr = [];
+let rsiGroupArr = [];
 let ema1Arr = [];
 let ema2Arr = [];
 let ema3Arr = [];
 
-const MACD_PERIOD = [12, 26, 9];
-let macdArr = [];
+const MACD_PERIOD = [40, 80, 9];
 
 const klineTimeRange = klineStage * 60 * 1000; // k线单位时间
 let emaMargin = [];
@@ -291,12 +292,13 @@ const calculateCandleHeight = (klines) => {
 // 获取收盘价
 const getHistoryClosePrices = async () => {
     // 在getKLineData方法中获取至少15分钟内的价格数据
-    kLineData = await getKLineData(B_SYMBOL, `${klineStage}m`, 50);
+    kLineData = await getKLineData(B_SYMBOL, `${klineStage}m`, 200);
     historyClosePrices = kLineData.map((data) => data.close); // K线数据有一个close字段表示收盘价，根据实际情况调整
     console.log("k线收盘价:", historyClosePrices);
 
-    initEmaArr();
-    initMacd();
+    // initEmaArr();
+
+    initEveryIndex();
     candleHeight = calculateCandleHeight(kLineData);
     if (candleHeight / currentPrice < 0.001) {
         candleHeight = currentPrice * 0.001;
@@ -313,16 +315,16 @@ const getHistoryClosePrices = async () => {
     // 0.00009
     // console.log("k线最后一个蜡烛的收盘时间差 preCloseTime, nextCloseTime, x:", preCloseTime, nextCloseTime, x);
 };
+const initEveryIndex = () => {
+    const len = historyClosePrices.length;
+    for (let index = 0; index < 10; index++) {
+        setEveryIndex(historyClosePrices.slice(0, len - 10));
+    }
+};
 const initEmaArr = () => {
     const len = historyClosePrices.length;
     for (let index = 0; index < 10; index++) {
         setSimpleEmaArr(historyClosePrices.slice(0, len - 10), BOLL_PERIOD);
-    }
-};
-const initMacd = () => {
-    const len = historyClosePrices.length;
-    for (let index = 0; index < len; index++) {
-        calculateMacdArr(historyClosePrices.slice(0, len - 10));
     }
 };
 // 获取EMA（指数移动平均线）值
@@ -330,13 +332,6 @@ const getCurrentPriceEma = async () => {
     // 传递至calculateEMA函数
     currentPriceEma = await setEmaArr(historyClosePrices, EMA_PERIOD);
     console.log("🚀 ~ file: gridBot5.js:396 ~ ws.on ~ currentPriceEma:", currentPriceEma);
-};
-
-const calculateMacdArr = (_historyClosePrices) => {
-    if (macdArr.length > 10) {
-        macdArr.shift();
-    }
-    macdArr.push([calculateMACD(_historyClosePrices), calculateMACD(_historyClosePrices)]);
 };
 
 /**
@@ -403,28 +398,41 @@ const refreshKLine = (curKLine) => {
     candleHeight = calculateCandleHeight(kLineData);
     // console.log("计算出实际蜡烛高度 candleHeight:", candleHeight);
 
-    // 更新ema
-    setSimpleEmaArr(historyClosePrices, BOLL_PERIOD);
+    // 设置各种指标
+    setEveryIndex([...historyClosePrices]);
+};
+const setEveryIndex = (prices) => {
+    // 计算 ema
+    // setSimpleEmaArr(historyClosePrices, BOLL_PERIOD);
 
-    calculateMacdArr(historyClosePrices);
+    // 计算macd
+    setMacdArr(prices);
 
-    // 更新指标并缓存到数组
-    if (isTest) {
-        // 好看rsi数据
-        // setRsiArr();
-        // atrResult.length >= 15 && atrResult.shift();
-        // const atr=calculateATR(kLineData, atrPeriod);
-        // atrResult.push(atr);
-        // console.log("封盘时间到，当前kLineData:", {
-        //     kLineData,
-        //     historyClosePrices,
-        //     atrResult,
-        //     rsiArr,
-        // });
-        // calculateEMASlope(emaArr, RSI_PERIOD_MIN / 2); // >>>>>
-    }
+    // 计算rsi
+    setRsiGroupArr(prices);
 };
 
+const setSimpleEmaArr = (prices, period) => {
+    if (emaArr.length >= 50) {
+        emaArr.shift();
+    }
+    emaArr.push(calculateEMA(prices, period));
+};
+const setMacdArr = (prices, period) => {
+    if (macdArr.length >= 50) {
+        macdArr.shift();
+    }
+    macdArr.push(calculateMACD(prices, period));
+};
+const setRsiGroupArr = (prices) => {
+    if (rsiGroupArr.length >= 50) {
+        rsiGroupArr.shift();
+    }
+    rsiGroupArr.push({
+        short: calculateRSI(prices, RSI_PERIOD_MIN),
+        long: calculateRSI(prices, RSI_PERIOD_MAX),
+    });
+};
 // 判断+交易
 const judgeAndTrading = async () => {
     if (hasOrder || loadingPlaceOrder || loadingInit) return; // 有订单就不需要执行以下逻辑
@@ -651,12 +659,6 @@ const setEmaArr = (prices, [period1, period2]) => {
     // console.log("setEmaArr: ema1Arr, ema2Arr", ema1Arr, ema2Arr);
     // console.log("setEmaArr: emaMargin", emaMargin);
 };
-const setSimpleEmaArr = (prices, period) => {
-    if (emaArr.length >= 50) {
-        emaArr.shift();
-    }
-    emaArr.push(calculateEMA(prices, period));
-};
 
 // 下单（开多操作/开空操作）
 const placeOrder = async (side, quantity) => {
@@ -786,6 +788,8 @@ const closeOrder = async (side, quantity, cb) => {
                 "🚀 ~ 平仓：平",
                 side === "BUY" ? "空" : "多",
                 "！！！！！！！！！！！！！！！！！！！！！！！！失败",
+                response,
+                tradingInfo,
             );
         }
         loadingCloseOrder = false;
@@ -1280,11 +1284,11 @@ function calculateSimpleMovingAverage(prices, period) {
     const sum = slice.reduce((acc, price) => acc + price, 0);
     return sum / period;
 }
-const setRsiArr = () => {
-    if (rsiArr.length >= RSI_PERIOD_MAX) {
+const setRsiArr = (period = RSI_PERIOD_MIN) => {
+    if (rsiArr.length >= period) {
         rsiArr.shift();
     }
-    rsi = calculateRSI(historyClosePrices, RSI_PERIOD_MAX);
+    rsi = calculateRSI(historyClosePrices, period);
     rsiArr.push(rsi);
     console.log("setRsiArr ~ rsiArr:", rsiArr);
 };
@@ -1314,22 +1318,42 @@ function calculateBollingerBands(prices, period, multiplier) {
 
     return { upperBand, sma, lowerBand };
 }
+function calculateEmaArr(prices, period) {
+    const k = 2 / (period + 1);
+    let emaArray = [prices[0]];
+    for (let i = 1; i < prices.length; i++) {
+        const ema = prices[i] * k + emaArray[i - 1] * (1 - k);
+        emaArray.push(ema);
+    }
+    return emaArray;
+}
 
 // 计算 MACD 指标
-function calculateMACD(historyClosePrices, periods = MACD_PERIOD) {
+function calculateMACD(prices, periods = MACD_PERIOD) {
     const [shortPeriod, longPeriod, signalPeriod] = periods;
-    // 计算短期EMA
-    const dif = calculateEMA(historyClosePrices, shortPeriod);
-    // 计算长期EMA
-    const dea = calculateEMA(historyClosePrices, longPeriod);
-    // 计算 DIF（快速线）
-    // const dif = shortEMA.map((value, index) => value - longEMA[index]);
-    // 计算 DEA（慢速线）
-    // const dea = calculateEMA(dif, signalPeriod);
-    // 计算 MACD 柱状图
-    const macd = dif - dea;
-    return { dif, dea, macd };
+    if (prices.length < longPeriod) {
+        throw new Error("价格数组的长度必须大于长周期");
+    }
+
+    const shortEMA = calculateEmaArr(prices, shortPeriod);
+    const longEMA = calculateEmaArr(prices, longPeriod);
+
+    const macdLine = shortEMA.map((value, index) => value - longEMA[index]);
+
+    const signalLine = calculateEmaArr(macdLine.slice(longPeriod - shortPeriod), signalPeriod);
+    const histogram = macdLine.slice(longPeriod - shortPeriod).map((value, index) => value - signalLine[index]);
+
+    // 返回最新一组MACD值
+    // DIF 对应 macdLine：这是快线，即短周期EMA与长周期EMA的差。
+    // DEA 对应 signalLine：这是慢线，即DIF的信号线（DIF的EMA）。
+    // MACD 对应 histogram：这是柱状图，即DIF与DEA的差。
+    return {
+        dif: macdLine[macdLine.length - 1],
+        dea: signalLine[signalLine.length - 1],
+        macd: histogram[histogram.length - 1],
+    };
 }
+
 // 取出最后几根
 function getLastKlines(num = 3) {
     let res = [];
@@ -1340,9 +1364,18 @@ function getLastKlines(num = 3) {
     }
     return res;
 }
+function getLastFromArr(arr, num = 3) {
+    let res = [];
+    const len = arr.length;
+    while (num > 0) {
+        res.push(arr[len - num]);
+        num--;
+    }
+    return res;
+}
 // 是否突破前高
 function isBreakPreHigh(max) {
-    const tempLast = kLineData.slice(0, maxKLinelen - 3);
+    const tempLast = kLineData.slice(0, 14);
     let res = true;
     for (const item of tempLast) {
         if (item.high > max) {
@@ -2039,104 +2072,84 @@ function isAllUpTail(kLine1, kLine2, kLine3) {
 // 根据指标生成交易信号
 function calculateTradingSignal() {
     const [kLine1, kLine2, kLine3] = getLastKlines(3);
-
-    // 计算布林带
-    const { upperBand, sma, lowerBand } = calculateBollingerBands([...historyClosePrices], BOLL_PERIOD, STD_MULTIPLIER);
-
     const max = Math.max(kLine1.high, kLine2.high, kLine3.high);
     const min = Math.min(kLine1.low, kLine2.low, kLine3.low);
-
     // const bodyMax = Math.max(kLine2.open, kLine2.close, kLine3.open, kLine3.close);
     // const bodyMin = Math.min(kLine1.close, kLine2.open, kLine2.close, kLine3.open, kLine3.close);
 
+    // 计算macd
+    const [macd1, macd2, macd3] = getLastFromArr(macdArr, 3);
+    // 计算rsi
+    const [rsi1, rsi2, rsi3] = getLastFromArr(rsiGroupArr, 3);
+    // 计算atr
     const { atr } = calculateATR([...kLineData], 14);
     console.log("🚀 ~ atr:", atr, candleHeight);
-    // 跨越上下轨的不做，很可能是横盘或者插针
-    if (atr / currentPrice < 0.005 || (kLine3.high > upperBand && lowerBand > kLine3.low)) {
-        return { trend: "hold" };
-    }
 
-    // 从上轨下来(看最后一根k，引线在外即可，只做线上反转，才能保证1:1盈亏比)
-    if (
-        kLine3.close < kLine3.open &&
-        kLine3.close <= Math.max(kLine2.close, kLine2.open) - Math.abs(kLine2.close - kLine2.open) / 2 &&
-        max >= upperBand && // 避免错过机会
-        upperBand > kLine3.close &&
-        min > sma
-    ) {
-        // 不能是从sma跨到upperBand上的
-        // 是否上轨反转做空形态
-        if (isTrackTopReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
-            return {
-                trend: "down",
-                stopLoss: kLine3.high - Math.abs(kLine3.high - kLine3.low) * 0.4,
-                stopProfit: currentPrice * 0.998,
-            };
-        }
-    }
-    // 从下轨上来(看最后一根k，引线在外即可)
-    if (
-        kLine3.close > kLine3.open &&
-        kLine3.close >= Math.min(kLine2.close, kLine2.open) + Math.abs(kLine2.close - kLine2.open) / 2 &&
-        min <= lowerBand && // 避免错过机会
-        lowerBand < kLine3.close &&
-        max < sma
-    ) {
-        // 不能是从sma跨到lowerBand下的
-        // 是否下轨反转做多形态
-        if (isTrackBottomReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
+    /*  
+        必要条件：rsi换边
+        辅助：macd： macdk2 < macdk3
+        止损：Min(k3)
+        止盈：1 : 1.5
+    */
+    if (rsi2.short < rsi2.long && rsi3.short > rsi3.long && kLine3.close > kLine3.open) {
+        // 看多
+        if (macd2.macd < macd3.macd) {
             return {
                 trend: "up",
-                stopLoss: kLine3.low + Math.abs(kLine3.high - kLine3.low) * 0.4,
-                stopProfit: currentPrice * 1.002,
+                stopLoss: kLine3.low,
+                stopProfit: currentPrice + (currentPrice - kLine3.low) * profitRate,
+            };
+        }
+    }
+    if (rsi2.short > rsi2.long && rsi3.short < rsi3.long && kLine3.close < kLine3.open) {
+        // 看空
+        if (macd2.macd > macd3.macd) {
+            return {
+                trend: "down",
+                stopLoss: kLine3.high,
+                stopProfit: currentPrice - (kLine3.high - currentPrice) * profitRate,
+            };
+        }
+    }
+    /*
+        必要条件：macd柱子换边
+        辅助：rsi：rsi100 < Min(k2 k3) && k1 < k2 < k3（macd的参数比rsi要慢一些）
+        止损：Min(k3)
+        止盈：1 : 1.5
+    */
+    if (macd2.macd <= 0 && macd3.macd > 0) {
+        // 看多
+        if (
+            rsi1.short > rsi1.long &&
+            rsi2.short > rsi2.long &&
+            rsi3.short > rsi3.long && // rsi：rsi100 < Min(k2 k3)
+            rsi1.short < rsi2.short &&
+            rsi2.short < rsi3.short // k1 < k2 < k3
+        ) {
+            return {
+                trend: "up",
+                stopLoss: kLine3.low,
+                stopProfit: currentPrice + (currentPrice - kLine3.low) * profitRate,
+            };
+        }
+    }
+    if (macd2.macd >= 0 && macd3.macd < 0 && kLine3.close < kLine3.open) {
+        // 看空
+        if (
+            rsi1.short < rsi1.long &&
+            rsi2.short < rsi2.long &&
+            rsi3.short < rsi3.long && // rsi：rsi100 > Min(k2 k3)
+            rsi1.short > rsi2.short &&
+            rsi2.short > rsi3.short // k1 > k2 > k3
+        ) {
+            return {
+                trend: "down",
+                stopLoss: kLine3.high,
+                stopProfit: currentPrice - (kLine3.high - currentPrice) * profitRate,
             };
         }
     }
 
-    // 中轨 ==> 上轨 || 下轨 ==> 中轨（做多）
-    // if (
-    //     kLine3.close > kLine3.open &&
-    //     (isBigAndYang(kLine3, 0.8) || isUpCross(kLine3, 0.5)) &&
-    //     ((kLine3.low <= sma && upperBand < kLine3.high) || (kLine3.low <= lowerBand && sma < kLine3.high))
-    // ) {
-    //     return {
-    //         trend: "up",
-    //         stopLoss: kLine3.low,
-    //         stopProfit: currentPrice * 1.002,
-    //     };
-    // }
-    // 中轨 ==> 下轨 || 上轨 ==> 中轨 (做空)
-    // if (
-    //     kLine3.close < kLine3.open &&
-    //     (isBigAndYin(kLine3, 0.8) || isDownCross(kLine3, 0.5)) &&
-    //     ((kLine3.low < lowerBand && sma <= kLine3.high) || (kLine3.low < sma && upperBand <= kLine3.high))
-    // ) {
-    //     return {
-    //         trend: "down",
-    //         stopLoss: kLine3.high,
-    //         stopProfit: currentPrice * 0.998,
-    //     };
-    // }
-    // 是否从下往上突破中轨做多(看最后一根k，实体穿过才算)
-    // if (kLine3.close > kLine3.open && kLine3.low <= sma && sma < kLine3.close) {
-    //     if (max < upperBand && isBreakthroughSmaUp({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
-    //         return {
-    //             trend: "up",
-    //             stopLoss: kLine3.low,
-    //             stopProfit: currentPrice * 1.002,
-    //         };
-    //     }
-    // }
-    // 是否从上往下突破中轨做空(看最后一根k，实体穿过才算)
-    // if (kLine3.close < kLine3.open && kLine3.high >= sma && sma > kLine3.close) {
-    //     if (min > lowerBand && isBreakthroughSmaDown({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
-    //         return {
-    //             trend: "down",
-    //             stopLoss: kLine3.high,
-    //             stopProfit: currentPrice * 0.998,
-    //         };
-    //     }
-    // }
     return { trend: "hold" }; // 默认为 hold
 }
 
@@ -2219,7 +2232,7 @@ const createLogs = () => {
     }
 
     // 重定向 console.log 到文件
-    logStream = fs.createWriteStream(`${logsFolder}/boll-xiaoqian-${SYMBOL}-${getDate()}.log`, { flags: "a" });
+    logStream = fs.createWriteStream(`${logsFolder}/rsi-macd-${SYMBOL}-${getDate()}.log`, { flags: "a" });
     // 保存原始的 console.log 函数
     const originalConsoleLog = console.log;
 
@@ -2246,7 +2259,7 @@ const createLogs = () => {
         fs.mkdirSync(errorsFolder);
     }
     // 重定向 console.error 到文件
-    errorStream = fs.createWriteStream(`${errorsFolder}/boll-xiaoqian-${SYMBOL}-${getDate()}.error`, { flags: "a" });
+    errorStream = fs.createWriteStream(`${errorsFolder}/rsi-macd-${SYMBOL}-${getDate()}.error`, { flags: "a" });
     // 保存原始的 console.error 函数
     const originalConsoleError = console.error;
 
@@ -2331,7 +2344,7 @@ function saveGlobalVariables() {
                 isFirstGetProfit: isFirstGetProfit,
                 testMoney,
             });
-            fs.writeFileSync(`data/boll-xiaoqian-${SYMBOL}.js`, `module.exports = ${data}`, { flag: "w" });
+            fs.writeFileSync(`data/rsi-macd-${SYMBOL}.js`, `module.exports = ${data}`, { flag: "w" });
             console.log(`Global variables saved to data/${SYMBOL}.js`);
         }
     }, 0);
