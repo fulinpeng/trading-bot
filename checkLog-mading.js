@@ -84,7 +84,7 @@ const start = async () => {
         .catch((error) => {
             console.error(error);
         });
-    return; //>>>>
+    // return; //>>>>
     await pintTestMoney()
         .then((content) => {
             const strs = content.split("--") || [];
@@ -92,7 +92,7 @@ const start = async () => {
             console.log(`\n时间                  盈利交易点索引             testMoney`);
             strs.forEach((str) => {
                 const matchNumRes = str.match(/(.*)\:\s交替穿过(\d+)次交易点/);
-                const matchTestMoneyRes = str.match(/.*testMoney\:，(-?\d+\.?\d+)/);
+                const matchTestMoneyRes = str.match(/.*testMoney\:，\d+\.?\d+，(-?\d+\.?\d+)/);
                 const date = (matchNumRes && matchNumRes[1]) || "--";
                 const num = (matchNumRes && matchNumRes[2]) || "--";
                 const testMoney = (matchTestMoneyRes && matchTestMoneyRes[1]) || "--";
