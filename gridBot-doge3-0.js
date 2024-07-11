@@ -372,7 +372,11 @@ const pushOverNumberOrderArr = (time) => {
         time,
         gridHight: gridPoints[2] - gridPoints[1],
     });
-    console.log("🚀 ~ file: pushOverNumberOrderArr ~ overNumberOrderArr:", overNumberOrderArr);
+    console.log(
+        "🚀 ~ file: file: pushOverNumberOrderArr ~ overNumberOrderArr:",
+        overNumberOrderArr.length,
+        overNumberOrderArr,
+    );
     saveGlobalVariables();
 };
 const setEveryIndexData = (curKLine) => {

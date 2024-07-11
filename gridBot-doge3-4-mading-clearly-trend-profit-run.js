@@ -41,7 +41,7 @@ const {
     logsFolder,
     errorsFolder,
     overNumber,
-} = config["op"];
+} = config["zk"];
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
@@ -302,7 +302,7 @@ const getHistoryClosePrices = async () => {
     // 在getKLineData方法中获取至少15分钟内的价格数据
     kLineData = await getKLineData(B_SYMBOL, `${klineStage}m`, maxKLinelen);
     historyClosePrices = kLineData.map((data) => data.close); // K线数据有一个close字段表示收盘价，根据实际情况调整
-    console.log("k线收盘价:", kLineData);
+    // console.log("k线收盘价:", kLineData);
 
     // 初始化指标
     initEveryIndex();
@@ -383,7 +383,6 @@ const pushOverNumberOrderArr = (count) => {
     );
     saveGlobalVariables();
 };
-
 const _refreshPrice = (curKLine) => {
     kLineData.length >= maxKLinelen && kLineData.shift();
     historyClosePrices.length >= maxKLinelen && historyClosePrices.shift();
@@ -1142,7 +1141,7 @@ const modGridPoints = () => {
         } else {
             stopLoss = point1 + (point2 - point1) * 0.45; // 止损
         }
-        let stopProfit = point2 + candleHeight; // 止盈
+        let stopProfit = point2 + candleHeight * 2; // 止盈
         gridPoints2 = [stopLoss, stopProfit];
 
         const _testMoney =
@@ -1161,7 +1160,7 @@ const modGridPoints = () => {
             stopLoss = point2 - (point2 - point1) * 0.45; // 止损
         }
 
-        let stopProfit = point1 - candleHeight; // 止盈
+        let stopProfit = point1 - candleHeight * 2; // 止盈
         gridPoints2 = [stopProfit, stopLoss];
 
         const _testMoney =
@@ -1466,61 +1465,32 @@ const gridPointTrading2 = async () => {
 
         // 2 个交易点之间交替
         if (_currentPointIndex === 0) {
-            if (!overNumberOrderArr.length && allPoints - 1 >= overNumber) {
-                tradingInfo = tradingDatas[1].down;
-                console.log(
-                    `交替穿过${allPoints}次交易点，是 1~0，重置仓位（盈利）！！！，开启利润奔跑模式！！！ down tradingInfo`,
-                    tradingInfo,
-                );
-                tradingDatas[1].down = null; // 清空上马丁模式数据
-                let stopLoss = tradingInfo.orderPrice - (tradingInfo.orderPrice - _currentPrice) * 0.9;
-                let stopProfit = _currentPrice - candleHeight;
-                setGridPoints("down", stopLoss, stopProfit);
-                isProfitRun = true;
-                isFirstGetProfit = true;
-                isOldOrder = false; // 此时，isOldOrder需要重置，避免奔跑完成再次开单时isOldOrder还为true（有三个地方在开单）
-            } else {
-                console.log(`交替穿过${allPoints}次交易点，是 1~0，重置仓位（盈利）！！！，并当前继续开空`);
-                let _time = 1;
-                setOldOrder("down");
-                if (isOldOrder) {
-                    _time = times[oldOrder.count];
-                }
-                await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
-                restDatas("down", oldOrder.count);
-                await teadeSell(_time, true);
-
-                firsttradeTime = Date.now(); // 重置 firsttradeTime
+            console.log(`交替穿过${allPoints}次交易点，是 1~0，重置仓位（盈利）！！！，并当前继续开空`);
+            let _time = 1;
+            setOldOrder("down");
+            if (isOldOrder) {
+                _time = times[oldOrder.count];
             }
+            await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
+            restDatas("down", oldOrder.count);
+            await teadeSell(_time, true);
+
+            firsttradeTime = Date.now(); // 重置 firsttradeTime
+
             onGridPoint = false;
             return;
         } else if (_currentPointIndex === 3) {
-            if (!overNumberOrderArr.length && allPoints - 1 >= overNumber) {
-                tradingInfo = tradingDatas[2].up;
-                console.log(
-                    `交替穿过${allPoints}次交易点，是 2~3，重置仓位（盈利）！！！，开启利润奔跑模式！！！ up tradingInfo`,
-                    tradingInfo,
-                );
-                tradingDatas[2].up = null; // 清空上马丁模式数据
-                let stopLoss = tradingInfo.orderPrice + (_currentPrice - tradingInfo.orderPrice) * 0.9;
-                let stopProfit = _currentPrice + candleHeight;
-                setGridPoints("up", stopLoss, stopProfit);
-                isProfitRun = true;
-                isFirstGetProfit = true;
-                isOldOrder = false; // 此时，isOldOrder需要重置，避免奔跑完成再次开单时isOldOrder还为true（有三个地方在开单）
-            } else {
-                console.log(`交替穿过${allPoints}次交易点，是 2~3，重置仓位（盈利）！！！，并当前继续开多`);
-                let _time = 1;
-                setOldOrder("up");
-                if (isOldOrder) {
-                    _time = times[oldOrder.count];
-                }
-                await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
-                restDatas("up", oldOrder.count);
-                await teadeBuy(_time, true);
-
-                firsttradeTime = Date.now(); // 重置 firsttradeTime
+            console.log(`交替穿过${allPoints}次交易点，是 2~3，重置仓位（盈利）！！！，并当前继续开多`);
+            let _time = 1;
+            setOldOrder("up");
+            if (isOldOrder) {
+                _time = times[oldOrder.count];
             }
+            await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
+            restDatas("up", oldOrder.count);
+            await teadeBuy(_time, true);
+
+            firsttradeTime = Date.now(); // 重置 firsttradeTime
             onGridPoint = false;
             return;
         } else if (_currentPointIndex === 1) {

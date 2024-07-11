@@ -52,8 +52,6 @@ const fapi = "https://fapi.binance.com/fapi";
 const apiKey = process.env.BINANCE_API_KEY; // 获取API密钥
 const secretKey = process.env.BINANCE_API_SECRET; // 获取API密钥的密钥
 
-console.log(isTest ? "测试环境～～～" : "正式环境～～～");
-
 // mac clash
 // let httpProxyAgent=new HttpsProxyAgent("http://127.0.0.1:7892");
 // let socksProxyAgent=new SocksProxyAgent("socks5://127.0.0.1:7891");
@@ -366,11 +364,23 @@ function calculateATR(kLines, period) {
     };
 }
 const pushOverNumberOrderArr = (count) => {
-    overNumberOrderArr.push({
-        count,
-        gridHight: gridPoints[2] - gridPoints[1],
-    });
-    console.log("🚀 ~ file: pushOverNumberOrderArr ~ overNumberOrderArr:", overNumberOrderArr);
+    let num = 1;
+    const h = gridPoints[2] - gridPoints[1];
+    if (count > overNumber - 1) {
+        num = Math.pow(2, count - (overNumber - 1));
+    }
+    while (num > 0) {
+        overNumberOrderArr.push({
+            count: overNumber - 1,
+            gridHight: h,
+        });
+        num--;
+    }
+    console.log(
+        "🚀 ~ file: file: pushOverNumberOrderArr ~ overNumberOrderArr:",
+        overNumberOrderArr.length,
+        overNumberOrderArr,
+    );
     saveGlobalVariables();
 };
 
@@ -880,7 +890,7 @@ const setInitData = async ({ up, down }) => {
     // 从数据库拿出上次的数据，并且与现在的比较，如果数据和的上就用以前的，数据和不上就解析出
 
     loadingInit = true;
-    if (fs.existsSync(`./data/mading-${SYMBOL}.js`)) {
+    if (fs.existsSync(`./data/${isTest ? "test" : ""}mading-${SYMBOL}.js`)) {
         let {
             historyEntryPoints: __historyEntryPoints,
             currentPrice: __currentPrice, // 记录当前价格
@@ -898,7 +908,7 @@ const setInitData = async ({ up, down }) => {
             isProfitRun: __isProfitRun,
             gridPoints2: __gridPoints2,
             testMoney: __testMoney,
-        } = require(`./data/mading-${SYMBOL}.js`);
+        } = require(`./data/${isTest ? "test" : ""}mading-${SYMBOL}.js`);
         console.log("上一次停止程序时，交易情况", {
             __historyEntryPoints,
             __currentPrice,
@@ -1081,6 +1091,7 @@ const restDatas = (trend, oldOrderCount) => {
     curGridPoint = _currentPrice;
 
     setGridPointsToCurPriceCenter(trend, _currentPrice);
+    console.log("当前还剩overNumberOrderArr：", overNumberOrderArr.length);
 };
 // 设置网格
 const setGridPoints = (trend, stopLoss, stopProfit) => {
@@ -1167,6 +1178,7 @@ const modGridPoints = () => {
 };
 // 5. 启动交易
 const startTrading = async () => {
+    console.log(isTest ? "测试环境～～～" : "正式环境～～～");
     try {
         await getServerTimeOffset(); // 同步服务器时间
 
@@ -1960,7 +1972,9 @@ function saveGlobalVariables() {
                 gridPoints2,
                 testMoney,
             });
-            fs.writeFileSync(`data/mading-${SYMBOL}.js`, `module.exports = ${data}`, { flag: "w" });
+            fs.writeFileSync(`data/${isTest ? "test" : ""}mading-${SYMBOL}.js`, `module.exports = ${data}`, {
+                flag: "w",
+            });
             // console.log(`Global variables saved to data/${SYMBOL}.js`);
         }
     }, 0);

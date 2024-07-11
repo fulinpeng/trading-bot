@@ -300,7 +300,11 @@ const pushOverNumberOrderArr = (count) => {
         count,
         gridHight: gridPoints[2] - gridPoints[1],
     });
-    console.log("🚀 ~ file: pushOverNumberOrderArr ~ overNumberOrderArr:", overNumberOrderArr);
+    console.log(
+        "🚀 ~ file: file: pushOverNumberOrderArr ~ overNumberOrderArr:",
+        overNumberOrderArr.length,
+        overNumberOrderArr,
+    );
     saveGlobalVariables();
 };
 
@@ -756,7 +760,7 @@ const setInitData = async ({ up, down }) => {
     // 从数据库拿出上次的数据，并且与现在的比较，如果数据和的上就用以前的，数据和不上就解析出
 
     loadingInit = true;
-    if (fs.existsSync(`./data/mading-${SYMBOL}.js`)) {
+    if (fs.existsSync(`./data/${isTest ? "test" : ""}mading-${SYMBOL}.js`)) {
         let {
             historyEntryPoints: __historyEntryPoints,
             currentPrice: __currentPrice, // 记录当前价格
@@ -770,7 +774,7 @@ const setInitData = async ({ up, down }) => {
             overNumberOrderArr: __overNumberOrderArr, // 超过 overNumber 手数的单子集合
             isOldOrder: __isOldOrder, // 是不是老单子
             oldOrder: __oldOrder,
-        } = require(`./data/mading-${SYMBOL}.js`);
+        } = require(`./data/${isTest ? "test" : ""}mading-${SYMBOL}.js`);
         console.log("上一次停止程序时，交易情况", {
             __historyEntryPoints,
             __currentPrice,
@@ -936,6 +940,7 @@ const restDatas = (trend, oldOrderCount) => {
     curGridPoint = _currentPrice;
     if (!trend) console.log("#####################");
     setGridPointsToCurPriceCenter(trend, _currentPrice);
+    console.log("当前还剩overNumberOrderArr：", overNumberOrderArr.length);
 };
 // 5. 启动交易
 const startTrading = async () => {
@@ -1613,7 +1618,9 @@ function saveGlobalVariables() {
                 isOldOrder, // 是不是老单子
                 oldOrder,
             });
-            fs.writeFileSync(`data/mading-${SYMBOL}.js`, `module.exports = ${data}`, { flag: "w" });
+            fs.writeFileSync(`data/${isTest ? "test" : ""}mading-${SYMBOL}.js`, `module.exports = ${data}`, {
+                flag: "w",
+            });
             // console.log(`Global variables saved to data/${SYMBOL}.js`);
         }
     }, 0);

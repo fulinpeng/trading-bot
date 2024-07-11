@@ -48,8 +48,6 @@ const fapi = "https://fapi.binance.com/fapi";
 const apiKey = process.env.BINANCE_API_KEY; // 获取API密钥
 const secretKey = process.env.BINANCE_API_SECRET; // 获取API密钥的密钥
 
-console.log(isTest ? "测试环境～～～" : "正式环境～～～");
-
 // mac clash
 // let httpProxyAgent=new HttpsProxyAgent("http://127.0.0.1:7892");
 // let socksProxyAgent=new SocksProxyAgent("socks5://127.0.0.1:7891");
@@ -1165,6 +1163,7 @@ const modGridPoints = () => {
 
 // 5. 启动交易
 const startTrading = async () => {
+    console.log(isTest ? "测试环境～～～" : "正式环境～～～");
     try {
         await getServerTimeOffset(); // 同步服务器时间
 
