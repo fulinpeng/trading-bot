@@ -45,7 +45,7 @@ const {
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
-const isTest = false; // 将此标志设置为  false/true 使用沙盒环境
+const isTest = true; // 将此标志设置为  false/true 使用沙盒环境
 const showProfit = true;
 const api = "https://api.binance.com/api";
 const fapi = "https://fapi.binance.com/fapi";
@@ -369,8 +369,8 @@ const pushOverNumberOrderArr = (count) => {
     if (count <= 0) return;
     let num = 1;
     const h = gridPoints[2] - gridPoints[1];
-    if (count > overNumber - 1) {
-        num = Math.pow(2, count - (overNumber - 1));
+    if (count >= overNumber) {
+        num = Math.pow(2, count - 4);
         while (num > 0) {
             overNumberOrderArr.push({
                 count: overNumber - 1,
@@ -378,7 +378,7 @@ const pushOverNumberOrderArr = (count) => {
             });
             num--;
         }
-    } else if  {
+    } else {
         overNumberOrderArr.push({
             count: count,
             gridHight: h,
@@ -858,25 +858,29 @@ const initializeTrading = async () => {
 };
 
 const checkH = (curP, h) => {
+    // 和仓位大小没关系
     let left = 0;
     let right = 0;
-    let zongKui = (341 * h) / curP + (170 * h) / (curP - h);
-    let kaiCang = 1023;
-    let pingCang =
-        1023 -
-        h / curP +
-        (2 * h) / (curP - h) -
-        (4 * h) / curP +
-        (8 * h) / (curP - h) -
-        (16 * h) / curP +
-        (32 * h) / (curP - h) -
-        (64 * h) / curP +
-        (128 * h) / (curP - h) -
-        (256 * h) / curP -
-        (512 * 2 * h) / (curP - h);
-    left = zongKui + (kaiCang + pingCang) * 0.0005;
-    right = (512 * profitRate * h) / curP; // 两倍利润
-    return left >= right;
+    let zongKui = (times[0] + times[1] + times[2] + times[3] + times[4] + times[5] + times[6]) * h;
+    let kaiPingCangZongV = 0; // 开仓时价值 + 平仓时价值
+    // 下面是 开仓时价值 + 平仓时价值 汇总后的整理公式
+    kaiPingCangZongV +=
+        (2 * times[0] +
+            2 * times[1] +
+            2 * times[2] +
+            2 * times[3] +
+            2 * times[4] +
+            2 * times[5] +
+            2 * times[6] +
+            2 * times[7]) *
+        curP;
+    kaiPingCangZongV +=
+        (times[0] + times[1] + times[2] + times[3] + times[4] + times[5] + times[6]) * h +
+        2 * times[7] * h +
+        times[7] * profitRate * h;
+    left = zongKui + kaiPingCangZongV * 0.0005;
+    right = profitRate * h * times[7];
+    return left > right;
 };
 const getMinH = (curP, h) => {
     let n = 0;
@@ -939,7 +943,6 @@ const getHistoryData = () => {
         return null;
     }
 };
-
 const recoverHistoryData = async (historyDatas) => {
     const {
         historyEntryPoints: __historyEntryPoints,
@@ -1281,7 +1284,7 @@ const startTrading = async () => {
             else {
                 console.log("还没仓位，直接开始循环");
                 await getCurrentPrice(); // 获取当前价格
-                await recoverHistoryData(historyDatas); // 处理历史数据
+                historyDatas && (await recoverHistoryData(historyDatas)); // 处理历史数据
                 await initializeTrading(); // 初始交易
             }
         }
@@ -1615,9 +1618,9 @@ const gridPointTrading2 = async () => {
             return;
         } else if (_currentPointIndex === 1) {
             let _times = times[allPoints - 1];
-            if (isOldOrder ? allPoints >= oldOrder.count + 3 : allPoints >= overNumber) {
+            if (allPoints > overNumber) {
                 isOldOrder = false;
-                pushOverNumberOrderArr(allPoints - 1);
+                pushOverNumberOrderArr(allPoints);
                 console.log("仓位过大，暂存该交易，重新开始：curMinPrice, gridPoints", curMinPrice, gridPoints);
                 await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
                 restDatas("down");
@@ -1653,9 +1656,9 @@ const gridPointTrading2 = async () => {
             // curMaxPrice = gridPoints[2];
         } else if (_currentPointIndex === 2) {
             let _times = times[allPoints - 1];
-            if (isOldOrder ? allPoints >= oldOrder.count + 3 : allPoints >= overNumber) {
+            if (allPoints > overNumber) {
                 isOldOrder = false;
-                pushOverNumberOrderArr(allPoints - 1);
+                pushOverNumberOrderArr(allPoints);
                 console.log("仓位过大，暂存该交易，重新开始：curMinPrice, gridPoints", curMinPrice, gridPoints);
                 await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
                 restDatas("up");

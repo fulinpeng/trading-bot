@@ -84,7 +84,7 @@ const start = async () => {
         .catch((error) => {
             console.error(error);
         });
-    // return; //>>>>
+    return; //>>>>
     await pintTestMoney()
         .then((content) => {
             const strs = content.split("--") || [];
