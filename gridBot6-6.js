@@ -7,7 +7,7 @@ const { HttpsProxyAgent } = require("https-proxy-agent");
 const { SocksProxyAgent } = require("socks-proxy-agent");
 // const Binance = require("node-binance-api");
 const fs = require("fs");
-const { debounce, throttle, getDate, isNonEmpty, calculateAverage } = require("./utils/functions.js");
+const { debounce, throttle, getDate, hasUpDownVal, calculateAverage } = require("./utils/functions.js");
 const config = require("./config.js");
 
 let testMoney = 0;
@@ -785,7 +785,7 @@ const startTrading = async () => {
             setGridPointsToCurPriceCenter(_currentPrice); // 绘制网格
         }
         // 如果还没仓位要加仓
-        else if (!isNonEmpty(allPositionDetail)) {
+        else if (!hasUpDownVal(allPositionDetail)) {
             console.log("还没仓位要加仓");
             await getCurrentPrice(); // 获取当前价格
             let _currentPrice = currentPrice;

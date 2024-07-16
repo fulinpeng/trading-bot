@@ -12,7 +12,7 @@ const {
     debounce,
     throttle,
     getDate,
-    isNonEmpty,
+    hasUpDownVal,
     calculateAverage,
     throttleImmediate,
     findFarthestNumber,
@@ -35,14 +35,13 @@ const {
     maxGridHight,
     stopLossRate,
     times,
-    // profitRate,
+    profitRate,
     EMA_PERIOD,
     klineStage,
     logsFolder,
     errorsFolder,
     overNumber,
-} = config["op"];
-const profitRate = 2;
+} = config["zk"];
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
@@ -144,7 +143,7 @@ let isOldOrder = false; // 是不是老单子
 let oldOrder = {};
 let isProfitRun = false; // 让利润奔跑起来
 let isFirstGetProfit = false; // 是否利润奔跑后的第一次盈利
-
+let shadowBodyRate = 3;
 // 最新交易信息 利润奔跑模式使用
 let tradingInfo = {
     trend: "", // "up" 表示上升趋势，"down" 表示下降趋势，'' 表示无趋势
@@ -162,7 +161,6 @@ const resetTradingDatas = () => {
         // times: 0,
     };
 };
-const shadowBodyRate = 2; // 插针时，引线/实体
 
 let curProfitRate = profitRate;
 
@@ -248,7 +246,7 @@ const signRequest = (params) => {
 // 获取K线数据
 const getKLineData = async (symbol, interval, limit) => {
     try {
-        const response = await axios.get(`${api}/v3/klines`, {
+        const response = await axios.get(`${fapi}/v1/klines`, {
             params: {
                 symbol,
                 interval,
@@ -374,7 +372,7 @@ const pushOverNumberOrderArr = (count) => {
         num = Math.pow(2, count - 4);
         while (num > 0) {
             overNumberOrderArr.push({
-                count: overNumber - 1,
+                count: 4,
                 gridHight: h,
             });
             num--;
@@ -399,10 +397,11 @@ const _refreshPrice = (curKLine) => {
 
     kLineData.push(curKLine);
     historyClosePrices.push(curKLine.close);
-
+    shadowBodyRate;
     // 更新平均蜡烛高度
-    candleHeight = calculateCandleHeight(kLineData);
-    let _gridHight = candleHeight * howManyCandleHeight;
+    // candleHeight = calculateCandleHeight(kLineData);
+    // let _gridHight = candleHeight * howManyCandleHeight;
+    let _gridHight = calcGridHeight([...kLineData]);
 
     gridHight = _gridHight;
 
@@ -907,8 +906,8 @@ const getMinH = (curP, h) => {
  *         1. 反正不知道到底跑了多少个点，就按最大的来存 __historyEntryPoints 经过几次，就把几次存到 overNumberOrderArr 中，h也存起来，重新开单
  */
 const getHistoryData = () => {
-    if (fs.existsSync(`./data/${isTest ? "test" : ""}mading-2_0-${SYMBOL}.js`)) {
-        let historyDatas = require(`./data/${isTest ? "test" : ""}mading-2_0-${SYMBOL}.js`);
+    if (fs.existsSync(`./data/${isTest ? "test" : ""}mading-bigH-${SYMBOL}.js`)) {
+        let historyDatas = require(`./data/${isTest ? "test" : ""}mading-bigH-${SYMBOL}.js`);
         const {
             historyEntryPoints: __historyEntryPoints,
             currentPrice: __currentPrice, // 记录当前价格
@@ -933,7 +932,8 @@ const getHistoryData = () => {
             __historyEntryPoints.length > 0 &&
             __currentPrice != 0 &&
             __prePrice != 0 &&
-            (!isNonEmpty(__tradingDatas) || !isNonEmpty(__tradingInfo)) &&
+            // 有仓位信息
+            (hasUpDownVal(__tradingDatas) || __tradingInfo.quantity) &&
             __gridPoints.length > 0
         ) {
             return historyDatas;
@@ -1080,10 +1080,11 @@ const setGridPointsToCurPriceCenter = (trend, _currentPrice) => {
     const { atr } = calculateATR([...kLineData], 14);
     console.log("mading模式 开始绘制网格~ atr, trend, _currentPrice gridHight:", atr, trend, _currentPrice, gridHight);
 
-    let _gridHight = gridHight;
+    // let _gridHight = gridHight;
+    let _gridHight = calcGridHeight([...kLineData]);
 
     if (isOldOrder) {
-        _gridHight = oldOrder.gridHight > gridHight ? oldOrder.gridHight : gridHight;
+        _gridHight = oldOrder.gridHight > _gridHight ? oldOrder.gridHight : _gridHight;
     }
 
     let priceUp = 0;
@@ -1092,7 +1093,7 @@ const setGridPointsToCurPriceCenter = (trend, _currentPrice) => {
     let priceDownClose = 0;
 
     if (trend === "up") {
-        const minH = getMinH(_currentPrice, gridHight);
+        const minH = getMinH(_currentPrice, _gridHight);
         if (_gridHight < minH) {
             _gridHight = minH;
         }
@@ -1102,7 +1103,7 @@ const setGridPointsToCurPriceCenter = (trend, _currentPrice) => {
         priceUpClose = priceUp + _gridHight * curProfitRate;
         priceDownClose = priceDown - _gridHight * curProfitRate;
     } else {
-        const minH = getMinH(_currentPrice, gridHight);
+        const minH = getMinH(_currentPrice, _gridHight);
         if (_gridHight < minH) {
             _gridHight = minH;
         }
@@ -1162,6 +1163,24 @@ const restDatas = (trend, oldOrderCount) => {
     curGridPoint = _currentPrice;
 
     setGridPointsToCurPriceCenter(trend, _currentPrice);
+};
+const calcGridHeight = (klines) => {
+    let selected = [];
+    let index = 0;
+    while (index < klines.length) {
+        let arr = klines.slice(index, index + 60);
+        let low = Math.min(...arr.map((v) => v.low));
+        let high = Math.max(...arr.map((v) => v.high));
+        const bodys = [...arr.map((v) => v.close), ...arr.map((v) => v.open)];
+        // let bodyLow = Math.min(...bodys);
+        // let bodyHigh = Math.max(...bodys);
+        // const body = Math.abs(bodyLow - bodyHigh);
+        const totalKlineH = Math.abs(high - low);
+        selected.push(totalKlineH);
+        index += 60;
+    }
+    // console.log("参与计算平均高度的蜡烛: ", selected);
+    return calculateAverage(selected) / 4;
 };
 // 设置网格
 const setGridPoints = (trend, stopLoss, stopProfit) => {
@@ -1263,16 +1282,15 @@ const startTrading = async () => {
         // 测试
         if (isTest) {
             await getCurrentPrice();
-            if (historyDatas) {
-                await recoverHistoryData(historyDatas);
-            }
+            historyDatas && (await recoverHistoryData(historyDatas));
             await initializeTrading();
         } else {
             // 初始化 tradingDatas
             allPositionDetail = await getPositionRisk(); // 获取当前仓位信息
 
-            console.log("🚀 已有仓位 ~ allPositionDetail:", allPositionDetail);
-            if (allPositionDetail) {
+            if (hasUpDownVal(allPositionDetail)) {
+                console.log("🚀 已有仓位 ~ allPositionDetail:", allPositionDetail);
+                // 已有仓位要复原
                 if (historyDatas) {
                     await recoverHistoryDataByPosition(historyDatas, allPositionDetail);
                 } else {
@@ -1280,12 +1298,11 @@ const startTrading = async () => {
                     console.error("该币现有仓位和上次保留的数据不符合，请手动处理！！！");
                     return;
                 }
-            }
-            // 如果还没仓位要加仓
-            else {
+            } else {
+                // 如果还没仓位要加仓
                 console.log("还没仓位，直接开始循环");
                 await getCurrentPrice(); // 获取当前价格
-                await recoverHistoryData(historyDatas); // 处理历史数据
+                historyDatas && (await recoverHistoryData(historyDatas)); // 处理历史数据
                 await initializeTrading(); // 初始交易
             }
         }
@@ -1619,7 +1636,7 @@ const gridPointTrading2 = async () => {
             return;
         } else if (_currentPointIndex === 1) {
             let _times = times[allPoints - 1];
-            if (allPoints > overNumber) {
+            if (allPoints >= overNumber) {
                 isOldOrder = false;
                 pushOverNumberOrderArr(allPoints);
                 console.log("仓位过大，暂存该交易，重新开始：curMinPrice, gridPoints", curMinPrice, gridPoints);
@@ -1657,7 +1674,7 @@ const gridPointTrading2 = async () => {
             // curMaxPrice = gridPoints[2];
         } else if (_currentPointIndex === 2) {
             let _times = times[allPoints - 1];
-            if (allPoints > overNumber) {
+            if (allPoints >= overNumber) {
                 isOldOrder = false;
                 pushOverNumberOrderArr(allPoints);
                 console.log("仓位过大，暂存该交易，重新开始：curMinPrice, gridPoints", curMinPrice, gridPoints);
@@ -2027,7 +2044,7 @@ const createLogs = () => {
     }
 
     // 重定向 console.log 到文件
-    logStream = fs.createWriteStream(`${logsFolder}/mading-2_0-${SYMBOL}-${getDate()}.log`, { flags: "a" });
+    logStream = fs.createWriteStream(`${logsFolder}/mading-bigH-${SYMBOL}-${getDate()}.log`, { flags: "a" });
     // 保存原始的 console.log 函数
     const originalConsoleLog = console.log;
 
@@ -2054,7 +2071,7 @@ const createLogs = () => {
         fs.mkdirSync(errorsFolder);
     }
     // 重定向 console.error 到文件
-    errorStream = fs.createWriteStream(`${errorsFolder}/mading-2_0-${SYMBOL}-${getDate()}.error`, { flags: "a" });
+    errorStream = fs.createWriteStream(`${errorsFolder}/mading-bigH-${SYMBOL}-${getDate()}.error`, { flags: "a" });
     // 保存原始的 console.error 函数
     const originalConsoleError = console.error;
 
@@ -2146,7 +2163,7 @@ function saveGlobalVariables() {
                 gridPoints2,
                 testMoney,
             });
-            fs.writeFileSync(`data/${isTest ? "test" : ""}mading-2_0-${SYMBOL}.js`, `module.exports = ${data}`, {
+            fs.writeFileSync(`data/${isTest ? "test" : ""}mading-bigH-${SYMBOL}.js`, `module.exports = ${data}`, {
                 flag: "w",
             });
             // console.log(`Global variables saved to data/${SYMBOL}.js`);

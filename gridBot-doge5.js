@@ -12,7 +12,7 @@ const {
     debounce,
     throttle,
     getDate,
-    isNonEmpty,
+    hasUpDownVal,
     calculateAverage,
     throttleImmediate,
     findFarthestNumber,
@@ -1046,7 +1046,7 @@ const setInitData = async ({ up, down }) => {
             __historyEntryPoints.length > 0 &&
             __currentPrice != 0 &&
             __prePrice != 0 &&
-            !isNonEmpty(__tradingDatas) &&
+            !hasUpDownVal(__tradingDatas) &&
             __gridPoints.length > 0 &&
             __historyEntryPoints.length < 5
         ) {
@@ -1220,7 +1220,7 @@ const startTrading = async () => {
                 await setInitData(allPositionDetail);
             }
             // 如果还没仓位要加仓
-            else if (!isNonEmpty(allPositionDetail)) {
+            else if (!hasUpDownVal(allPositionDetail)) {
                 console.log("还没仓位，直接开始循环");
                 await getCurrentPrice(); // 获取当前价格
                 await initializeTrading(); // 初始交易

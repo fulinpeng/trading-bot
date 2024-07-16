@@ -11,7 +11,7 @@ const {
     debounce,
     throttle,
     getDate,
-    isNonEmpty,
+    hasUpDownVal,
     calculateAverage,
     throttleImmediate,
 } = require("./utils/functions.js");
@@ -917,7 +917,7 @@ const startTrading = async () => {
             let _currentPrice = Number(allPositionDetail.up.orderPrice || allPositionDetail.down.orderPrice);
         }
         // 如果还没仓位要加仓
-        else if (!isNonEmpty(allPositionDetail)) {
+        else if (!hasUpDownVal(allPositionDetail)) {
             console.log("还没仓位要加仓");
             await getCurrentPrice(); // 获取当前价格
             let _currentPrice = currentPrice;
@@ -1242,7 +1242,7 @@ const beforeGridPointTrading2 = async () => {
         setTestPoints(); // 记录穿过的交易点
 
         // 找到有挂单的交易点
-        const tradingArr = Object.entries(tradingDatas).filter(([k, v]) => isNonEmpty(v));
+        const tradingArr = Object.entries(tradingDatas).filter(([k, v]) => hasUpDownVal(v));
         let len = tradingArr.length;
         // 如果当前交易点不在历史交易过的任何一个点上，就++一次
         if (!tradingDatas[currentPointIndex]) len++;

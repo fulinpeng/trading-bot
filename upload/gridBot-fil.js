@@ -12,7 +12,7 @@ const {
     debounce,
     throttle,
     getDate,
-    isNonEmpty,
+    hasUpDownVal,
     calculateAverage,
     throttleImmediate,
     findFarthestNumber,
@@ -373,7 +373,7 @@ const pushOverNumberOrderArr = (count) => {
         num = Math.pow(2, count - (overNumber - 1));
         while (num > 0) {
             overNumberOrderArr.push({
-                count: overNumber - 1,
+                count: 4,
                 gridHight: h,
             });
             num--;
@@ -928,7 +928,7 @@ const getHistoryData = () => {
             __historyEntryPoints.length > 0 &&
             __currentPrice != 0 &&
             __prePrice != 0 &&
-            (!isNonEmpty(__tradingDatas) || !isNonEmpty(__tradingInfo)) &&
+            (!hasUpDownVal(__tradingDatas) || !hasUpDownVal(__tradingInfo)) &&
             __gridPoints.length > 0
         ) {
             return historyDatas;

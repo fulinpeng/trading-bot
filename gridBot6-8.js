@@ -11,7 +11,7 @@ const {
     debounce,
     throttle,
     getDate,
-    isNonEmpty,
+    hasUpDownVal,
     calculateAverage,
     throttleImmediate,
 } = require("./utils/functions.js");
@@ -975,7 +975,7 @@ const startTrading = async () => {
             setGridPointsToCurPriceCenter(_currentPrice); // 绘制网格
         }
         // 如果还没仓位要加仓
-        else if (!isNonEmpty(allPositionDetail)) {
+        else if (!hasUpDownVal(allPositionDetail)) {
             console.log("还没仓位要加仓");
             await getCurrentPrice(); // 获取当前价格
             let _currentPrice = currentPrice;

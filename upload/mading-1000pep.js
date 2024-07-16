@@ -1,0 +1,21 @@
+module.exports = {
+    historyEntryPoints: [2, 1, 2, 1, 2, 1],
+    currentPrice: 0.0120823,
+    prePrice: 0.0121174,
+    curGridPoint: 0.0120859397377786,
+    prePointIndex: 2,
+    currentPointIndex: 1,
+    tradingDatas: {
+        1: { down: { trend: "down", side: "SELL", orderPrice: 0.0120823, quantity: 26485 } },
+        2: { up: null },
+    },
+    tradingInfo: { trend: "", side: "", orderPrice: 0, quantity: 0, times: 0 },
+    gridPoints: [0.0118827493627786, 0.0120859397377786, 0.012221399987778601, 0.012424590362778602],
+    gridHight: 0.0001354602500000003,
+    overNumberOrderArr: [],
+    isOldOrder: false,
+    oldOrder: {},
+    isProfitRun: false,
+    gridPoints2: [],
+    testMoney: 2.891966213350041,
+};

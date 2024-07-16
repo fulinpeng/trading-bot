@@ -12,7 +12,7 @@ const {
     debounce,
     throttle,
     getDate,
-    isNonEmpty,
+    hasUpDownVal,
     calculateAverage,
     throttleImmediate,
     findFarthestNumber,
@@ -61,7 +61,7 @@ console.log(isTest ? "测试环境～～～" : "正式环境～～～");
 
 // mac 小地球仪
 let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550", {
-    rejectUnauthorized: false
+    rejectUnauthorized: false,
 });
 let socksProxyAgent = new SocksProxyAgent("socks5://127.0.0.1:31550");
 
@@ -989,7 +989,7 @@ const setInitData = async ({ up, down }) => {
             __historyEntryPoints.length > 0 &&
             __currentPrice != 0 &&
             __prePrice != 0 &&
-            !isNonEmpty(__tradingDatas) &&
+            !hasUpDownVal(__tradingDatas) &&
             __gridPoints.length > 0 &&
             ((up ? curPosition.up && up.quantity == curPosition.up.quantity : false) ||
                 (down ? curPosition.down && down.quantity == curPosition.down.quantity : false))
@@ -1147,7 +1147,7 @@ const startTrading = async () => {
                 await setInitData(allPositionDetail);
             }
             // 如果还没仓位要加仓
-            else if (!isNonEmpty(allPositionDetail)) {
+            else if (!hasUpDownVal(allPositionDetail)) {
                 console.log("还没仓位，直接开始循环");
                 await getCurrentPrice(); // 获取当前价格
                 await initializeTrading(); // 初始交易

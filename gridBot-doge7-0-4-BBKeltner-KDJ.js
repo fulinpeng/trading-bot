@@ -8,7 +8,7 @@ const WebSocket = require("ws"); // WebSocket库
 // const { SocksProxyAgent } = require("socks-proxy-agent");
 // const Binance = require("node-binance-api");
 const fs = require("fs");
-const { getDate, isNonEmpty, calculateAverage, calculateSlope } = require("./utils/functions.js");
+const { getDate, hasUpDownVal, calculateAverage, calculateSlope } = require("./utils/functions.js");
 const { calculateBBKeltnerSqueeze } = require("./utils/BBKeltner.js");
 const { calculateKDJ, calculateKDJs } = require("./utils/KDJ.js");
 const config = require("./config-BBKeltner-KDJ.js");
@@ -1077,7 +1077,7 @@ const setInitData = async ({ up, down }) => {
             __testMoney,
         });
 
-        if (__currentPrice != 0 && __prePrice != 0 && !isNonEmpty(__tradingInfo) && __gridPoints.length > 0) {
+        if (__currentPrice != 0 && __prePrice != 0 && !hasUpDownVal(__tradingInfo) && __gridPoints.length > 0) {
             currentPrice = __currentPrice;
             prePrice = __prePrice;
             tradingInfo = __tradingInfo;
@@ -1188,7 +1188,7 @@ const startTrading = async () => {
                 await setInitData(allPositionDetail);
             }
             // 如果还没仓位要加仓
-            else if (!isNonEmpty(allPositionDetail)) {
+            else if (!hasUpDownVal(allPositionDetail)) {
                 console.log("还没仓位，直接开始循环");
             }
             await startWebSocket(); // 启动websocket更新价格

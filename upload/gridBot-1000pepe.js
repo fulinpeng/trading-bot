@@ -41,11 +41,11 @@ const {
     logsFolder,
     errorsFolder,
     overNumber,
-} = config["zk"];
+} = config["1000pepe"];
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
-const isTest = true; // 将此标志设置为  false/true 使用沙盒环境
+const isTest = false; // 将此标志设置为  false/true 使用沙盒环境
 const showProfit = true;
 const api = "https://api.binance.com/api";
 const fapi = "https://fapi.binance.com/fapi";
@@ -247,7 +247,7 @@ const signRequest = (params) => {
 // 获取K线数据
 const getKLineData = async (symbol, interval, limit) => {
     try {
-        const response = await axios.get(`${api}/v3/klines`, {
+        const response = await axios.get(`${fapi}/v1/klines`, {
             params: {
                 symbol,
                 interval,
@@ -1262,9 +1262,7 @@ const startTrading = async () => {
         // 测试
         if (isTest) {
             await getCurrentPrice();
-            if (historyDatas) {
-                await recoverHistoryData(historyDatas);
-            }
+            historyDatas && (await recoverHistoryData(historyDatas));
             await initializeTrading();
         } else {
             // 初始化 tradingDatas
@@ -1284,7 +1282,7 @@ const startTrading = async () => {
             else {
                 console.log("还没仓位，直接开始循环");
                 await getCurrentPrice(); // 获取当前价格
-                await recoverHistoryData(historyDatas); // 处理历史数据
+                historyDatas && (await recoverHistoryData(historyDatas)); // 处理历史数据
                 await initializeTrading(); // 初始交易
             }
         }

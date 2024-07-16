@@ -11,7 +11,7 @@ const {
     debounce,
     throttle,
     getDate,
-    isNonEmpty,
+    hasUpDownVal,
     calculateAverage,
     throttleImmediate,
     findFarthestNumber,
@@ -776,7 +776,7 @@ const setInitData = async ({ up, down }) => {
             __gridHight,
         });
 
-        if (__currentPrice != 0 && __prePrice != 0 && !isNonEmpty(__tradingInfo) && __gridPoints.length > 0) {
+        if (__currentPrice != 0 && __prePrice != 0 && !hasUpDownVal(__tradingInfo) && __gridPoints.length > 0) {
             currentPrice = __currentPrice;
             prePrice = __prePrice;
             curGridPoint = __curGridPoint;
@@ -884,7 +884,7 @@ const startTrading = async () => {
                 await setInitData(allPositionDetail);
             }
             // 如果还没仓位要加仓
-            else if (!isNonEmpty(allPositionDetail)) {
+            else if (!hasUpDownVal(allPositionDetail)) {
                 console.log("还没仓位，直接开始循环");
                 await getCurrentPrice(); // 获取当前价格
             }

@@ -113,13 +113,15 @@ function calculateAverage(values, period) {
         return sum / values.length;
     }
 }
-function isNonEmpty(value) {
+// 是否为[{up: null}] || {up: null} 两种结构
+// 并且 up || down 有值
+function hasUpDownVal(value) {
     if (Array.isArray(value)) {
-        return value.length > 0 && !value.some((item) => item === undefined || item === null);
+        return value.length > 0 && value.some((item) => !!(item.up || item.down));
+        value.length > 0 && !!value.some((item) => hasUpDownVal(item));
     }
-
     if (typeof value === "object" && value !== null) {
-        return Object.values(value).some((item) => item === undefined || item === null);
+        return !!(value.up || value.down);
     }
 
     return false; // 非数组和对象的情况
@@ -177,7 +179,7 @@ module.exports = {
     throttleImmediate,
     getDate,
     calculateAverage,
-    isNonEmpty,
+    hasUpDownVal,
     findFarthestNumber,
     isIncreasing,
     isDecreasing,

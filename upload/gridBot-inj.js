@@ -12,7 +12,7 @@ const {
     debounce,
     throttle,
     getDate,
-    isNonEmpty,
+    hasUpDownVal,
     calculateAverage,
     throttleImmediate,
     findFarthestNumber,
@@ -374,7 +374,7 @@ const pushOverNumberOrderArr = (count) => {
         num = Math.pow(2, count - 4);
         while (num > 0) {
             overNumberOrderArr.push({
-                count: overNumber - 1,
+                count: 4,
                 gridHight: h,
             });
             num--;
@@ -933,7 +933,7 @@ const getHistoryData = () => {
             __historyEntryPoints.length > 0 &&
             __currentPrice != 0 &&
             __prePrice != 0 &&
-            (!isNonEmpty(__tradingDatas) || !isNonEmpty(__tradingInfo)) &&
+            (!hasUpDownVal(__tradingDatas) || !hasUpDownVal(__tradingInfo)) &&
             __gridPoints.length > 0
         ) {
             return historyDatas;
@@ -1619,7 +1619,7 @@ const gridPointTrading2 = async () => {
             return;
         } else if (_currentPointIndex === 1) {
             let _times = times[allPoints - 1];
-            if (allPoints > overNumber) {
+            if (allPoints >= overNumber) {
                 isOldOrder = false;
                 pushOverNumberOrderArr(allPoints);
                 console.log("仓位过大，暂存该交易，重新开始：curMinPrice, gridPoints", curMinPrice, gridPoints);
@@ -1657,7 +1657,7 @@ const gridPointTrading2 = async () => {
             // curMaxPrice = gridPoints[2];
         } else if (_currentPointIndex === 2) {
             let _times = times[allPoints - 1];
-            if (allPoints > overNumber) {
+            if (allPoints >= overNumber) {
                 isOldOrder = false;
                 pushOverNumberOrderArr(allPoints);
                 console.log("仓位过大，暂存该交易，重新开始：curMinPrice, gridPoints", curMinPrice, gridPoints);

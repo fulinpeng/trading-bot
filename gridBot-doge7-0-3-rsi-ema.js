@@ -8,7 +8,7 @@ const { HttpsProxyAgent } = require("https-proxy-agent");
 const { SocksProxyAgent } = require("socks-proxy-agent");
 // const Binance = require("node-binance-api");
 const fs = require("fs");
-const { getDate, isNonEmpty, calculateAverage, calculateSlope } = require("./utils/functions.js");
+const { getDate, hasUpDownVal, calculateAverage, calculateSlope } = require("./utils/functions.js");
 const config = require("./config-rsi.js");
 
 let testMoney = 0;
@@ -44,7 +44,6 @@ const api = "https://api.binance.com/api";
 const fapi = "https://fapi.binance.com/fapi";
 const apiKey = process.env.BINANCE_API_KEY; // 获取API密钥
 const secretKey = process.env.BINANCE_API_SECRET; // 获取API密钥的密钥
-
 
 // mac clash
 // let httpProxyAgent=new HttpsProxyAgent("http://127.0.0.1:7892");
@@ -856,7 +855,7 @@ const setInitData = async ({ up, down }) => {
             __testMoney,
         });
 
-        if (__currentPrice != 0 && __prePrice != 0 && !isNonEmpty(__tradingInfo) && __gridPoints.length > 0) {
+        if (__currentPrice != 0 && __prePrice != 0 && !hasUpDownVal(__tradingInfo) && __gridPoints.length > 0) {
             currentPrice = __currentPrice;
             prePrice = __prePrice;
             tradingInfo = __tradingInfo;
@@ -980,7 +979,7 @@ const startTrading = async () => {
                 await setInitData(allPositionDetail);
             }
             // 如果还没仓位要加仓
-            else if (!isNonEmpty(allPositionDetail)) {
+            else if (!hasUpDownVal(allPositionDetail)) {
                 console.log("还没仓位，直接开始循环");
             }
             await startWebSocket(); // 启动websocket更新价格
