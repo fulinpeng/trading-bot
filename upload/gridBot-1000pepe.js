@@ -143,7 +143,7 @@ let isOldOrder = false; // 是不是老单子
 let oldOrder = {};
 let isProfitRun = false; // 让利润奔跑起来
 let isFirstGetProfit = false; // 是否利润奔跑后的第一次盈利
-
+let shadowBodyRate = 3;
 // 最新交易信息 利润奔跑模式使用
 let tradingInfo = {
     trend: "", // "up" 表示上升趋势，"down" 表示下降趋势，'' 表示无趋势
@@ -161,7 +161,6 @@ const resetTradingDatas = () => {
         // times: 0,
     };
 };
-const shadowBodyRate = 2; // 插针时，引线/实体
 
 let curProfitRate = profitRate;
 
@@ -398,7 +397,7 @@ const _refreshPrice = (curKLine) => {
 
     kLineData.push(curKLine);
     historyClosePrices.push(curKLine.close);
-
+    shadowBodyRate;
     // 更新平均蜡烛高度
     candleHeight = calculateCandleHeight(kLineData);
     let _gridHight = candleHeight * howManyCandleHeight;
@@ -932,7 +931,8 @@ const getHistoryData = () => {
             __historyEntryPoints.length > 0 &&
             __currentPrice != 0 &&
             __prePrice != 0 &&
-            (!hasUpDownVal(__tradingDatas) || !hasUpDownVal(__tradingInfo)) &&
+            // 有仓位信息
+            (hasUpDownVal(Object.values(__tradingDatas)) || __tradingInfo.quantity) &&
             __gridPoints.length > 0
         ) {
             return historyDatas;
@@ -1012,7 +1012,7 @@ const recoverHistoryDataByPosition = async (historyDatas, { up, down }) => {
     tradingDatas = __tradingDatas; // 订单数据
     gridPoints = __gridPoints; // 网格每个交易点
     tradingInfo = __tradingInfo;
-    // gridHight = __gridHight;
+    gridHight = __gridHight;
     overNumberOrderArr = __overNumberOrderArr; // 超过 overNumber 手数的单子集合
     isOldOrder = __isOldOrder; // 是不是老单子
     oldOrder = __oldOrder;
@@ -1162,6 +1162,24 @@ const restDatas = (trend, oldOrderCount) => {
 
     setGridPointsToCurPriceCenter(trend, _currentPrice);
 };
+const calcGridHeight = (klines) => {
+    let selected = [];
+    let index = 0;
+    while (index < klines.length) {
+        let arr = klines.slice(index, index + 60);
+        let low = Math.min(...arr.map((v) => v.low));
+        let high = Math.max(...arr.map((v) => v.high));
+        const bodys = [...arr.map((v) => v.close), ...arr.map((v) => v.open)];
+        // let bodyLow = Math.min(...bodys);
+        // let bodyHigh = Math.max(...bodys);
+        // const body = Math.abs(bodyLow - bodyHigh);
+        const totalKlineH = Math.abs(high - low);
+        selected.push(totalKlineH);
+        index += 60;
+    }
+    // console.log("参与计算平均高度的蜡烛: ", selected);
+    return calculateAverage(selected);
+};
 // 设置网格
 const setGridPoints = (trend, stopLoss, stopProfit) => {
     const _currentPrice = currentPrice;
@@ -1263,13 +1281,16 @@ const startTrading = async () => {
         if (isTest) {
             await getCurrentPrice();
             historyDatas && (await recoverHistoryData(historyDatas));
+            // 测试环境就不弄太复杂，记住上次的 testMoney 然后直接重新开单
+            tradingDatas = {};
             await initializeTrading();
         } else {
             // 初始化 tradingDatas
             allPositionDetail = await getPositionRisk(); // 获取当前仓位信息
 
-            console.log("🚀 已有仓位 ~ allPositionDetail:", allPositionDetail);
-            if (allPositionDetail) {
+            if (hasUpDownVal(allPositionDetail)) {
+                console.log("🚀 已有仓位 ~ allPositionDetail:", allPositionDetail);
+                // 已有仓位要复原
                 if (historyDatas) {
                     await recoverHistoryDataByPosition(historyDatas, allPositionDetail);
                 } else {
@@ -1277,9 +1298,8 @@ const startTrading = async () => {
                     console.error("该币现有仓位和上次保留的数据不符合，请手动处理！！！");
                     return;
                 }
-            }
-            // 如果还没仓位要加仓
-            else {
+            } else {
+                // 如果还没仓位要加仓
                 console.log("还没仓位，直接开始循环");
                 await getCurrentPrice(); // 获取当前价格
                 historyDatas && (await recoverHistoryData(historyDatas)); // 处理历史数据

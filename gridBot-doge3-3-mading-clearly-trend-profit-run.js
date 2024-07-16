@@ -932,7 +932,7 @@ const getHistoryData = () => {
             __currentPrice != 0 &&
             __prePrice != 0 &&
             // 有仓位信息
-            (hasUpDownVal(__tradingDatas) || __tradingInfo.quantity) &&
+            (hasUpDownVal(Object.values(__tradingDatas)) || __tradingInfo.quantity) &&
             __gridPoints.length > 0
         ) {
             return historyDatas;
@@ -1012,7 +1012,7 @@ const recoverHistoryDataByPosition = async (historyDatas, { up, down }) => {
     tradingDatas = __tradingDatas; // 订单数据
     gridPoints = __gridPoints; // 网格每个交易点
     tradingInfo = __tradingInfo;
-    // gridHight = __gridHight;
+    gridHight = __gridHight;
     overNumberOrderArr = __overNumberOrderArr; // 超过 overNumber 手数的单子集合
     isOldOrder = __isOldOrder; // 是不是老单子
     oldOrder = __oldOrder;
@@ -1281,6 +1281,8 @@ const startTrading = async () => {
         if (isTest) {
             await getCurrentPrice();
             historyDatas && (await recoverHistoryData(historyDatas));
+            // 测试环境就不弄太复杂，记住上次的 testMoney 然后直接重新开单
+            tradingDatas = {};
             await initializeTrading();
         } else {
             // 初始化 tradingDatas
