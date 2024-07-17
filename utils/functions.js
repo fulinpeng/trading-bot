@@ -87,8 +87,8 @@ function throttleImmediate(func, delay, immediate = true) {
     };
 }
 
-const getDate = () => {
-    const currentDate = new Date();
+const getDate = (date) => {
+    const currentDate = date ? new Date(date) : new Date();
     const year = currentDate.getFullYear();
     let month = currentDate.getMonth() + 1; // 月份是从 0 开始的，所以要加 1
     if (month < 10) month = `0${month}`;
