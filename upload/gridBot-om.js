@@ -2,6 +2,7 @@
 require("dotenv").config(); // 引入dotenv模块，用于加载环境变量
 const axios = require("axios"); // HTTP请求库
 const sendMail = require("./mailer.js");
+const { getFanSqueeze } = require("./utils/BBKeltner.js");
 const crypto = require("crypto"); // 加密模块
 const WebSocket = require("ws"); // WebSocket库
 const { HttpsProxyAgent } = require("https-proxy-agent");
@@ -41,7 +42,7 @@ const {
     logsFolder,
     errorsFolder,
     overNumber,
-} = config["zk"];
+} = config["om"];
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
@@ -139,11 +140,11 @@ let allPositionDetail = {}; // 当前仓位信息
 let candleHeight = 0; // 蜡烛高度
 let gridHight = minGridHight; // 网格高度
 let overNumberOrderArr = []; // 超过 overNumber 手数的单子集合
-let isOldOrder = false; // 是不是老单子
-let oldOrder = {};
 let isProfitRun = false; // 让利润奔跑起来
 let isFirstGetProfit = false; // 是否利润奔跑后的第一次盈利
-
+let shadowBodyRate = 3;
+let preSqueeze = false;
+let isSqueeze = false;
 // 最新交易信息 利润奔跑模式使用
 let tradingInfo = {
     trend: "", // "up" 表示上升趋势，"down" 表示下降趋势，'' 表示无趋势
@@ -161,11 +162,8 @@ const resetTradingDatas = () => {
         // times: 0,
     };
 };
-const shadowBodyRate = 2; // 插针时，引线/实体
 
 let curProfitRate = profitRate;
-
-let firsttradeTime = 0;
 
 let curMaxPrice = 0; // 当前这一轮的二线最高价
 let curMinPrice = 0; // 当前这一轮的二线最低价
@@ -177,8 +175,8 @@ const RSI_PERIOD = 10; // RSI计算周期
 const maxKLinelen = 600; // 储存kLine最大数量
 const STD_MULTIPLIER = 2; // 用来确定布林带的宽度
 const BOLL_PERIOD = 20;
-const RSI_PERIOD_MIN = 14 * 5; // RSI计算周期
-const RSI_PERIOD_MAX = 500; // RSI计算周期
+const RSI_PERIOD_MIN = 14; // RSI计算周期
+const RSI_PERIOD_MAX = 100; // RSI计算周期
 
 let emaArr = [];
 let macdArr = [];
@@ -187,7 +185,7 @@ let ema1Arr = [];
 let ema2Arr = [];
 let ema3Arr = [];
 
-const MACD_PERIOD = [9 * 5, 26 * 5, 9 * 5];
+const MACD_PERIOD = [40, 80, 9];
 
 // 日志
 let logStream = null;
@@ -247,7 +245,7 @@ const signRequest = (params) => {
 // 获取K线数据
 const getKLineData = async (symbol, interval, limit) => {
     try {
-        const response = await axios.get(`${api}/v3/klines`, {
+        const response = await axios.get(`${fapi}/v1/klines`, {
             params: {
                 symbol,
                 interval,
@@ -306,12 +304,11 @@ const getHistoryClosePrices = async () => {
     historyClosePrices = kLineData.map((data) => data.close); // K线数据有一个close字段表示收盘价，根据实际情况调整
     // console.log("k线收盘价:", kLineData);
 
-    // 初始化指标
-    initEveryIndex();
-
-    candleHeight = calculateCandleHeight(kLineData);
+    candleHeight = calculateCandleHeight(getLastFromArr(kLineData, 14));
     let _gridHight = candleHeight * howManyCandleHeight;
     gridHight = _gridHight;
+    // 初始化指标
+    initEveryIndex();
 };
 
 /**
@@ -370,10 +367,10 @@ const pushOverNumberOrderArr = (count) => {
     let num = 1;
     const h = gridPoints[2] - gridPoints[1];
     if (count >= overNumber) {
-        num = Math.pow(2, count - 4);
+        num = Math.pow(2, count - 2);
         while (num > 0) {
             overNumberOrderArr.push({
-                count: 4,
+                count: 2,
                 gridHight: h,
             });
             num--;
@@ -392,13 +389,12 @@ const pushOverNumberOrderArr = (count) => {
     saveGlobalVariables();
 };
 
-const _refreshPrice = (curKLine) => {
+const _refreshPrice = async (curKLine) => {
     kLineData.length >= maxKLinelen && kLineData.shift();
     historyClosePrices.length >= maxKLinelen && historyClosePrices.shift();
 
     kLineData.push(curKLine);
     historyClosePrices.push(curKLine.close);
-
     // 更新平均蜡烛高度
     candleHeight = calculateCandleHeight(kLineData);
     let _gridHight = candleHeight * howManyCandleHeight;
@@ -407,6 +403,16 @@ const _refreshPrice = (curKLine) => {
 
     // 设置各种指标
     setEveryIndex([...historyClosePrices]);
+    const { squeeze } = getFanSqueeze([...kLineData], 14); // bbk 挤压状态
+
+    if (squeeze[squeeze.length - 3] && squeeze[squeeze.length - 2] && squeeze[squeeze.length - 1]) {
+        preSqueeze = isSqueeze;
+        isSqueeze = true;
+    } else {
+        preSqueeze = isSqueeze;
+        isSqueeze = false;
+    }
+    console.log("isSqueeze:", isSqueeze);
 };
 
 const setEveryIndex = (prices) => {
@@ -479,9 +485,18 @@ function calculateMACD(prices, periods) {
 }
 const initEveryIndex = () => {
     const len = historyClosePrices.length;
+    // 初始化只要10个
     for (let index = 0; index < 10; index++) {
-        setEveryIndex(historyClosePrices.slice(0, len - 10));
+        setEveryIndex(historyClosePrices.slice(0, len - 10 - index));
     }
+    const { squeeze } = getFanSqueeze([...kLineData], 14); // bbk 挤压状态
+
+    if (squeeze[squeeze.length - 2] && squeeze[squeeze.length - 1]) {
+        isSqueeze = true;
+    } else {
+        isSqueeze = false;
+    }
+    console.log("isSqueeze:", isSqueeze);
 };
 // 获取持仓风险，这里要改成村本地
 const getPositionRisk = async () => {
@@ -841,15 +856,16 @@ const initializeTrading = async () => {
             console.log("ema1Arr / currentPrice 为空", historyClosePrices, currentPrice);
             throw new Error("ema1Arr / currentPrice 为空，请重新启动");
         }
-        const trend = judgeTrendForInit();
-        if (trend === "up") {
-            restDatas("up");
-            await teadeBuy(1);
-        } else {
-            restDatas("down");
-            await teadeSell(1);
+        if (!isSqueeze) {
+            const trend = judgeTrendForInit();
+            if (trend === "up") {
+                restDatas("up");
+                await teadeBuy(1);
+            } else {
+                restDatas("down");
+                await teadeSell(1);
+            }
         }
-        firsttradeTime = Date.now(); // 重置 firsttradeTime
         loadingInit = false;
     } catch (error) {
         console.error("initializeTrading header::", error);
@@ -920,8 +936,6 @@ const getHistoryData = () => {
             tradingInfo: __tradingInfo,
             gridHight: __gridHight,
             overNumberOrderArr: __overNumberOrderArr, // 超过 overNumber 手数的单子集合
-            isOldOrder: __isOldOrder, // 是不是老单子
-            oldOrder: __oldOrder,
             isProfitRun: __isProfitRun,
             gridPoints2: __gridPoints2,
             testMoney: __testMoney,
@@ -932,7 +946,8 @@ const getHistoryData = () => {
             __historyEntryPoints.length > 0 &&
             __currentPrice != 0 &&
             __prePrice != 0 &&
-            (!hasUpDownVal(__tradingDatas) || !hasUpDownVal(__tradingInfo)) &&
+            // 有仓位信息
+            (hasUpDownVal(Object.values(__tradingDatas)) || __tradingInfo.quantity) &&
             __gridPoints.length > 0
         ) {
             return historyDatas;
@@ -956,8 +971,6 @@ const recoverHistoryData = async (historyDatas) => {
         tradingInfo: __tradingInfo,
         gridHight: __gridHight,
         overNumberOrderArr: __overNumberOrderArr, // 超过 overNumber 手数的单子集合
-        isOldOrder: __isOldOrder, // 是不是老单子
-        oldOrder: __oldOrder,
         isProfitRun: __isProfitRun,
         gridPoints2: __gridPoints2,
         testMoney: __testMoney,
@@ -978,7 +991,7 @@ const recoverHistoryData = async (historyDatas) => {
     gridPoints2 = __gridPoints2;
     testMoney = __testMoney;
 
-    pushOverNumberOrderArr(__historyEntryPoints.length); // 让后面可以把亏损的找补回来
+    // pushOverNumberOrderArr(__historyEntryPoints.length); // 让后面可以把亏损的找补回来
 };
 const recoverHistoryDataByPosition = async (historyDatas, { up, down }) => {
     //
@@ -996,8 +1009,6 @@ const recoverHistoryDataByPosition = async (historyDatas, { up, down }) => {
         tradingInfo: __tradingInfo,
         gridHight: __gridHight,
         overNumberOrderArr: __overNumberOrderArr, // 超过 overNumber 手数的单子集合
-        isOldOrder: __isOldOrder, // 是不是老单子
-        oldOrder: __oldOrder,
         isProfitRun: __isProfitRun,
         gridPoints2: __gridPoints2,
         testMoney: __testMoney,
@@ -1012,10 +1023,8 @@ const recoverHistoryDataByPosition = async (historyDatas, { up, down }) => {
     tradingDatas = __tradingDatas; // 订单数据
     gridPoints = __gridPoints; // 网格每个交易点
     tradingInfo = __tradingInfo;
-    // gridHight = __gridHight;
+    gridHight = __gridHight;
     overNumberOrderArr = __overNumberOrderArr; // 超过 overNumber 手数的单子集合
-    isOldOrder = __isOldOrder; // 是不是老单子
-    oldOrder = __oldOrder;
     isProfitRun = __isProfitRun;
     gridPoints2 = __gridPoints2;
     testMoney = __testMoney;
@@ -1056,8 +1065,6 @@ const checkOverGrid = async ({ up, down }) => {
 
         prePrice = currentPrice; // 记录当前价格的前一个
         currentPointIndex = -1; // 当前网格
-        isOldOrder = false; // 是不是老单子
-        oldOrder = {};
         isProfitRun = false;
     }
     if (currentPrice >= gridPoints[3]) {
@@ -1067,8 +1074,6 @@ const checkOverGrid = async ({ up, down }) => {
 
         prePrice = currentPrice; // 记录当前价格的前一个
         currentPointIndex = -1; // 当前网格
-        isOldOrder = false; // 是不是老单子
-        oldOrder = {};
         isProfitRun = false;
     }
 };
@@ -1080,10 +1085,6 @@ const setGridPointsToCurPriceCenter = (trend, _currentPrice) => {
     console.log("mading模式 开始绘制网格~ atr, trend, _currentPrice gridHight:", atr, trend, _currentPrice, gridHight);
 
     let _gridHight = gridHight;
-
-    if (isOldOrder) {
-        _gridHight = oldOrder.gridHight > gridHight ? oldOrder.gridHight : gridHight;
-    }
 
     let priceUp = 0;
     let priceDown = 0;
@@ -1131,13 +1132,6 @@ const setGridPointsToCurPriceCenter = (trend, _currentPrice) => {
 };
 // 进入交易点的历史记录
 const setHistoryEntryPoints = (point) => {
-    // if (historyEntryPoints.length < 10) {
-    //     historyEntryPoints.push(point);
-    // } else {
-    //     historyEntryPoints.shift();
-    //     historyEntryPoints.push(point);
-    // }
-
     historyEntryPoints.push(point);
 
     saveGlobalVariables();
@@ -1145,22 +1139,36 @@ const setHistoryEntryPoints = (point) => {
     console.log("进入交易点的历史记录 historyEntryPoints:", historyEntryPoints);
 };
 
-const restDatas = (trend, oldOrderCount) => {
+const restDatas = (trend) => {
     const _currentPrice = currentPrice * 0.999999999;
-    let _historyEntryPoints = null;
-    if (isOldOrder) {
-        _historyEntryPoints = new Array(oldOrderCount).fill(-1);
-    }
     if (trend === "up") {
         currentPointIndex = 2;
-        historyEntryPoints = isOldOrder ? [..._historyEntryPoints, 2] : [2];
+        historyEntryPoints = [2];
     } else {
         currentPointIndex = 1;
-        historyEntryPoints = isOldOrder ? [..._historyEntryPoints, 1] : [1];
+        historyEntryPoints = [1];
     }
     curGridPoint = _currentPrice;
 
     setGridPointsToCurPriceCenter(trend, _currentPrice);
+};
+const calcGridHeight = (klines) => {
+    let selected = [];
+    let index = 0;
+    while (index < klines.length) {
+        let arr = klines.slice(index, index + 60);
+        let low = Math.min(...arr.map((v) => v.low));
+        let high = Math.max(...arr.map((v) => v.high));
+        const bodys = [...arr.map((v) => v.close), ...arr.map((v) => v.open)];
+        // let bodyLow = Math.min(...bodys);
+        // let bodyHigh = Math.max(...bodys);
+        // const body = Math.abs(bodyLow - bodyHigh);
+        const totalKlineH = Math.abs(high - low);
+        selected.push(totalKlineH);
+        index += 60;
+    }
+    // console.log("参与计算平均高度的蜡烛: ", selected);
+    return calculateAverage(selected);
 };
 // 设置网格
 const setGridPoints = (trend, stopLoss, stopProfit) => {
@@ -1220,7 +1228,6 @@ const modGridPoints = () => {
             tradingInfo.orderPrice * tradingInfo.quantity -
             (tradingInfo.quantity * _currentPrice + tradingInfo.orderPrice * tradingInfo.quantity) * 0.0005;
         console.log(`已盈利(${_testMoney})，重新绘制网格 _currentPrice, gridPoints2 :`, currentPrice, gridPoints2);
-        console.log("当前还剩overNumberOrderArr：", overNumberOrderArr.length);
     }
 
     if (tradingInfo.trend === "down") {
@@ -1240,7 +1247,6 @@ const modGridPoints = () => {
             tradingInfo.quantity * _currentPrice -
             (tradingInfo.quantity * tradingInfo.orderPrice + tradingInfo.quantity * _currentPrice) * 0.0005;
         console.log(`已盈利(${_testMoney})，重新绘制网格 _currentPrice, gridPoints2 :`, currentPrice, gridPoints2);
-        console.log("当前还剩overNumberOrderArr：", overNumberOrderArr.length);
     }
 
     saveGlobalVariables();
@@ -1262,16 +1268,17 @@ const startTrading = async () => {
         // 测试
         if (isTest) {
             await getCurrentPrice();
-            if (historyDatas) {
-                await recoverHistoryData(historyDatas);
-            }
+            historyDatas && (await recoverHistoryData(historyDatas));
+            // 测试环境就不弄太复杂，记住上次的 testMoney 然后直接重新开单
+            tradingDatas = {};
             await initializeTrading();
         } else {
             // 初始化 tradingDatas
             allPositionDetail = await getPositionRisk(); // 获取当前仓位信息
 
-            console.log("🚀 已有仓位 ~ allPositionDetail:", allPositionDetail);
-            if (allPositionDetail) {
+            if (hasUpDownVal(allPositionDetail)) {
+                console.log("🚀 已有仓位 ~ allPositionDetail:", allPositionDetail);
+                // 已有仓位要复原
                 if (historyDatas) {
                     await recoverHistoryDataByPosition(historyDatas, allPositionDetail);
                 } else {
@@ -1279,12 +1286,11 @@ const startTrading = async () => {
                     console.error("该币现有仓位和上次保留的数据不符合，请手动处理！！！");
                     return;
                 }
-            }
-            // 如果还没仓位要加仓
-            else {
+            } else {
+                // 如果还没仓位要加仓
                 console.log("还没仓位，直接开始循环");
                 await getCurrentPrice(); // 获取当前价格
-                await recoverHistoryData(historyDatas); // 处理历史数据
+                historyDatas && (await recoverHistoryData(historyDatas)); // 处理历史数据
                 await initializeTrading(); // 初始交易
             }
         }
@@ -1337,15 +1343,15 @@ const closePointOrders = async (pointIndex) => {
             });
         }
         // 发送邮件
-        sendMail({
-            subject: `${tradingInfo.orderPrice > currentPrice ? "✅" : "❌"}${B_SYMBOL}有一单平仓`,
-            text: JSON.stringify({
-                profitMoney: testMoney,
-                overNum: overNumberOrderArr.length,
-                tradingInfo: { ...tradingInfo },
-                gridPoints: [...gridPoints],
-            }),
-        });
+        // sendMail({
+        //     subject: `${tradingInfo.orderPrice > currentPrice ? "✅" : "❌"}${B_SYMBOL}有一单平仓`,
+        //     text: JSON.stringify({
+        //         profitMoney: testMoney,
+        //         overNum: overNumberOrderArr.length,
+        //         tradingInfo: { ...tradingInfo },
+        //         gridPoints: [...gridPoints],
+        //     }),
+        // });
     } else {
         console.log("该交易点没有任何订单", pointIndex);
     }
@@ -1396,18 +1402,6 @@ const closeAllOrders = async ({ up, down }) => {
     }
     tradingDatas = {};
     await Promise.all(promises);
-};
-
-const setOldOrder = (trend) => {
-    isOldOrder = false;
-    if (overNumberOrderArr.length) {
-        // 判断趋势是否强劲，强才买入
-        isTrendClearly = true; // trend === "up" ? isUpTrend() : isDownTrend();
-        if (isTrendClearly) {
-            oldOrder = overNumberOrderArr.shift();
-            isOldOrder = true;
-        }
-    }
 };
 
 const isUpTrend = () => {
@@ -1514,11 +1508,9 @@ const gridPointTrading2 = async () => {
     let pointIndexHistoryNoCur = tradingDataArr.map(([k]) => Number(k));
     let pointIndexHistory = Array.from(new Set([...pointIndexHistoryNoCur, _currentPointIndex]));
 
-    const len = pointIndexHistory.length;
+    const len = pointIndexHistory.length; // 在几个点有仓位 + 1(当前)
     const promises = [];
-    if (len === 1) {
-        console.log(`在第1个交易点`, tradingDatas);
-    } else if (len === 3) {
+    if (len === 3) {
         console.log(
             "##########不可能，到了第3个交易点, 平掉所有不是本交易点的订单，盈利！！！ pointIndexHistory historyEntryPoints tradingDatas:",
             pointIndexHistory,
@@ -1529,11 +1521,9 @@ const gridPointTrading2 = async () => {
         if (_currentPointIndex === 0) {
             await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
             await teadeSell(_time, true);
-            isOldOrder = false;
             restDatas("down");
         } else if (_currentPointIndex === 3) {
             await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
-            isOldOrder = false;
             restDatas("up");
             await teadeBuy(_time, true);
         }
@@ -1542,7 +1532,7 @@ const gridPointTrading2 = async () => {
             _historyEntryPoints,
             tradingDataArr,
         );
-    } else if (len === 2) {
+    } else if (len === 2 || len === 1) {
         console.log(
             "gridPointTrading2~ currentPointIndex pointIndexHistory historyEntryPoints tradingDatas:",
             _currentPointIndex,
@@ -1555,142 +1545,67 @@ const gridPointTrading2 = async () => {
 
         // 2 个交易点之间交替
         if (_currentPointIndex === 0) {
-            if (false && !overNumberOrderArr.length && allPoints - 1 >= overNumber) {
-                tradingInfo = tradingDatas[1].down;
-                console.log(
-                    `交替穿过${allPoints}次交易点，是 1~0，重置仓位（盈利）！！！，开启利润奔跑模式！！！ down tradingInfo`,
-                    tradingInfo,
-                );
-                console.log("当前还剩overNumberOrderArr：", overNumberOrderArr.length);
-                tradingDatas[1].down = null; // 清空上马丁模式数据
-                let stopLoss = tradingInfo.orderPrice - (tradingInfo.orderPrice - _currentPrice) * 0.9;
-                let stopProfit = _currentPrice - candleHeight;
-                setGridPoints("down", stopLoss, stopProfit);
-                isProfitRun = true;
-                isFirstGetProfit = true;
-                isOldOrder = false; // 此时，isOldOrder需要重置，避免奔跑完成再次开单时isOldOrder还为true（有三个地方在开单）
-            } else {
+            if (len === 2) {
                 console.log(`交替穿过${allPoints}次交易点，是 1~0，重置仓位（盈利）！！！，并当前继续开空`);
-                console.log("当前还剩overNumberOrderArr：", overNumberOrderArr.length);
-                let _time = 1;
-                setOldOrder("down");
-                if (isOldOrder) {
-                    _time = times[oldOrder.count];
-                }
-                await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
-                restDatas("down", oldOrder.count);
-                await teadeSell(_time, true);
-
-                firsttradeTime = Date.now(); // 重置 firsttradeTime
-            }
-            onGridPoint = false;
-            return;
-        } else if (_currentPointIndex === 3) {
-            if (false && !overNumberOrderArr.length && allPoints - 1 >= overNumber) {
-                tradingInfo = tradingDatas[2].up;
-                console.log(
-                    `交替穿过${allPoints}次交易点，是 2~3，重置仓位（盈利）！！！，开启利润奔跑模式！！！ up tradingInfo`,
-                    tradingInfo,
-                );
-                console.log("当前还剩overNumberOrderArr：", overNumberOrderArr.length);
-                tradingDatas[2].up = null; // 清空上马丁模式数据
-                let stopLoss = tradingInfo.orderPrice + (_currentPrice - tradingInfo.orderPrice) * 0.9;
-                let stopProfit = _currentPrice + candleHeight;
-                setGridPoints("up", stopLoss, stopProfit);
-                isProfitRun = true;
-                isFirstGetProfit = true;
-                isOldOrder = false; // 此时，isOldOrder需要重置，避免奔跑完成再次开单时isOldOrder还为true（有三个地方在开单）
-            } else {
-                console.log(`交替穿过${allPoints}次交易点，是 2~3，重置仓位（盈利）！！！，并当前继续开多`);
-                console.log("当前还剩overNumberOrderArr：", overNumberOrderArr.length);
-                let _time = 1;
-                setOldOrder("up");
-                if (isOldOrder) {
-                    _time = times[oldOrder.count];
-                }
-                await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
-                restDatas("up", oldOrder.count);
-                await teadeBuy(_time, true);
-
-                firsttradeTime = Date.now(); // 重置 firsttradeTime
-            }
-            onGridPoint = false;
-            return;
-        } else if (_currentPointIndex === 1) {
-            let _times = times[allPoints - 1];
-            if (allPoints >= overNumber) {
-                isOldOrder = false;
-                pushOverNumberOrderArr(allPoints);
-                console.log("仓位过大，暂存该交易，重新开始：curMinPrice, gridPoints", curMinPrice, gridPoints);
                 await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
                 restDatas("down");
                 await teadeSell(1, true);
-                onGridPoint = false;
-                return;
             }
-            console.log(`交替穿过${allPoints}次交易点，并且当前index为1，当前交易点的仓位加倍`);
-            promises.push(closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex), teadeSell(_times));
-            await Promise.all(promises);
-            // if (allPoints % 2 === 0) {
-            //     const _gridHight = gridPoints[2] - gridPoints[1];
-            //     if (Math.abs(_gridHight / _currentPrice) < 0.01) {
-            //         if (allPoints === 2 && Date.now() - firsttradeTime <= (howManyCandleHeight + 1) * 60 * 1000) {
-            //             // 短时间到达第二个点，距离太短，1下移0.5个单位
-            //             // 此时不用改第0个交易点位置
-            //             gridPoints[1] -= _gridHight * 0.5;
-            //             // gridPoints[0] = gridPoints[1] - (gridPoints[2] - gridPoints[1]) * profitRate; // 不能用 _gridHeight，要实时算
-            //             console.log("时间小于两分钟，绘制网格 0/1交易点改变：gridPoints:", gridPoints);
-            //         } else {
-            //             // 在1交易完后，后根据最二线最高值，设置3
-            //             gridPoints[2] = curMaxPrice * 0.999999999;
-            //             gridPoints[3] = gridPoints[2] + (gridPoints[2] - gridPoints[1]) * profitRate; // 不能用 _gridHeight，要实时算
-            //             console.log("绘制网格 2/3交易点改变：", curMaxPrice, gridPoints);
-            //         }
-            //     } else {
-            //         gridPoints[3] = gridPoints[2] + (gridPoints[2] - gridPoints[1]) * profitRate; // 不能用 _gridHeight，要实时算
-            //     }
-            // } else {
-            //     gridPoints[3] = gridPoints[2] + (gridPoints[2] - gridPoints[1]) * stopLossRate; // 不能用 _gridHeight，要实时算
-            //     console.log("绘制网格 3交易点改变：", gridPoints);
-            // }
-            // curMaxPrice = gridPoints[2];
-        } else if (_currentPointIndex === 2) {
-            let _times = times[allPoints - 1];
-            if (allPoints >= overNumber) {
-                isOldOrder = false;
-                pushOverNumberOrderArr(allPoints);
-                console.log("仓位过大，暂存该交易，重新开始：curMinPrice, gridPoints", curMinPrice, gridPoints);
+            if (len === 1) {
+                console.log(`到达0点，但是挤压后没有仓位，交替穿过${allPoints}次，是 1~0，并当前继续开空`);
+                restDatas("down");
+                await teadeSell(allPoints - 1, true);
+            }
+
+            onGridPoint = false;
+            return;
+        } else if (_currentPointIndex === 3) {
+            if (len === 2) {
+                console.log(`交替穿过${allPoints}次交易点，是 2~3，重置仓位（盈利）！！！，并当前继续开多`);
                 await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
                 restDatas("up");
                 await teadeBuy(1, true);
-                onGridPoint = false;
-                return;
             }
-            console.log(`交替穿过${allPoints}次交易点，并且当前index为2，当前交易点的仓位加倍`);
-            promises.push(closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex), teadeBuy(_times));
-            await Promise.all(promises);
-            // if (allPoints % 2 === 0) {
-            //     const _gridHight = gridPoints[2] - gridPoints[1];
-            //     if (Math.abs(_gridHight / _currentPrice) < 0.01) {
-            //         if (allPoints === 2 && Date.now() - firsttradeTime <= (howManyCandleHeight + 1) * 60 * 1000) {
-            //             // 短时间到达第二个点，距离太短，2 上移0.5个单位
-            //             gridPoints[2] += _gridHight * 0.5;
-            //             // gridPoints[3] = gridPoints[2] + (gridPoints[2] - gridPoints[1]) * profitRate; // 不能用 _gridHeight，要实时算
-            //             console.log("时间小于两分钟，绘制网格 2/3交易点改变：gridPoints:", gridPoints);
-            //         } else {
-            //             // 在2交易完后，后根据最二线最小值，设置0
-            //             gridPoints[1] = curMinPrice * 0.999999999;
-            //             gridPoints[0] = gridPoints[1] - (gridPoints[2] - gridPoints[1]) * profitRate; // 不能用 _gridHeight，要实时算
-            //             console.log("绘制网格 0/1交易点改变：", curMinPrice, gridPoints);
-            //         }
-            //     } else {
-            //         gridPoints[0] = gridPoints[1] - (gridPoints[2] - gridPoints[1]) * profitRate; // 不能用 _gridHeight，要实时算
-            //     }
-            // } else {
-            //     gridPoints[0] = gridPoints[1] - (gridPoints[2] - gridPoints[1]) * stopLossRate; // 不能用 _gridHeight，要实时算
-            //     console.log("绘制网格 0交易点改变：", gridPoints);
-            // }
-            // curMinPrice = gridPoints[1];
+            if (len === 1) {
+                console.log(`到达3点，但是挤压后没有仓位，交替穿过${allPoints}次，是 2~3，并当前继续开多`);
+                restDatas("up");
+                await teadeBuy(allPoints - 1, true);
+            }
+
+            onGridPoint = false;
+            return;
+        } else if (_currentPointIndex === 1) {
+            if (isSqueeze) {
+                // 挤压时，平仓一次后续经过1，2点不再平仓
+                if (len === 2) {
+                    await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
+                }
+            } else {
+                let _times = times[allPoints - 1];
+                console.log(`交替穿过${allPoints}次交易点，并且当前index为1，当前交易点的仓位加倍`);
+                if (len === 1) {
+                    promises.push(teadeSell(_times));
+                } else {
+                    promises.push(closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex), teadeSell(_times));
+                }
+                await Promise.all(promises);
+            }
+        } else if (_currentPointIndex === 2) {
+            if (isSqueeze) {
+                // 挤压时，平仓一次后续经过1，2点不再平仓
+                if (len === 2) {
+                    await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
+                }
+            } else {
+                let _times = times[allPoints - 1];
+                console.log(`交替穿过${allPoints}次交易点，并且当前index为2，当前交易点的仓位加倍`);
+                if (len === 1) {
+                    promises.push(teadeBuy(_times));
+                } else {
+                    promises.push(closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex), teadeBuy(_times));
+                }
+                await Promise.all(promises);
+            }
         }
     } else {
         console.log(
@@ -1720,8 +1635,6 @@ const startRunGrid = async (_prePrice, _currentPrice) => {
         }
     }
 
-    // throttlestartRunGridlog(_currentPointIndex, gridPoints);
-
     // 价格到了某个网格交易点
     if (_currentPointIndex !== -1) {
         if (currentPointIndex !== _currentPointIndex) {
@@ -1735,10 +1648,16 @@ const startRunGrid = async (_prePrice, _currentPrice) => {
             prePointIndex = currentPointIndex;
             currentPointIndex = _currentPointIndex;
 
-            setHistoryEntryPoints(currentPointIndex); // 实时交易点历史记录
+            // 挤压状态不添加 point 历史记录
+            !isSqueeze && setHistoryEntryPoints(currentPointIndex); // 实时交易点历史记录
             await gridPointTrading2(); // 交易
         } else {
             // 相同交易点
+            if (preSqueeze && !isSqueeze && !hasUpDownVal(Object.values(tradingDatas))) {
+                console.log("前面处于挤压状态，当前不挤压，并路过相同交一点");
+                setHistoryEntryPoints(currentPointIndex); // 实时交易点历史记录
+                await gridPointTrading2(); // 交易
+            }
         }
     }
 };
@@ -1777,7 +1696,6 @@ const gridPointClearTrading = async (_currentPrice) => {
             // 继续跑马丁网格，反着开
             restDatas("down");
             await teadeSell(1, true);
-            firsttradeTime = Date.now(); // 重置 firsttradeTime
             resetTradingDatas();
 
             onGridPoint = false;
@@ -1822,7 +1740,6 @@ const gridPointClearTrading = async (_currentPrice) => {
             // 继续跑马丁网格，反着开
             restDatas("up");
             await teadeBuy(1, true);
-            firsttradeTime = Date.now(); // 重置 firsttradeTime
             resetTradingDatas();
             onGridPoint = false;
             return;
@@ -1973,9 +1890,10 @@ const startWebSocket = async () => {
                 isNewLine, // 这根K线是否完结(是否已经开始下一根K线)
                 takerBuyBaseAssetVolume: Number(takerBuyBaseAssetVolume), // 主动买入的成交量
             };
-            _refreshPrice(curKLine);
+            await _refreshPrice(curKLine);
         }
         // 相等的话直接退出，因为它到不了任何交易点，继续执行也没有意义
+        // BBK 挤压状态，不跑网格
         if (isLoading() || prePrice === currentPrice) {
             return;
         } else {
@@ -2139,8 +2057,6 @@ function saveGlobalVariables() {
                 gridPoints, // 网格每个交易点
                 gridHight: gridPoints[2] - gridPoints[1],
                 overNumberOrderArr, // 超过 overNumber 手数的单子集合
-                isOldOrder, // 是不是老单子
-                oldOrder,
                 isProfitRun,
                 gridPoints2,
                 testMoney,

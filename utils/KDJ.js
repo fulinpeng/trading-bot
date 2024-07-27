@@ -7846,7 +7846,7 @@ function calculateKDJ(data, period = 25, kPeriod = 3, dPeriod = 3) {
         return { k, d, j };
     });
 
-    return kdj;
+    return kdj[kdj.length - 1];
 }
 function calculateKDJs(data, period = 25, kPeriod = 3, dPeriod = 3) {
     // 初始化K值和D值为50

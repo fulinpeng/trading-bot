@@ -8,7 +8,7 @@ const WebSocket = require("ws"); // WebSocket库
 // const { SocksProxyAgent } = require("socks-proxy-agent");
 // const Binance = require("node-binance-api");
 const fs = require("fs");
-const { getDate, hasUpDownVal, calculateAverage, calculateSlope } = require("./utils/functions.js");
+const { getDate, hasUpDownVal, calculateAverage, getLastFromArr, calculateSlope } = require("./utils/functions.js");
 const { calculateBBKeltnerSqueeze } = require("./utils/BBKeltner.js");
 const { calculateKDJ, calculateKDJs } = require("./utils/KDJ.js");
 const config = require("./config-BBKeltner-KDJ.js");
@@ -128,7 +128,6 @@ let confirmNum = 3; // 下单后确认时间（分钟）
 let historyClosePrices = []; // 历史收盘价，用来计算EMA
 let allPositionDetail = {}; // 当前仓位信息
 let candleHeight = 0; // 蜡烛高度
-let curProfitMaxPrice = 0; // 最高价格
 let readyTradingDirection = "hold"; // 是否准备开单
 let isReadyStopProfit = false; // 是否准备止盈
 
@@ -240,8 +239,8 @@ const signRequest = (params) => {
     const queryString = Object.entries({ ...params, timestamp })
         .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
         .join("&");
-    const signatrue = crypto.createHmac("sha256", secretKey).update(queryString).digest("hex");
-    return `${queryString}&signatrue=${signatrue}`;
+    const signature = crypto.createHmac("sha256", secretKey).update(queryString).digest("hex");
+    return `${queryString}&signature=${signature}`;
 };
 
 // 获取K线数据
@@ -256,13 +255,13 @@ const getKLineData = async (symbol, interval, limit) => {
         });
         // 解析K线数据
         return response.data.map((item) => ({
-            openTime: item[0], // 开盘时间
+            openTime: getDate(item[0]), // 开盘时间
             open: parseFloat(item[1]), // 开盘价
             high: parseFloat(item[2]), // 最高价
             low: parseFloat(item[3]), // 最低价
             close: parseFloat(item[4]), // 收盘价(当前K线未结束的即为最新价)
             volume: parseFloat(item[5]), // 成交量
-            closeTime: item[6], // 收盘时间
+            closeTime: getDate(item[6]), // 收盘时间
             quoteAssetVolume: parseFloat(item[7]), // 成交额
             numberOfTrades: item[8], // 成交笔数
             takerBuyBaseAssetVolume: parseFloat(item[9]), // 主动买入成交量
@@ -413,12 +412,13 @@ const refreshKLine = async (curKLine) => {
     setEveryIndex([...historyClosePrices]);
 
     const { B2basis, B2upper, B2lower, Kma, Kupper, Klower, squeeze } = calculateBBKeltnerSqueeze([...kLineData], 14);
-    const kdjs = calculateKDJs([...kLineData]);
+    const kdjs = calculateKDJs([...kLineData], 14);
     // console.log("🚀 ~ file: gridBot-doge7-0-4-BBKeltner-KDJ.js:418 ~ refreshKLine ~ kdjs:", kdjs);
     const kdj = kdjs[kdjs.length - 1];
     if (isTest) {
         console.log(
-            "🚀 ~ 各种指标: [B2upper, Kupper], [B2lower, Klower], squeeze, kdjs:",
+            "🚀 ~ 各种指标: curKLine, [B2upper, Kupper], [B2lower, Klower], squeeze, kdjs:",
+            curKLine,
             [getLastFromArr(B2upper, 1)[0], getLastFromArr(Kupper, 1)[0]],
             [getLastFromArr(B2lower, 1)[0], getLastFromArr(Klower, 1)[0]],
             getLastFromArr(squeeze, 1)[0],
@@ -434,18 +434,14 @@ const refreshKLine = async (curKLine) => {
     const isSqueeze = getLastFromArr(squeeze, 1)[0];
 
     // 准备开仓：挤压状态时，判断 开单方向
-    // 已有仓位也可以先判断下次新单的方向
-    if (isSqueeze && readyTradingDirection === "hold") {
-        judgeTradingDirection(curB2basis, curB2upper, curB2lower, curKma, curkLine, isSqueeze, kdj);
-
-        console.log(
-            "🚀 ~ 准备开仓：判断开单方向 readyTradingDirection:",
-            readyTradingDirection,
-            hasOrder ? "已有仓位也可以先判断下次新单的方向" : "",
-        );
-    }
-    // 开仓：没有仓位就根据 readyTradingDirection 开单
+    // 已有仓位的情况，不好办，还是算了吧
     if (!hasOrder) {
+        if (isSqueeze && readyTradingDirection === "hold") {
+            judgeTradingDirection(curB2basis, curB2upper, curB2lower, curKma, curkLine, isSqueeze, kdj);
+
+            console.log("🚀 ~ 准备开仓：判断开单方向 readyTradingDirection:", readyTradingDirection);
+        }
+        // 开仓：没有仓位就根据 readyTradingDirection 开单
         // 开单完成后会重置 readyTradingDirection
         if (readyTradingDirection !== "hold") {
             await judgeAndTrading(curB2basis, curB2upper, curB2lower, curKma, curkLine, isSqueeze, kdj);
@@ -456,13 +452,20 @@ const refreshKLine = async (curKLine) => {
         // 判断并准备止盈
         if (!isReadyStopProfit) {
             judgeReadyStopProfit(kdj);
+            // 修改网格止盈点，后面的逻辑会再次拔高止盈点的
+            if (tradingInfo.trend === "up") {
+                gridPoints[1] = currentPrice;
+            }
+            if (tradingInfo.trend === "down") {
+                gridPoints[0] = currentPrice;
+            }
             console.log("断并准备止盈 ~ isReadyStopProfit:", isReadyStopProfit);
         }
-        // 准备止盈后，根据kdj指标平仓 >>>> 此时是否需要采用网格止盈+利润奔跑要快点能抓取更多利润，避免1h后利润回吐太多
+        // 准备止盈后，根据kdj指标平仓，此时是否需要采用网格止盈+利润奔跑要快点能抓取更多利润，避免1h级别后续利润回吐太多
         // 已经在平仓了（网格先判断出平仓并正在平仓）就不再进入下面逻辑
         if (isReadyStopProfit && !loadingCloseOrder) {
             console.log("🚀 ~ file: gridBot-doge7-0-4-BBKeltner-KDJ.js:473 ~ refreshKLine ~ 准备止盈后就开启盈利保护:");
-            modGridPoints(); // 准备止盈后就开启盈利保护
+            (kdj.j < 10 || kdj.j > 90) && modGridPoints(); // 准备止盈后就开启盈利保护
             await judgeClosePosition(kdjs);
         }
     }
@@ -472,13 +475,13 @@ const refreshKLine = async (curKLine) => {
 const judgeReadyStopProfit = async (kdj) => {
     if (tradingInfo.trend === "up") {
         // 当KDJ蓝色信号线大于80以上位阶, 做好停利的准备
-        if (kdj.j > 80) {
+        if (kdj.j > 90) {
             isReadyStopProfit = true;
         }
     }
     if (tradingInfo.trend === "down") {
         // 当KDJ蓝色信号线小于20以下位阶, 做好停利的准备
-        if (kdj.j < 20) {
+        if (kdj.j < 10) {
             isReadyStopProfit = true;
         }
     }
@@ -489,7 +492,7 @@ const judgeClosePosition = async (kdjs) => {
     const [preKdj, curKdj] = getLastFromArr(kdjs, 2);
     if (tradingInfo.trend === "up") {
         // 等到KDJ蓝色信号线从80以上位阶下穿到小于80以下时, 进行多单平仓
-        if (preKdj >= 80 && curKdj < 80) {
+        if (preKdj >= 90 && curKdj < 90) {
             console.log("蓝色信号线从80以上位阶下穿到小于80以下时, 进行多单平仓 平多");
             // 平多
             await closeOrder("SELL", tradingInfo.quantity, () => {
@@ -563,8 +566,8 @@ const judgeTradingDirection = (curB2basis, curB2upper, curB2lower, curKma, curkL
     // 第二, 在挤压的范围内某一根K棒收盘后收在布林通道的下线, 并且KDJ蓝色信号线小于20以下位阶
     // 第三, 此时准备开多
 
-    if (curkLine.close < curB2lower && kdj.j < 20) {
-        console.log("curkLine.close < curB2lower && kdj.j < 20:", curkLine.close, curB2lower, kdj.j);
+    if (curkLine.close < curB2lower && kdj.j < 10) {
+        console.log("curkLine.close < curB2lower && kdj.j < 10:", curkLine.close, curB2lower, kdj.j);
         // 有订单时候只设置 下一个订单方向 还不能开单
         readyTradingDirection = "up";
         return;
@@ -572,8 +575,8 @@ const judgeTradingDirection = (curB2basis, curB2upper, curB2lower, curKma, curkL
     // 第一, 出现蓝底范围, 视为挤压
     // 第二, 在挤压的范围内某一根K棒收盘后收在布林通道的上线, 并且KDJ蓝色信号线大于80以上位阶
     // 第三, 此时准备开空
-    if (curkLine.close > curB2upper && kdj.j > 80) {
-        console.log("curkLine.close > curB2upper && kdj.j > 80:", curkLine.close, curB2upper, kdj.j);
+    if (curkLine.close > curB2upper && kdj.j > 90) {
+        console.log("curkLine.close > curB2upper && kdj.j > 90:", curkLine.close, curB2upper, kdj.j);
         // 有订单时候只设置 下一个订单方向 还不能开单
         readyTradingDirection = "down";
         return;
@@ -599,10 +602,9 @@ const judgeAndTrading = async (curB2basis, curB2upper, curB2lower, curKma, curkL
         case "up":
             // 当KDJ蓝色信号线大于20以上位阶
             // 并且K棒要收涨
-            if (kdj.j > 20 && curkLine.close > curkLine.open) {
+            if (kdj.j > 10 && curkLine.close > curkLine.open) {
                 await teadeBuy();
                 setGridPoints("up", stopLoss, stopProfit);
-                curProfitMaxPrice = currentPrice;
                 readyTradingDirection = "hold";
                 isReadyStopProfit = false;
             }
@@ -610,10 +612,9 @@ const judgeAndTrading = async (curB2basis, curB2upper, curB2lower, curKma, curkL
         case "down":
             // 当KDJ蓝色信号线小于80以下位阶
             // 并且K棒要收跌
-            if (kdj.j < 80 && curkLine.close < curkLine.open) {
+            if (kdj.j < 90 && curkLine.close < curkLine.open) {
                 await teadeSell();
                 setGridPoints("down", stopLoss, stopProfit);
-                curProfitMaxPrice = currentPrice;
                 readyTradingDirection = "hold";
                 isReadyStopProfit = false;
             }
@@ -629,7 +630,7 @@ const calculateTradingSignal = (curB2basis, curB2upper, curB2lower, curKma, curk
     const min = Math.min(kLine1.low, kLine2.low, kLine3.low);
 
     // 当KDJ蓝色信号线大于20以上位阶, 并且K棒要收涨, 收盘价进场
-    if (readyTradingDirection === "up" && kdj.j > 20 && kLine3.close > kLine3.open) {
+    if (readyTradingDirection === "up" && kdj.j > 10 && kLine3.close > kLine3.open) {
         // 计算atr
         const { atr } = calculateATR(getLastFromArr(kLineData, 100), 14);
         console.log("🚀 ~ atr:", atr, candleHeight);
@@ -640,7 +641,7 @@ const calculateTradingSignal = (curB2basis, curB2upper, curB2lower, curKma, curk
         };
     }
     // 当KDJ蓝色信号线小于80以上位阶, 并且K棒要收跌, 收盘价进场
-    if (readyTradingDirection === "down" && kdj.j < 70 && kLine3.close < kLine3.open) {
+    if (readyTradingDirection === "down" && kdj.j < 90 && kLine3.close < kLine3.open) {
         // 计算atr
         const { atr } = calculateATR(getLastFromArr(kLineData, 100), 14);
         console.log("🚀 ~ atr:", atr, candleHeight);
@@ -650,6 +651,9 @@ const calculateTradingSignal = (curB2basis, curB2upper, curB2lower, curKma, curk
             stopProfit: currentPrice / 2, // 止盈大一点
         };
     }
+    return {
+        trend: "hold",
+    };
 };
 
 const setEveryIndex = (prices) => {
@@ -1272,9 +1276,11 @@ const modGridPoints = () => {
 
     loadingNewPoints = true;
 
+    const [point1, point2] = gridPoints;
+
     if (tradingInfo.trend === "up") {
-        let stopLoss = _currentPrice - (_currentPrice - tradingInfo.orderPrice) * profitProtectRate;
-        let stopProfit = _currentPrice + candleHeight / 10; // 止盈
+        let stopLoss = tradingInfo.orderPrice + (point2 - tradingInfo.orderPrice) * profitProtectRate; // 止损
+        let stopProfit = point2 + candleHeight / 2; // 止盈
         gridPoints = [stopLoss, stopProfit];
 
         const _testMoney =
@@ -1286,8 +1292,9 @@ const modGridPoints = () => {
     }
 
     if (tradingInfo.trend === "down") {
-        let stopLoss = tradingInfo.orderPrice - (tradingInfo.orderPrice - _currentPrice) * profitProtectRate; // 止损
-        let stopProfit = _currentPrice - candleHeight / 10; // 止盈
+        let stopLoss = tradingInfo.orderPrice - (tradingInfo.orderPrice - point1) * profitProtectRate; // 止损
+
+        let stopProfit = point1 - candleHeight / 2; // 止盈
         gridPoints = [stopProfit, stopLoss];
 
         const _testMoney =
@@ -1480,7 +1487,7 @@ const gridPointClearTrading = async (_currentPrice) => {
                 console.log("平多完成");
                 hasOrder = false;
                 onGridPoint = false;
-                readyTradingDirection = "hold";
+                // readyTradingDirection = "hold";
                 isReadyStopProfit = false;
 
                 // 发送邮件
@@ -1517,7 +1524,7 @@ const gridPointClearTrading = async (_currentPrice) => {
                 console.log("平空完成");
                 hasOrder = false;
                 onGridPoint = false;
-                readyTradingDirection = "hold";
+                // readyTradingDirection = "hold";
                 isReadyStopProfit = false;
 
                 // 发送邮件
@@ -1721,15 +1728,6 @@ function getLastKlines(num = 3) {
     const len = kLineData.length;
     while (num > 0) {
         res.push(kLineData[len - num]);
-        num--;
-    }
-    return res;
-}
-function getLastFromArr(arr, num = 3) {
-    let res = [];
-    const len = arr.length;
-    while (num > 0) {
-        res.push(arr[len - num]);
         num--;
     }
     return res;
@@ -2479,7 +2477,7 @@ const startWebSocket = async () => {
             return;
         } else {
             // 网格模式止盈/止损
-            isReadyStopProfit && (await gridPointClearTrading(currentPrice)); // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
+            await gridPointClearTrading(currentPrice); // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
         }
     });
     // 添加 'close' 事件处理程序

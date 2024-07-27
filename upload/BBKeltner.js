@@ -49,6 +49,7 @@ function trueRange(prices) {
     });
 }
 
+// 非挤压状态
 function calculateBBKeltnerSqueeze(prices, length = 20, B2mult = 2.0, Kmult = 1.5) {
     const closePrices = prices.map((price) => price.close); // 获取所有的收盘价
 
@@ -60,7 +61,7 @@ function calculateBBKeltnerSqueeze(prices, length = 20, B2mult = 2.0, Kmult = 1.
     const B2lower = B2basis.map((val, idx) => val - B2dev[idx]); // 下轨
 
     // 计算 Keltner 通道
-    const Kma = sma(closePrices, length); // 中轨为指数移动平均线 (EMA)
+    const Kma = B2basis; // 中轨为指数移动平均线 (EMA)
     const tr = trueRange(prices); // 真实范围 (True Range)
     const Krangema = sma(tr, length); // 真实范围的 EMA
 
@@ -68,7 +69,7 @@ function calculateBBKeltnerSqueeze(prices, length = 20, B2mult = 2.0, Kmult = 1.
     const Klower = Kma.map((val, idx) => val - Krangema[idx] * Kmult); // 下轨
 
     // 识别布林带和 Keltner 通道交叉 (Squeeze)
-    const squeeze = B2upper.map((val, idx) => val <= Kupper[idx] && B2lower[idx] >= Klower[idx]);
+    const squeeze = B2upper.map((val, idx) => val > Kupper[idx] && B2lower[idx] < Klower[idx]);
 
     // 返回计算结果
     return {
@@ -82,6 +83,51 @@ function calculateBBKeltnerSqueeze(prices, length = 20, B2mult = 2.0, Kmult = 1.
     };
 }
 
+// 计算 BB-Keltner Squeeze
+// const result = calculateBBKeltnerSqueeze(prices);
+
+// console.log("B2basis:", result.B2basis);
+// console.log("B2upper:", result.B2upper);
+// console.log("B2lower:", result.B2lower);
+// console.log("Kma:", result.Kma);
+// console.log("Kupper:", result.Kupper);
+// console.log("Klower:", result.Klower);
+// console.log("Squeeze:", result.squeeze);
+
+// 反向开仓的挤压状态
+function getFanSqueeze(prices, length = 20, B2mult = 2.0, Kmult = 1.5) {
+    const closePrices = prices.map((price) => price.close); // 获取所有的收盘价
+
+    // 计算布林带 (Bollinger Bands)
+    const B2basis = sma(closePrices, length); // 中轨为简单移动平均线 (SMA)
+    const B2dev = stdev(closePrices, length).map((val) => val * B2mult); // 上下轨为均值 ± 2倍标准差
+
+    const B2upper = B2basis.map((val, idx) => val + B2dev[idx]); // 上轨
+    const B2lower = B2basis.map((val, idx) => val - B2dev[idx]); // 下轨
+
+    // 计算 Keltner 通道
+    const Kma = B2basis; // 中轨为指数移动平均线 (EMA)
+    const tr = trueRange(prices); // 真实范围 (True Range)
+    const Krangema = sma(tr, length); // 真实范围的 EMA
+
+    const Kupper = Kma.map((val, idx) => val + Krangema[idx] * Kmult); // 上轨
+    const Klower = Kma.map((val, idx) => val - Krangema[idx] * Kmult); // 下轨
+
+    // 识别布林带和 Keltner 通道交叉 (Squeeze)
+    const squeeze = B2upper.map((val, idx) => val < Kupper[idx] && B2lower[idx] > Klower[idx]);
+
+    // 返回计算结果
+    return {
+        B2basis,
+        B2upper,
+        B2lower,
+        Kma,
+        Kupper,
+        Klower,
+        squeeze,
+    };
+}
 module.exports = {
     calculateBBKeltnerSqueeze,
+    getFanSqueeze,
 };
