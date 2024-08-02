@@ -292,7 +292,7 @@ const config = {
         xAngle: 10,
     },
     op: {
-        howManyCandleHeight: 3,
+        howManyCandleHeight: 15,
         numForAverage: 9,
         SYMBOL: "opUSDT".toLowerCase(), // 交易对
         base: "USDT",
@@ -310,7 +310,7 @@ const config = {
         orderCountLimit: 5, // 同时存在多少订单时全平仓
         acrossPointLimit: 4, // 跨到第4个交易点时全平仓
         EMA_PERIOD: [6, 14], // EMA计算周期
-        klineStage: 5, // k线级别
+        klineStage: 1, // k线级别
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //

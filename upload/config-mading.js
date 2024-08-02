@@ -5,7 +5,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "UNIUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -24,7 +24,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         backIndex: 99,
         profitProtectRate: 0.6,
@@ -35,7 +35,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "WLDUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -54,7 +54,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -64,7 +64,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "DOGEUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -83,7 +83,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -93,7 +93,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "FILUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -112,7 +112,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -122,7 +122,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "AVAXUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -141,7 +141,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -151,7 +151,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "peopleUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -170,7 +170,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -180,7 +180,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "injUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -199,7 +199,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -209,7 +209,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "ordiUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -228,7 +228,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -238,7 +238,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "ethUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -257,7 +257,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -267,7 +267,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "btcUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -286,7 +286,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -296,7 +296,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "opUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -315,7 +315,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -325,7 +325,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "yggUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -344,7 +344,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -354,7 +354,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "arbUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -373,7 +373,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -383,7 +383,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "aevoUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -402,7 +402,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -412,7 +412,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "omUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -431,7 +431,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -441,7 +441,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "solUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -460,7 +460,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -470,7 +470,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "wifUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -489,7 +489,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -499,7 +499,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "BLURUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -518,7 +518,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -528,7 +528,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "zkUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -547,7 +547,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -557,7 +557,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "1000pepeUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -576,7 +576,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -586,7 +586,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "aliceUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -605,7 +605,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,
@@ -615,7 +615,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "HFTUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 7, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -634,7 +634,7 @@ const config = {
         errorsFolder: "errors",
         times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
-        overNumber:17,
+        overNumber: 17,
         stopLossRate: 1.75, // 最好小于1
         profitProtectRate: 0.6,
         xAngle: 10,

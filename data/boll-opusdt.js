@@ -1,1 +1,0 @@
-module.exports = {"currentPrice":1.7962,"prePrice":1.7962,"tradingInfo":{"trend":"down","side":"SELL","orderPrice":1.7962,"quantity":557,"times":0},"gridPoints":[1.7926075998207391,1.8062177745957875],"candleHeight":0.0039860000000000095,"isFirstGetProfit":true}

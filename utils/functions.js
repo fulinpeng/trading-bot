@@ -218,6 +218,14 @@ function calculateHighLow(klineData, period = 25) {
         lowestLow,
     };
 }
+function getSequenceArr(diff, num) {
+    let arr = [1];
+    for (let i = 0; i < num; i++) {
+        arr.push(arr[arr.length - 1] + diff);
+    }
+    return arr;
+}
+
 module.exports = {
     debounce,
     throttle,
@@ -232,4 +240,5 @@ module.exports = {
     calculateSlope,
     getLastFromArr,
     calculateHighLow,
+    getSequenceArr,
 };

@@ -528,7 +528,7 @@ const config = {
         numForAverage: 9,
         SYMBOL: "zkUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        availableMoney: 10, // 可用的USDT数量
+        availableMoney: 6, // 可用的USDT数量
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         leverage: 1, // 杠杆倍数
         gridCount: 24, // 多少个格子
@@ -545,7 +545,7 @@ const config = {
         klineStage: 1, // k线级别
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
-        times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
+        // times: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536], //
         profitRate: 2,
         overNumber: 17,
         stopLossRate: 1.75, // 最好小于1

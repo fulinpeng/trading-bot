@@ -173,6 +173,59 @@ function calculateSlope(angleInDegrees) {
     return Math.tan(angleInRadians);
 }
 
+function getLastFromArr(arr, num = 3) {
+    // let res = [];
+    // const len = arr.length;
+    // while (num > 0) {
+    //     res.push(arr[len - num]);
+    //     num--;
+    // }
+    // return res;
+    return arr.length <= num ? arr : arr.slice(num * -1);
+}
+/**
+ * 计算最近25根K线的最高点和最低点
+ * @param {Array} klineData - K线数据数组
+ * @returns {Object} 包含最高点和最低点的对象
+ */
+function calculateHighLow(klineData, period = 25) {
+    if (klineData.length < period) {
+        throw new Error(`K线数据长度必须至少为${period}`);
+    }
+
+    // 取最近25根K线数据
+    const recentData = klineData.slice(-period);
+
+    // 初始化最高价和最低价
+    let highestHigh = Number.MIN_VALUE;
+    let lowestLow = Number.MAX_VALUE;
+
+    // 遍历最近25根K线数据，找出最高价和最低价
+    recentData.forEach((kline) => {
+        const high = parseFloat(kline.high);
+        const low = parseFloat(kline.low);
+
+        if (high > highestHigh) {
+            highestHigh = high;
+        }
+        if (low < lowestLow) {
+            lowestLow = low;
+        }
+    });
+
+    return {
+        highestHigh,
+        lowestLow,
+    };
+}
+function getSequenceArr(diff, num) {
+    let arr = [1];
+    for (let i = 0; i < num; i++) {
+        arr.push(arr[arr.length - 1] + diff);
+    }
+    return arr;
+}
+
 module.exports = {
     debounce,
     throttle,
@@ -185,4 +238,7 @@ module.exports = {
     isDecreasing,
     isDifferenceWithinThreshold,
     calculateSlope,
+    getLastFromArr,
+    calculateHighLow,
+    getSequenceArr,
 };

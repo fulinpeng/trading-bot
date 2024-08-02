@@ -904,8 +904,8 @@ const getMinH = (curP, h) => {
  *         1. 反正不知道到底跑了多少个点，就按最大的来存 __historyEntryPoints 经过几次，就把几次存到 overNumberOrderArr 中，h也存起来，重新开单
  */
 const getHistoryData = () => {
-    if (fs.existsSync(`./data/${isTest ? "test" : "prod"}-mading-${SYMBOL}.js`)) {
-        let historyDatas = require(`./data/${isTest ? "test" : "prod"}-mading-${SYMBOL}.js`);
+    if (fs.existsSync(`./data/${isTest ? "test" : ""}mading-${SYMBOL}.js`)) {
+        let historyDatas = require(`./data/${isTest ? "test" : ""}mading-${SYMBOL}.js`);
         const {
             historyEntryPoints: __historyEntryPoints,
             currentPrice: __currentPrice, // 记录当前价格
@@ -2046,9 +2046,7 @@ const createLogs = () => {
     }
 
     // 重定向 console.log 到文件
-    logStream = fs.createWriteStream(`${logsFolder}/${isTest ? "test" : "prod"}-mading-${SYMBOL}-${getDate()}.log`, {
-        flags: "a",
-    });
+    logStream = fs.createWriteStream(`${logsFolder}/mading-${SYMBOL}-${getDate()}.log`, { flags: "a" });
     // 保存原始的 console.log 函数
     const originalConsoleLog = console.log;
 
@@ -2075,10 +2073,7 @@ const createLogs = () => {
         fs.mkdirSync(errorsFolder);
     }
     // 重定向 console.error 到文件
-    errorStream = fs.createWriteStream(
-        `${errorsFolder}/${isTest ? "test" : "prod"}-mading-${SYMBOL}-${getDate()}.error`,
-        { flags: "a" },
-    );
+    errorStream = fs.createWriteStream(`${errorsFolder}/mading-${SYMBOL}-${getDate()}.error`, { flags: "a" });
     // 保存原始的 console.error 函数
     const originalConsoleError = console.error;
 
@@ -2170,7 +2165,7 @@ function saveGlobalVariables() {
                 gridPoints2,
                 testMoney,
             });
-            fs.writeFileSync(`data/${isTest ? "test" : "prod"}-mading-${SYMBOL}.js`, `module.exports = ${data}`, {
+            fs.writeFileSync(`data/${isTest ? "test" : ""}mading-${SYMBOL}.js`, `module.exports = ${data}`, {
                 flag: "w",
             });
             // console.log(`Global variables saved to data/${SYMBOL}.js`);

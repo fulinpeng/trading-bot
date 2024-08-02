@@ -292,7 +292,7 @@ const config = {
         xAngle: 10,
     },
     op: {
-        howManyCandleHeight: 5,
+        howManyCandleHeight: 15,
         numForAverage: 9,
         SYMBOL: "opUSDT".toLowerCase(), // 交易对
         base: "USDT",

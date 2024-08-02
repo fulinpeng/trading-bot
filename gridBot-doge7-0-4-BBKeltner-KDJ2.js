@@ -12,7 +12,7 @@ const { getDate, hasUpDownVal } = require("./utils/functions.js");
 const { calculateATR } = require("./utils/atr.js");
 const { calculateBBKeltnerSqueeze } = require("./utils/BBKeltner.js");
 const { calculateKDJ, calculateKDJs } = require("./utils/KDJ.js");
-const { calculateCandleHeight, isBigLine, isBigAndYang, isBigAndYin } = require("./utils/kLineTools.js");
+const { calculateCandleHeight } = require("./utils/kLineTools.js");
 const config = require("./config-BBKeltner-KDJ.js");
 const { calculateRSI } = require("./utils/rsi.js");
 const { calculateSimpleMovingAverage, calculateEMA } = require("./utils/ma.js");
@@ -28,7 +28,7 @@ const {
     numForAverage,
     maxRepeatNum,
     mixReversetime,
-    howManyCandleHeight,
+    howManyCandleHeight = 15,
     minGridHight,
     maxGridHight,
     stopLossRate,
@@ -41,7 +41,7 @@ const {
     errorsFolder,
     profitProtectRate,
     xAngle,
-} = config["eth"];
+} = config["op"];
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
@@ -133,7 +133,7 @@ let candleHeight = 0; // 蜡烛高度
 let readyTradingDirection = "hold"; // 是否准备开单
 let isReadyStopProfit = false; // 是否准备止盈
 let isProfitRun = false;
-let KDJ = isTest ? [40, 60] : [20, 80];
+let KDJ = isTest ? [40, 60] : [10, 90];
 
 const maxKLinelen = 200; // 储存kLine最大数量
 const STD_MULTIPLIER = 2; // 用来确定布林带的宽度
@@ -361,7 +361,6 @@ const refreshKLine = async (curKLine) => {
         // 已经在平仓了（网格先判断出平仓并正在平仓）就不再进入下面逻辑
         if (isReadyStopProfit && !loadingCloseOrder) {
             console.log("开始止盈");
-            (kdj.j < KDJ[0] || kdj.j > KDJ[1]) && modGridPoints(); // 准备止盈后就开启盈利保护
             await judgeClosePosition(kdjs);
         }
     }
@@ -462,7 +461,7 @@ const judgeTradingDirection = (curB2basis, curB2upper, curB2lower, curKma, curkL
     // 第二, 在挤压的范围内某一根K棒收盘后收在布林通道的下线, 并且KDJ蓝色信号线小于20以下位阶
     // 第三, 此时准备开多
 
-    if (curkLine.close < curB2lower && isBigAndYin(curkLine, 0.4) && kdj.j < KDJ[0]) {
+    if (curkLine.close < curB2lower && kdj.j < KDJ[0]) {
         // 有订单时候只设置 下一个订单方向 还不能开单
         readyTradingDirection = "up";
         return;
@@ -470,7 +469,7 @@ const judgeTradingDirection = (curB2basis, curB2upper, curB2lower, curKma, curkL
     // 第一, 出现蓝底范围, 视为挤压
     // 第二, 在挤压的范围内某一根K棒收盘后收在布林通道的上线, 并且KDJ蓝色信号线大于80以上位阶
     // 第三, 此时准备开空
-    if (curkLine.close > curB2upper && isBigAndYang(curkLine, 0.4) && kdj.j > KDJ[1]) {
+    if (curkLine.close > curB2upper && kdj.j > KDJ[1]) {
         // 有订单时候只设置 下一个订单方向 还不能开单
         readyTradingDirection = "down";
         return;
@@ -495,7 +494,7 @@ const judgeAndTrading = async (curB2basis, curB2upper, curB2lower, curKma, curkL
     // 开单
     switch (trend) {
         case "up":
-            if (kdj.j > KDJ[0] && isBigAndYang(curkLine, 0.4)) {
+            if (kdj.j > KDJ[0]) {
                 await teadeBuy();
                 setGridPoints("up", stopLoss, stopProfit);
                 readyTradingDirection = "hold";
@@ -504,7 +503,7 @@ const judgeAndTrading = async (curB2basis, curB2upper, curB2lower, curKma, curkL
             }
             break;
         case "down":
-            if (kdj.j < KDJ[1] && isBigAndYin(curkLine, 0.4)) {
+            if (kdj.j < KDJ[1]) {
                 await teadeSell();
                 setGridPoints("down", stopLoss, stopProfit);
                 readyTradingDirection = "hold";
@@ -526,21 +525,21 @@ const calculateTradingSignal = (curB2basis, curB2upper, curB2lower, curKma, curk
     // 当KDJ蓝色信号线大于20以上位阶, 并且K棒要收涨, 收盘价进场
     if (readyTradingDirection === "up" && kdj.j > KDJ[0] && kLine3.close > kLine3.open) {
         // 计算atr
-        const { atr } = calculateATR(getLastFromArr(kLineData, 100), 14);
+        // const { atr } = calculateATR(getLastFromArr(kLineData, 100), 14);
         return {
             trend: "up",
-            stopLoss: min - atr, // >>>>>> 这里有插针后引线过长导致止损过长的问题
-            stopProfit: kLine3.close + candleHeight * howManyCandleHeight, // 止盈大一点
+            stopLoss: kLine3.close - kLine3.close * 0.01, // min - atr, // >>>>>> 这里有插针后引线过长导致止损过长的问题
+            stopProfit: kLine3.close + kLine3.close * 0.01 * howManyCandleHeight, // 止盈大一点
         };
     }
     // 当KDJ蓝色信号线小于80以上位阶, 并且K棒要收跌, 收盘价进场
     if (readyTradingDirection === "down" && kdj.j < KDJ[1] && kLine3.close < kLine3.open) {
         // 计算atr
-        const { atr } = calculateATR(getLastFromArr(kLineData, 100), 14);
+        // const { atr } = calculateATR(getLastFromArr(kLineData, 100), 14);
         return {
             trend: "down",
-            stopLoss: max + atr, // >>>>>> 这里有插针后引线过长导致止损过长的问题
-            stopProfit: kLine3.close - candleHeight * howManyCandleHeight, // 止盈大一点
+            stopLoss: kLine3.close + kLine3.close * 0.01, // max + atr, // >>>>>> 这里有插针后引线过长导致止损过长的问题
+            stopProfit: kLine3.close - kLine3.close * 0.01 * howManyCandleHeight, // 止盈大一点
         };
     }
     return {
@@ -1423,678 +1422,6 @@ function getLastFromArr(arr, num = 3) {
     }
     return res;
 }
-// 是否突破前高
-function isBreakPreHigh(max) {
-    const tempLast = kLineData.slice(0, 14);
-    let res = true;
-    for (const item of tempLast) {
-        if (item.high > max) {
-            res = false;
-            break;
-        }
-    }
-    console.log("🚀 ~ file: 是否突破前高 res:", res);
-    return res;
-}
-// 突破前低
-function isBreakPreLow(min) {
-    const tempLast = kLineData.slice(0, 6);
-    let res = true;
-    for (const item of tempLast) {
-        if (item.low < min) {
-            res = false;
-            break;
-        }
-    }
-    console.log("🚀 ~ file: 是否突破前低 res:", res);
-    return res;
-}
-// 是否十字星
-function isCross({ open, close, high, low }, thresholdRatio = 0.35) {
-    // 定义一个阈值比例，用于判断开盘价和收盘价的接近程度
-
-    // 计算开盘价和收盘价之间的差值
-    const bodyRange = Math.abs(open - close);
-
-    // 计算最高价和最低价之间的差值
-    const fullRange = high - low;
-
-    // 判断是否为“十字星”
-    const res = bodyRange <= fullRange * thresholdRatio;
-    console.log("🚀 ~ 是否十字星 ~ res:", res);
-    return res;
-}
-// 是否上垂线
-function isUpCross(kLine) {
-    let res = false;
-    if (isCross(kLine)) {
-        const { open, close, high, low } = kLine;
-        // 上引线
-        let upTail = high - Math.max(open, close);
-        // 下引线
-        let downTail = Math.min(open, close) - low;
-        res = downTail > upTail * 2;
-    } else {
-        res = false;
-    }
-    console.log("🚀 ~ 是否上垂线 ~ res:", res);
-    return res;
-}
-// 是否下垂线
-function isDownCross(kLine, ratio) {
-    let res = false;
-    if (isCross(kLine, ratio)) {
-        const { open, close, high, low } = kLine;
-        // 上引线
-        let upTail = high - Math.max(open, close);
-        // 下引线
-        let downTail = Math.min(open, close) - low;
-        res = upTail > downTail * 2;
-    } else {
-        res = false;
-    }
-    console.log("🚀 ~ 是否下垂线 ~ res:", res);
-    return res;
-}
-
-// 是否顶分
-function isTopFractal(first, middle, last) {
-    // 检查中间一根K线的高点是否是三根K线中最高的
-    const isMiddleHighHighest = middle.high > first.high && middle.high > last.high;
-    // 检查中间一根K线的低点是否是三根K线中最高的
-    const isMiddleLowLowest = middle.low > first.low && middle.low > last.low;
-
-    const midBody = Math.abs(middle.close - middle.open);
-    const firstBody = Math.abs(first.close - first.open);
-    const lastBody = Math.abs(last.close - last.open);
-
-    // 中间k实体不能比两边的大
-    const isMiddleSmaller = midBody < firstBody && midBody < lastBody;
-
-    // 返回是否为顶分形态
-    const res =
-        isCross(middle) &&
-        !isCross(first) &&
-        !isCross(last) &&
-        isMiddleSmaller &&
-        isMiddleHighHighest &&
-        isMiddleLowLowest &&
-        first.open + firstBody / 2 > last.close;
-
-    console.log("🚀 ~ 是否顶分 ~ res:", res);
-    return res;
-}
-// 是否底分
-function isBottomFractal(first, middle, last) {
-    // 检查中间一根K线的高点是否是三根K线中最低的
-    const isMiddleHighHighest = middle.high < first.high && middle.high < last.high;
-    // 检查中间一根K线的低点是否是三根K线中最低的
-    const isMiddleLowLowest = middle.low < first.low && middle.low < last.low;
-
-    const midBody = Math.abs(middle.close - middle.open);
-    const firstBody = Math.abs(first.close - first.open);
-    const lastBody = Math.abs(last.close - last.open);
-
-    // 中间k实体不能比两边的大
-    const isMiddleSmaller = midBody < firstBody && midBody < lastBody;
-
-    // 返回是否为底分形态
-    const res =
-        isCross(middle) &&
-        !isCross(first) &&
-        !isCross(last) &&
-        isMiddleSmaller &&
-        isMiddleHighHighest &&
-        isMiddleLowLowest &&
-        first.close + firstBody / 2 < last.close;
-
-    console.log("🚀 ~ 是否 底分形态 ~ res:", res);
-    return res;
-}
-// 两个k线合并看作下垂线
-function isDownLinesGroup2(kLine2, kLine3) {
-    let res = false;
-    if (isUpCross(kLine2) || isUpCross(kLine3)) {
-        res = false;
-    }
-    res = isDownCross({
-        open: kLine2.open,
-        close: kLine3.close,
-        high: Math.max(kLine2.high, kLine3.high),
-        low: Math.min(kLine2.low, kLine3.low),
-    });
-    console.log("🚀 ~ 是否 两个k线合并看作下垂线 ~ res:", res);
-    return res;
-}
-// 两个k线合并看作上垂线
-function isUpLinesGroup2(kLine2, kLine3) {
-    let res = false;
-    if (isDownCross(kLine2) || isDownCross(kLine3)) {
-        res = false;
-    }
-    res = isUpCross({
-        open: kLine2.open,
-        close: kLine3.close,
-        high: Math.max(kLine2.high, kLine3.high),
-        low: Math.min(kLine2.low, kLine3.low),
-    });
-    console.log("🚀 ~ 是否 两个k线合并看作上垂线 ~ res:", res);
-    return res;
-}
-// 三个k线合并看作下垂线
-function isDownLinesGroup3(kLine1, kLine2, kLine3) {
-    let res = false;
-    res =
-        isDownCross({
-            open: kLine1.open,
-            close: kLine3.close,
-            high: Math.max(kLine1.high, kLine2.high, kLine3.high),
-            low: Math.min(kLine1.low, kLine2.low, kLine3.low),
-        }) && kLine3.close < Math.max(kLine1.close, kLine1.open) - Math.abs(kLine1.close - kLine1.open) / 2;
-    console.log("🚀 ~ 是否 三个k线合并看作下垂线 ~ res:", res);
-    return res;
-}
-// 三根k线合并为上垂线
-function isUpLinesGroup3(kLine1, kLine2, kLine3) {
-    let res = false;
-    res =
-        isUpCross({
-            open: kLine1.open,
-            close: kLine3.close,
-            high: Math.max(kLine1.high, kLine2.high, kLine3.high),
-            low: Math.min(kLine1.low, kLine2.low, kLine3.low),
-        }) && kLine3.close > Math.min(kLine1.close, kLine1.open) + Math.abs(kLine1.close - kLine1.open) / 2;
-    console.log("🚀 ~ 是否 三根k线合并为上垂线 ~ res:", res);
-    return res;
-}
-// 看跌吞没
-function isDownSwallow(kLine2, kLine3) {
-    const res =
-        kLine3.open > kLine3.close && // 阴烛
-        (kLine3.open - kLine3.close) / (kLine3.high - kLine3.low) > 0.52 && // 实体占比大于0.55
-        kLine2.low > kLine3.low &&
-        kLine2.high < kLine3.high;
-    console.log("🚀 ~ 是否 看跌吞没 ~ res:", res);
-    return res;
-}
-// 看涨吞没
-function isUpSwallow(kLine2, kLine3) {
-    const res =
-        kLine3.open < kLine3.close && // 阳烛
-        (kLine3.close - kLine3.open) / (kLine3.high - kLine3.low) > 0.52 && // 实体占比大于0.55
-        kLine2.low > kLine3.low &&
-        kLine2.high < kLine3.high;
-    console.log("🚀 ~ 是否 看涨吞没 ~ res:", res);
-    return res;
-}
-// k3 跌破k1/k2，k3是光k
-function isBreakDown(kLine1, kLine2, kLine3) {
-    const kLine3Mid = (kLine3.open - kLine3.close) / 2;
-    const res =
-        kLine3.close < kLine3.open && kLine3Mid < kLine1.low && kLine3Mid < kLine2.low && isBigLine(kLine3, 0.6);
-    console.log("🚀 ~ 是否 k3 跌破k1/k2，k3是光k ~ res:", res);
-    return res;
-}
-// k3 上破k1/k2，k3是光k
-function isBreakUp(kLine1, kLine2, kLine3) {
-    const kLine3Mid = (kLine3.close - kLine3.open) / 2;
-    const res =
-        kLine3.close > kLine3.open && kLine3Mid > kLine1.high && kLine3Mid > kLine2.high && isBigLine(kLine3, 0.6);
-    console.log("🚀 ~ 是否 k3 上破k1/k2，k3是光k ~ res:", res);
-    return res;
-}
-// 黄昏星
-function isDownStar(kLine1, kLine2, kLine3) {
-    const k1Body = Math.abs(kLine1.close - kLine1.open);
-    const k2Body = Math.abs(kLine2.close - kLine2.open);
-    const k3Body = Math.abs(kLine3.close - kLine3.open);
-    const res =
-        kLine1.open < kLine1.close &&
-        kLine3.open > kLine3.close &&
-        k1Body > k2Body &&
-        k3Body > k2Body &&
-        kLine1.open + k1Body / 2 > kLine3.low &&
-        kLine2.low > kLine3.low &&
-        (isDownSwallow(kLine1, kLine3) || isBigAndYin(kLine3, 0.8) || isDownCross(kLine1, kLine3));
-    console.log("🚀 ~ 是否 黄昏星 ~ res:", res);
-    return res;
-}
-// 启明星
-function isUpStar(kLine1, kLine2, kLine3) {
-    const k1Body = Math.abs(kLine1.close - kLine1.open);
-    const k2Body = Math.abs(kLine2.close - kLine2.open);
-    const k3Body = Math.abs(kLine3.close - kLine3.open);
-    const res =
-        kLine1.open > kLine1.close &&
-        kLine3.open < kLine3.close &&
-        k1Body > k2Body &&
-        k3Body > k2Body &&
-        kLine1.close + k1Body / 2 < kLine3.high &&
-        kLine2.high < kLine3.high &&
-        (isUpSwallow(kLine1, kLine3) || isBigAndYang(kLine3, 0.8) || isUpCross(kLine1, kLine3));
-    console.log("🚀 ~ 是否 启明星 ~ res:", res);
-    return res;
-}
-// 顶顶高
-function isHigherHigh(kLine1, kLine2, kLine3) {
-    const res =
-        kLine1.low < kLine2.low && kLine2.low < kLine3.low && kLine1.high < kLine2.high && kLine2.high < kLine3.high;
-    console.log("🚀 ~ 是否 顶顶高 ~ res:", res);
-    return res;
-}
-// 底底低
-function isLowerLow(kLine1, kLine2, kLine3) {
-    const res =
-        kLine1.low > kLine2.low && kLine2.low > kLine3.low && kLine1.high > kLine2.high && kLine2.high > kLine3.high;
-    console.log("🚀 ~ 是否 底底低 ~ res:", res);
-    return res;
-}
-// 相互吞没
-function isK1Swallow(kLine1, kLine2, kLine3) {
-    const k1Swallow =
-        kLine1.high > kLine2.high && kLine1.high > kLine3.high && kLine1.low < kLine2.low && kLine1.low < kLine3.low;
-    const bodyMax = Math.max(kLine1.close, kLine1.open);
-    const bodyMin = Math.min(kLine1.close, kLine1.open);
-    const k1BodySwallow =
-        bodyMax > Math.max(kLine2.open, kLine2.close, kLine3.open, kLine3.close) &&
-        bodyMin < Math.min(kLine2.open, kLine2.close, kLine3.open, kLine3.close);
-    // const k1TooBig =
-    //     Math.abs(kLine1.open - kLine1.close) -
-    //         Math.abs(kLine2.open - kLine2.close) -
-    //         Math.abs(kLine3.open - kLine3.close) >
-    //     0;
-    // const k2TooBig =
-    //     Math.abs(kLine2.open - kLine2.close) -
-    //         Math.abs(kLine1.open - kLine1.close) -
-    //         Math.abs(kLine3.open - kLine3.close) >
-    //     0;
-
-    const res = k1Swallow && k1BodySwallow; //|| k1TooBig || k2TooBig;
-    console.log("🚀 ~ 是否 相互吞没 ~ res:", res);
-    return res;
-}
-// 四k上
-function isFourUp([one, two, three, four]) {
-    let res = false;
-    if (
-        (isCross(one) &&
-            isCross(two) &&
-            isCross(three) &&
-            isBigAndYang(four) &&
-            four.close > Math.max(one.high, two.high, three.high)) ||
-        (isBigAndYin(one) && isCross(two) && isCross(three) && isBigAndYang(four))
-    ) {
-        res = true;
-    }
-    console.log("🚀 ~ file: 四k上 ~ res:", res);
-    return res;
-}
-// 四k下
-function isFourDown([one, two, three, four]) {
-    let res = false;
-    if (
-        (isCross(one) &&
-            isCross(two) &&
-            isCross(three) &&
-            isBigAndYin(four) &&
-            four.close < Math.min(one.low, two.low, three.low)) ||
-        (isBigAndYang(one) && isCross(two) && isCross(three) && isBigAndYin(four))
-    ) {
-        res = true;
-    }
-    console.log("🚀 ~ file: 四k下 ~ res:", res);
-    return res;
-}
-// k1大阴k的+k2实体最小 + 大阴k+k3实体一半小于前方实体最低值
-const downPao = (one, two, three) => {
-    let res = false;
-    const twoBody = Math.abs(two.open - two.close);
-    if (
-        isBigAndYin(one) &&
-        isBigAndYin(three) &&
-        twoBody < Math.abs(one.open - one.close) &&
-        twoBody < Math.abs(three.open - three.close) &&
-        three.close < Math.min(one.low, two.low)
-    ) {
-        res = true;
-    }
-    console.log("🚀 ~ file: 空方炮 res:", res);
-    return res;
-};
-const upPao = (one, two, three) => {
-    let res = false;
-    const twoBody = Math.abs(two.open - two.close);
-    if (
-        isBigAndYang(one) &&
-        isBigAndYang(three) &&
-        twoBody < Math.abs(one.open - one.close) &&
-        twoBody < Math.abs(three.open - three.close) &&
-        three.close > Math.max(one.high, two.high)
-    ) {
-        res = true;
-    }
-    console.log("🚀 ~ file: 多方炮 res:", res);
-    return res;
-};
-// 是否在50均线之下
-const isDownMa = (kLine1, kLine2, kLine3, ma) => {
-    let res = false;
-    const k1Center = Math.min(kLine1.open, kLine1.close) + Math.abs(kLine1.open - kLine1.close) / 2;
-    const k2Center = Math.min(kLine2.open, kLine2.close) + Math.abs(kLine2.open - kLine2.close) / 2;
-    const k3Center = Math.min(kLine3.open, kLine3.close) + Math.abs(kLine3.open - kLine3.close) / 2;
-    if (Math.max(k1Center, k2Center, k3Center) <= ma) {
-        res = true;
-    }
-    console.log("🚀 ~ file: 是否在50均线之下 ~ res:", res);
-    return res;
-};
-// 是否在50均线之上
-const isUpMa = (kLine1, kLine2, kLine3, ma) => {
-    let res = false;
-    const k1Center = Math.min(kLine1.open, kLine1.close) + Math.abs(kLine1.open - kLine1.close) / 2;
-    const k2Center = Math.min(kLine2.open, kLine2.close) + Math.abs(kLine2.open - kLine2.close) / 2;
-    const k3Center = Math.min(kLine3.open, kLine3.close) + Math.abs(kLine3.open - kLine3.close) / 2;
-    if (Math.min(k1Center, k2Center, k3Center) >= ma) {
-        res = true;
-    }
-    console.log("🚀 ~ file: 是否在50均线之上 ~ res:", res);
-    return res;
-};
-// macd 指标向上
-const isUpMacd = () => {
-    const macd2 = macdArr[macdArr.length - 2].macd;
-    const macd3 = macdArr[macdArr.length - 1].macd;
-    const macd1 = macdArr[macdArr.length - 3].macd;
-    let res = false;
-    if (macd3 == 0) {
-        res = macd1 < 0 && macd2 < 0;
-    } else {
-        res = macd3 - macd2 > 0;
-    }
-    console.log("🚀 ~ file: macd 指标向上:", res, macd2, macd3);
-    return res;
-};
-// macd 指标向下
-const isDownMacd = () => {
-    const macd2 = macdArr[macdArr.length - 2].macd;
-    const macd3 = macdArr[macdArr.length - 1].macd;
-    let res = false;
-    if (macd3 == 0) {
-        res = macd1 > 0 && macd2 > 0;
-    } else {
-        res = macd3 - macd2 < 0;
-    }
-    console.log("🚀 ~ file: macd 指标向下:", res, macd2, macd3);
-    return res;
-};
-
-function isTrackTopReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 }) {
-    let curRsiMax = calculateRSI([...historyClosePrices], RSI_PERIOD_MAX);
-    let reasonBack = [
-        kLine3.close >= kLine3.open, // k3不能是阳线
-        kLine2.high > kLine3.high && kLine2.low < kLine3.low, // 孕线绝对不可以，机会多得是，放弃一次又怎样
-        isAllDownTail(kLine1, kLine2, kLine3), // 有两个都是长下引线的不要
-        curRsiMax > 70, // rsi（14） 在35-65之间
-        isUpCross(kLine3, 0.4),
-        isUpCross(kLine1, 0.4),
-        // isK1Swallow(kLine1, kLine2, kLine3), // k1 body吞没k2，k3
-        // isK1Swallow(kLine2, kLine1, kLine3) && kLine2.close > kLine2.open,
-        kLine3.close - kLine3.low >= (kLine3.high - kLine3.low) * 0.5, // 当前k收盘方向引线不能大于整体0.5
-        // tooManeyInTen(),
-    ];
-    let reasonPass = [];
-    console.log("~ isTrackTopReverse ~ reasonBack:", reasonBack);
-    if (reasonBack.some((r) => r)) {
-        return false;
-    } else {
-        reasonPass = [
-            curRsiMax < 70, // 挣小钱不需要这个
-            isTopFractal(kLine1, kLine2, kLine3) || // 是否顶分形态
-                (isDownLinesGroup2(kLine2, kLine3) && (isDownCross(kLine3) || isBigAndYin(kLine3, 0.6))) || // 是否两个k形成垂线/光头阴
-                (isDownLinesGroup3(kLine1, kLine2, kLine3) &&
-                    (isBigAndYin(kLine3, 0.6) || isDownCross(kLine3, 0.45))) || // 是否三个k形成垂线
-                (isDownSwallow(kLine2, kLine3) && kLine3.low < kLine1.low) || // 看跌吞没
-                (isDownSwallow(kLine1, kLine2) && isBigAndYin(kLine3, 0.6)) || // 看跌吞没 + 大阴k
-                (isDownLinesGroup2(kLine1, kLine2) && (isDownCross(kLine3) || isBigLine(kLine3, 0.6))) || // k1，k2刺透, k3垂线/光头阴
-                isDownStar(kLine1, kLine2, kLine3) || // 黄昏星
-                isBreakDown(kLine1, kLine2, kLine3) || // k3 跌破k1/k2，k3是光k
-                isFourDown(getLastKlines(4)) || // 4k上
-                downPao(kLine1, kLine2, kLine3), // 空方炮
-        ];
-        console.log("~ isTrackTopReverse ~ reasonPass:", reasonPass);
-        if (reasonPass.every((r) => r)) {
-            return true;
-        }
-    }
-    return false;
-}
-function isTrackBottomReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 }) {
-    let curRsiMax = calculateRSI([...historyClosePrices], RSI_PERIOD_MAX);
-    let reasonBack = [
-        kLine3.close <= kLine3.open, // k3不能是阴线
-        kLine2.high > kLine3.high && kLine2.low < kLine3.low, // 孕线绝对不可以，机会多得是，放弃一次又怎样
-        isDownCross(kLine3, 0.4),
-        isDownCross(kLine1, 0.4),
-        // tooManeyInTen(),
-        isAllUpTail(kLine1, kLine2, kLine3), // 有两个都是长上引线的不要
-        curRsiMax < 30, // 挣小钱不需要这个
-        // isK1Swallow(kLine1, kLine2, kLine3), // k1 body吞没k2，k3
-        // isK1Swallow(kLine2, kLine1, kLine3) && kLine2.close < kLine2.open,
-        kLine3.high - kLine3.close >= (kLine3.high - kLine3.low) * 0.5, // 当前k收盘方向引线不能大于整体0.5
-        upPao(kLine1, kLine2, kLine3), // 多方炮
-    ];
-    let reasonPass = [];
-    console.log("🚀 isTrackBottomReverse ~ reasonBack:", reasonBack);
-    if (reasonBack.some((r) => r)) {
-        return false;
-    } else {
-        reasonPass = [
-            curRsiMax > 30, // rsi（14） 在35-65之间
-            isBottomFractal(kLine1, kLine2, kLine3) || // 是否底分形态
-                (isUpLinesGroup2(kLine2, kLine3) && (isUpCross(kLine1) || isBigAndYang(kLine1, 0.6))) || // 是否两个k形成垂线
-                (isUpLinesGroup3(kLine1, kLine2, kLine3) && (isBigAndYang(kLine3, 0.6) || isUpCross(kLine3, 0.45))) || // 是否三个k形成垂线
-                (isUpSwallow(kLine2, kLine3) && kLine3.high > kLine1.high) || // 看涨吞没
-                (isUpSwallow(kLine1, kLine2) && isBigAndYang(kLine3, 0.6)) || // 看涨吞没 + 大阳k
-                (isUpLinesGroup2(kLine1, kLine2) && (isUpCross(kLine3) || isBigLine(kLine3, 0.6))) || // k1，k2刺透, k3垂线
-                isUpStar(kLine1, kLine2, kLine3) || // 启明星
-                isBreakUp(kLine1, kLine2, kLine3) || // k3 突破k1/k2，k3是光k
-                isFourUp(getLastKlines(4)) || // 4k上
-                upPao(kLine1, kLine2, kLine3), // 多方炮
-        ];
-        console.log("🚀 isTrackBottomReverse ~ reasonPass:", reasonPass);
-        if (reasonPass.every((r) => r)) {
-            return true;
-        }
-    }
-    return false;
-}
-// 从中轨下方到中轨
-function isBreakthroughSmaUp({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 }) {
-    let curRsiMin = calculateRSI([...historyClosePrices], RSI_PERIOD_MIN);
-    // let curEmaSlope = calculateEMASlope(emaArr, RSI_PERIOD_MIN / 2);
-    // if (curEmaSlope < 0) {
-    //     //>>>>>给个准确值，而且不是放在这里，放在开单处，而且顶/底，也需要这个判断，太平了就是横盘啊，突破交给了两外的逻辑的，别担心，也别贪心
-    //     return false;
-    // }
-    let reasonBack = [
-        kLine3.close <= kLine3.open, // k3不能是阴线
-        kLine2.high > kLine3.high && kLine2.low < kLine3.low, // 孕线绝对不可以，机会多得是，放弃一次又怎样
-        isDownCross(kLine3, 0.4),
-        isDownCross(kLine1, 0.4),
-        // tooManeyInTen(),
-        isAllUpTail(kLine1, kLine2, kLine3), // 有两个都是长上引线的不要
-        isK1Swallow(kLine1, kLine2, kLine3), // k1 body吞没k2，k3
-        isK1Swallow(kLine2, kLine1, kLine3) && kLine2.close < kLine2.open,
-        kLine3.high - kLine3.close >= (kLine3.high - kLine3.low) * 0.5, // 当前k收盘方向引线不能大于整体0.5 >>>>>>
-    ];
-    if (curRsiMin > 65 && !reasonBack.some((r) => r)) {
-        console.log("🚀 ~ file: gridBot-doge7-1.js:1423 ~ isBreakthroughSmaUp ~ curRsiMin:", curRsiMin);
-        return true;
-    } else {
-        let reasonPass = [];
-        console.log("🚀 ~ isBreakthroughSmaUp ~ reasonBack:", reasonBack);
-        if (reasonBack.some((r) => r)) {
-            return false;
-        } else {
-            // const { trend } = calcEma1Ema2();
-            // let ma = calculateEMA([...historyClosePrices], 50);
-            reasonPass = [
-                // isUpMa(kLine1, kLine2, kLine3, ma),
-                isUpMacd(),
-                // trend === "up",
-                // curRsiMin > 40 && curRsiMin < 60, // rsi（6） 在40-60之间 >>> 没必要吧，干嘛要做横盘，目的是接住边轨漏掉的单子而已
-                (isHigherHigh(kLine1, kLine2, kLine3) && isBigLine(kLine3, 0.6)) || // 顶顶高 k3是光k / 三小连阳
-                    isBottomFractal(kLine1, kLine2, kLine3) || // 是否底分形态
-                    (isUpLinesGroup2(kLine2, kLine3) && (isUpCross(kLine1) || isBigAndYang(kLine1, 0.6))) || // 是否两个k形成垂线/光头阳
-                    (isUpLinesGroup3(kLine1, kLine2, kLine3) &&
-                        (isBigAndYang(kLine3, 0.6) || isUpCross(kLine3, 0.4))) || // 是否三个k形成垂线
-                    (isUpSwallow(kLine2, kLine3) && kLine3.high > kLine1.high) || // 看涨吞没
-                    (isUpSwallow(kLine1, kLine2) && isBigAndYang(kLine3, 0.6)) || // 看涨吞没 + 大阳k
-                    (isUpLinesGroup2(kLine1, kLine2) && (isUpCross(kLine3) || isBigLine(kLine3, 0.6))) || // k1，k2刺透, k3垂线/光头阳
-                    isUpStar(kLine1, kLine2, kLine3) || // 启明星
-                    isBreakUp(kLine1, kLine2, kLine3) || // k3 突破k1/k2，k3是光k
-                    isFourUp(getLastKlines(4)) || // 4k上
-                    upPao(kLine1, kLine2, kLine3), // 多方炮
-            ];
-            console.log("🚀 ~ isBreakthroughSmaUp ~ reasonPass:", reasonPass);
-            if (reasonPass.every((r) => r)) {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-function isBreakthroughSmaDown({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 }) {
-    let curRsiMin = calculateRSI([...historyClosePrices], RSI_PERIOD_MIN);
-    // let curEmaSlope = calculateEMASlope(emaArr, RSI_PERIOD_MIN / 2);
-    // if (curEmaSlope > 0) {
-    //     return false;
-    // }
-    let reasonBack = [
-        kLine3.close >= kLine3.open, // k3不能是阳线
-        kLine2.high > kLine3.high && kLine2.low < kLine3.low, // 孕线绝对不可以，机会多得是，放弃一次又怎样
-        isUpCross(kLine3, 0.4),
-        isUpCross(kLine1, 0.4),
-        // tooManeyInTen(),
-        isAllDownTail(kLine1, kLine2, kLine3), // 有两个都是长下引线的不要
-        isK1Swallow(kLine1, kLine2, kLine3), // k1 body吞没k2，k3
-        isK1Swallow(kLine2, kLine1, kLine3) && kLine2.close > kLine2.open,
-        kLine3.close - kLine3.low >= (kLine3.high - kLine3.low) * 0.5, // 当前k收盘方向引线不能大于整体0.5 >>>>>>
-    ];
-    if (curRsiMin < 35 && !reasonBack.some((r) => r)) {
-        console.log("🚀 ~ file: gridBot-doge7-1.js:1463 ~ isBreakthroughSmaDown ~ curRsiMin:", curRsiMin);
-        return true;
-    } else {
-        let reasonPass = [];
-        console.log("🚀 ~ isBreakthroughSmaDown ~ reasonBack:", reasonBack);
-        if (reasonBack.some((r) => r)) {
-            return false;
-        } else {
-            // const { trend } = calcEma1Ema2();
-            // let ma = calculateEMA([...historyClosePrices], 50);
-            reasonPass = [
-                // isDownMa(kLine1, kLine2, kLine3, ma),
-                isDownMacd(),
-                // trend === "down",
-                // curRsiMin > 40 && curRsiMin < 60, // rsi（6） 在40-60之间 >>> 没必要吧，干嘛要做横盘，目的是接住边轨漏掉的单子而已
-                (isLowerLow(kLine1, kLine2, kLine3) && isBigLine(kLine3, 0.6)) || // 顶顶高 k3是光k / 三小连阳
-                    isTopFractal(kLine1, kLine2, kLine3) || // 是否顶分形态
-                    (isDownLinesGroup2(kLine2, kLine3) && (isDownCross(kLine1) || isBigAndYin(kLine1, 0.6))) || // 是否两个k形成垂线/光头阴
-                    (isDownLinesGroup3(kLine1, kLine2, kLine3) &&
-                        (isBigAndYin(kLine3, 0.6) || isDownCross(kLine3, 0.4))) || // 是否三个k形成垂线
-                    (isDownSwallow(kLine2, kLine3) && kLine3.low < kLine1.low) || // 看跌吞没
-                    (isDownSwallow(kLine1, kLine2) && isBigAndYin(kLine3, 0.6)) || // 看跌吞没 + 大阴k
-                    (isDownLinesGroup2(kLine1, kLine2) && (isDownCross(kLine3) || isBigLine(kLine3, 0.6))) || // k1，k2刺透, k3垂线/大k
-                    isDownStar(kLine1, kLine2, kLine3) || // 启明星
-                    isBreakDown(kLine1, kLine2, kLine3) || // k3 突破k1/k2，k3是光k
-                    isFourDown(getLastKlines(4)) || // 4k上
-                    downPao(kLine1, kLine2, kLine3), // 多方炮
-            ];
-            console.log("🚀 ~ isBreakthroughSmaDown ~ reasonPass:", reasonPass);
-        }
-        if (reasonPass.every((r) => r)) {
-            return true;
-        }
-    }
-    return false;
-}
-// 最后10根k线，最后三根形成的上下值包裹了前面超过6根的都不能要
-function tooManeyInTen() {
-    const tempLastTen = kLineData.slice(kLineData.length - 10);
-    const last = kLineData[kLineData.length - 1];
-    const max = last.high;
-    const min = last.low;
-    let num = -1;
-    for (const item of tempLastTen) {
-        if (Math.max(item.close, item.open) <= max || Math.min(item.close, item.open) >= min) {
-            num++;
-        }
-    }
-    return num >= 3;
-}
-// 长下引线
-function isAllDownTail(kLine1, kLine2, kLine3) {
-    let num = 0;
-    if (
-        !isCross(kLine1) &&
-        (Math.min(kLine1.open, kLine1.close) - kLine1.low) / Math.abs(kLine1.open - kLine1.close) > 0.5
-    ) {
-        console.log("🚀 ~ k3长上引线 ~ 不能开单");
-        return true;
-    }
-    if (
-        !isCross(kLine1) &&
-        (Math.min(kLine1.open, kLine1.close) - kLine1.low) / Math.abs(kLine1.open - kLine1.close) > 0.6
-    ) {
-        num++;
-    }
-    if (
-        !isCross(kLine2) &&
-        (Math.min(kLine2.open, kLine2.close) - kLine2.low) / Math.abs(kLine2.open - kLine2.close) > 0.6
-    ) {
-        num++;
-    }
-    if (
-        !isCross(kLine3) &&
-        (Math.min(kLine3.open, kLine3.close) - kLine3.low) / Math.abs(kLine3.open - kLine3.close) > 0.6
-    ) {
-        num++;
-    }
-    console.log("🚀 ~ k1 k2 k3长下引线 ~ res:", num >= 2);
-    return num >= 2;
-}
-// 长上引线
-function isAllUpTail(kLine1, kLine2, kLine3) {
-    let num = 0;
-    if (
-        !isCross(kLine3) &&
-        (kLine3.high - Math.max(kLine3.open, kLine3.close)) / Math.abs(kLine3.open - kLine3.close) > 0.5
-    ) {
-        console.log("🚀 ~ k3长上引线 ~ 不能开单");
-        return true;
-    }
-    if (
-        !isCross(kLine3) &&
-        (kLine3.high - Math.max(kLine3.open, kLine3.close)) / Math.abs(kLine3.open - kLine3.close) > 0.6
-    ) {
-        num++;
-    }
-    if (
-        !isCross(kLine1) &&
-        (kLine1.high - Math.max(kLine1.open, kLine1.close)) / Math.abs(kLine1.open - kLine1.close) > 0.6
-    ) {
-        num++;
-    }
-    if (
-        !isCross(kLine2) &&
-        (kLine2.high - Math.max(kLine2.open, kLine2.close)) / Math.abs(kLine2.open - kLine2.close) > 0.6
-    ) {
-        num++;
-    }
-    console.log("🚀 ~ k1 k2 k3长上引线 ~ res:", num >= 2);
-    return num >= 2;
-}
 
 // let testTime = Date.now();
 // WebSocket 事件
@@ -2248,7 +1575,6 @@ const test = async () => {
     await getServerTimeOffset(); // 同步服务器时间
     await getCurrentPrice();
     await getHistoryClosePrices(); // 初始化 historyClosePrices
-    await getPositionRisk();
 };
 // test();
 
