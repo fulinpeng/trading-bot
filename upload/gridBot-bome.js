@@ -34,14 +34,14 @@ const {
     logsFolder,
     errorsFolder,
     // overNumber,
-} = config["doge"];
+} = config["bome"];
 const diff = 2;
 let times = getSequenceArr(diff, 100);
-const profitRate = 5;
+const profitRate = 8;
 let isResting = false; // 休息一段时间（空档跑网格，出网格继续跑）
-let overNumberToRest = 15; // 多少次对冲后去休息
-const howManyCandleHeight = 2.5;
-const howManyNumForAvarageCandleHight = 12;
+let overNumberToRest = 25; // 多少次对冲后去休息
+const howManyCandleHeight = 3;
+const howManyNumForAvarageCandleHight = 20;
 const maPeriod = 60; // ma
 const BBK_PERIOD = 100;
 // const RSI_PERIOD = 60;
