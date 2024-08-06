@@ -34,22 +34,20 @@ const {
     logsFolder,
     errorsFolder,
     // overNumber,
-} = config["people"];
+} = config["beamx"];
 const diff = 2;
 let times = getSequenceArr(diff, 100);
 const profitRate = 6;
 let isResting = false; // 休息一段时间（空档跑网格，出网格继续跑）
-let overNumberToRest = 12; // 多少次对冲后去休息
+let overNumberToRest = 17; // 多少次对冲后去休息
 const howManyCandleHeight = 3;
-const howManyNumForAvarageCandleHight = 9;
+const howManyNumForAvarageCandleHight = 20;
 const maPeriod = 60; // ma
 const BBK_PERIOD = 100;
 // const RSI_PERIOD = 60;
 const B2mult = 1;
 const Kmult = 1.5; // 1.5
 const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-
-
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
