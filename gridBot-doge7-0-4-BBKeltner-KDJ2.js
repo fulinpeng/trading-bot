@@ -315,8 +315,11 @@ const refreshKLine = async (curKLine) => {
     // 设置各种指标
     setEveryIndex([...historyClosePrices]);
 
-    const { B2basis, B2upper, B2lower, Kma, Kupper, Klower, squeeze } = calculateBBKeltnerSqueeze([...kLineData], 20);
-    const kdjs = calculateKDJs([...kLineData], 25);
+    const { B2basis, B2upper, B2lower, Kma, Kupper, Klower, squeeze } = calculateBBKeltnerSqueeze(
+        getLastFromArr(kLineData, 100),
+        20,
+    );
+    const kdjs = calculateKDJs(getLastFromArr(kLineData, 100), 25);
     // console.log("🚀 ~ file: gridBot-doge7-0-4-BBKeltner-KDJ.js:418 ~ refreshKLine ~ kdjs:", kdjs);
     const kdj = kdjs[kdjs.length - 1];
     if (isTest) {
@@ -406,14 +409,14 @@ const judgeClosePosition = async (kdjs) => {
                 isReadyStopProfit = false;
 
                 // 发送邮件
-                sendMail({
-                    subject: `${tradingInfo.orderPrice < _currentPrice ? "✅" : "❌"}${B_SYMBOL}有一单平仓`,
-                    text: JSON.stringify({
-                        profitMoney: testMoney,
-                        tradingInfo: { ...tradingInfo },
-                        gridPoints: [...gridPoints],
-                    }),
-                });
+                // sendMail({
+                //     subject: `${tradingInfo.orderPrice < _currentPrice ? "✅" : "❌"}${B_SYMBOL}有一单平仓`,
+                //     text: JSON.stringify({
+                //         profitMoney: testMoney,
+                //         tradingInfo: { ...tradingInfo },
+                //         gridPoints: [...gridPoints],
+                //     }),
+                // });
             });
             isClosePosition = false;
             return;
@@ -440,14 +443,14 @@ const judgeClosePosition = async (kdjs) => {
                 isReadyStopProfit = false;
 
                 // 发送邮件
-                sendMail({
-                    subject: `${tradingInfo.orderPrice > _currentPrice ? "✅" : "❌"}${B_SYMBOL}有一单平仓`,
-                    text: JSON.stringify({
-                        profitMoney: testMoney,
-                        tradingInfo: { ...tradingInfo },
-                        gridPoints: [...gridPoints],
-                    }),
-                });
+                // sendMail({
+                //     subject: `${tradingInfo.orderPrice > _currentPrice ? "✅" : "❌"}${B_SYMBOL}有一单平仓`,
+                //     text: JSON.stringify({
+                //         profitMoney: testMoney,
+                //         tradingInfo: { ...tradingInfo },
+                //         gridPoints: [...gridPoints],
+                //     }),
+                // });
             });
             isClosePosition = false;
             return;
@@ -525,21 +528,21 @@ const calculateTradingSignal = (curB2basis, curB2upper, curB2lower, curKma, curk
     // 当KDJ蓝色信号线大于20以上位阶, 并且K棒要收涨, 收盘价进场
     if (readyTradingDirection === "up" && kdj.j > KDJ[0] && kLine3.close > kLine3.open) {
         // 计算atr
-        // const { atr } = calculateATR(getLastFromArr(kLineData, 100), 14);
+        const { atr } = calculateATR(getLastFromArr(kLineData, 100), 14);
         return {
             trend: "up",
-            stopLoss: kLine3.close - kLine3.close * 0.01, // min - atr, // >>>>>> 这里有插针后引线过长导致止损过长的问题
-            stopProfit: kLine3.close + kLine3.close * 0.01 * howManyCandleHeight, // 止盈大一点
+            stopLoss: min - atr, // >>>>>> 这里有插针后引线过长导致止损过长的问题
+            stopProfit: kLine3.close + candleHeight * howManyCandleHeight, // 止盈大一点
         };
     }
     // 当KDJ蓝色信号线小于80以上位阶, 并且K棒要收跌, 收盘价进场
     if (readyTradingDirection === "down" && kdj.j < KDJ[1] && kLine3.close < kLine3.open) {
         // 计算atr
-        // const { atr } = calculateATR(getLastFromArr(kLineData, 100), 14);
+        const { atr } = calculateATR(getLastFromArr(kLineData, 100), 14);
         return {
             trend: "down",
-            stopLoss: kLine3.close + kLine3.close * 0.01, // max + atr, // >>>>>> 这里有插针后引线过长导致止损过长的问题
-            stopProfit: kLine3.close - kLine3.close * 0.01 * howManyCandleHeight, // 止盈大一点
+            stopLoss: max + atr, // >>>>>> 这里有插针后引线过长导致止损过长的问题
+            stopProfit: kLine3.close - candleHeight * howManyCandleHeight, // 止盈大一点
         };
     }
     return {
@@ -1132,8 +1135,6 @@ const startTrading = async () => {
             } else {
                 // 如果还没仓位要加仓
                 console.log("还没仓位，直接开始循环");
-                await getCurrentPrice(); // 获取当前价格
-                historyDatas && (await recoverHistoryData(historyDatas)); // 处理历史数据
             }
         }
         await startWebSocket(); // 启动websocket更新价格
@@ -1163,14 +1164,14 @@ const closeAllOrders = async ({ up, down }) => {
             console.log("平多完成");
 
             // 发送邮件
-            sendMail({
-                subject: `${up.orderPrice < currentPrice ? "✅" : "❌"}${B_SYMBOL}平多完成`,
-                text: JSON.stringify({
-                    profitMoney: testMoney,
-                    up: { ...up },
-                    gridPoints: [...gridPoints],
-                }),
-            });
+            // sendMail({
+            //     subject: `${up.orderPrice < currentPrice ? "✅" : "❌"}${B_SYMBOL}平多完成`,
+            //     text: JSON.stringify({
+            //         profitMoney: testMoney,
+            //         up: { ...up },
+            //         gridPoints: [...gridPoints],
+            //     }),
+            // });
         });
         promises.push(upPromise);
     }
@@ -1188,14 +1189,14 @@ const closeAllOrders = async ({ up, down }) => {
             console.log("平空完成");
 
             // 发送邮件
-            sendMail({
-                subject: `${down.orderPrice > currentPrice ? "✅" : "❌"}${B_SYMBOL}平空完成`,
-                text: JSON.stringify({
-                    profitMoney: testMoney,
-                    down: { ...down },
-                    gridPoints: [...gridPoints],
-                }),
-            });
+            // sendMail({
+            //     subject: `${down.orderPrice > currentPrice ? "✅" : "❌"}${B_SYMBOL}平空完成`,
+            //     text: JSON.stringify({
+            //         profitMoney: testMoney,
+            //         down: { ...down },
+            //         gridPoints: [...gridPoints],
+            //     }),
+            // });
         });
         promises.push(downPromise);
     }
@@ -1228,14 +1229,14 @@ const gridPointClearTrading = async (_currentPrice) => {
                 isReadyStopProfit = false;
 
                 // 发送邮件
-                sendMail({
-                    subject: `${tradingInfo.orderPrice < _currentPrice ? "✅" : "❌"}${B_SYMBOL}有一单平仓`,
-                    text: JSON.stringify({
-                        profitMoney: testMoney,
-                        tradingInfo: { ...tradingInfo },
-                        gridPoints: [...gridPoints],
-                    }),
-                });
+                // sendMail({
+                //     subject: `${tradingInfo.orderPrice < _currentPrice ? "✅" : "❌"}${B_SYMBOL}有一单平仓`,
+                //     text: JSON.stringify({
+                //         profitMoney: testMoney,
+                //         tradingInfo: { ...tradingInfo },
+                //         gridPoints: [...gridPoints],
+                //     }),
+                // });
             });
             onGridPoint = false;
             return;
@@ -1266,14 +1267,14 @@ const gridPointClearTrading = async (_currentPrice) => {
                 isReadyStopProfit = false;
 
                 // 发送邮件
-                sendMail({
-                    subject: `${tradingInfo.orderPrice > _currentPrice ? "✅" : "❌"}${B_SYMBOL}有一单平仓`,
-                    text: JSON.stringify({
-                        profitMoney: testMoney,
-                        tradingInfo: { ...tradingInfo },
-                        gridPoints: [...gridPoints],
-                    }),
-                });
+                // sendMail({
+                //     subject: `${tradingInfo.orderPrice > _currentPrice ? "✅" : "❌"}${B_SYMBOL}有一单平仓`,
+                //     text: JSON.stringify({
+                //         profitMoney: testMoney,
+                //         tradingInfo: { ...tradingInfo },
+                //         gridPoints: [...gridPoints],
+                //     }),
+                // });
             });
             onGridPoint = false;
             return;
@@ -1561,6 +1562,7 @@ const createLogs = () => {
         sendMail({
             subject: `❌❌❌ ${B_SYMBOL}仓位发生错误，请手动处理`,
             text: JSON.stringify({
+                currentPrice,
                 tradingInfo: { ...tradingInfo },
                 gridPoints: [...gridPoints],
             }),

@@ -26,10 +26,10 @@ let { kLineData } = require("./source/opUSDT-15m.js");
 // inj 15分钟 + 5倍candleH 13/6 68%
 
 let availableMoney = 100;
-let howManyCandleHeight = 5;
+let howManyCandleHeight = 2;
 const symbol = "op";
 
-const KDJ = [10, 90];
+const KDJ = [0, 100];
 
 const getQuantity = (currentPrice) => {
     return Math.round(availableMoney / currentPrice);
@@ -67,7 +67,7 @@ const setProfit = (orderPrice, currentPrice, closeTime) => {
     dateHistory.push(closeTime);
 };
 const start = () => {
-    // let index = kLineData.findIndex((v) => v.openTime === "2024-07-01_00-00-00");
+    // let index = kLineData.findIndex((v) => v.openTime === "2024-05-23_00-00-00");
     // kLineData = kLineData.slice(index);
     for (let idx = 100; idx < kLineData.length; idx++) {
         const curKLines = kLineData.slice(idx - 100, idx);
@@ -305,21 +305,23 @@ const calculateTradingSignal = (curB2basis, curB2upper, curB2lower, curKma, curk
     // 当KDJ蓝色信号线大于20以上位阶, 并且K棒要收涨, 收盘价进场
     if (readyTradingDirection === "up" && kdj.j > KDJ[0] && kLine3.close > kLine3.open) {
         // 计算atr
-        // const { atr } = calculateATR(curKLines, 14);
+        const { atr } = calculateATR(curKLines, 14);
+        // console.log("🚀 ~ file:", kLine3.closeTime, "up", min - atr, kLine3.close - kLine3.close * 0.01);
         return {
             trend: "up",
-            stopLoss: kLine3.close - kLine3.close * 0.01, // min - atr, // >>>>>> 这里有插针后引线过长导致止损过长的问题
-            stopProfit: kLine3.close + candleHeight * howManyCandleHeight, // kLine3.close + candleHeight * howManyCandleHeight, // 止盈大一点
+            stopLoss: kLine3.low, // kLine3.close - kLine3.close * 0.01, // min - atr,
+            stopProfit: kLine3.close + (kLine3.close - atr), // 止盈大一点
         };
     }
     // 当KDJ蓝色信号线小于80以上位阶, 并且K棒要收跌, 收盘价进场
     if (readyTradingDirection === "down" && kdj.j < KDJ[1] && kLine3.close < kLine3.open) {
         // 计算atr
-        // const { atr } = calculateATR(curKLines, 14);
+        const { atr } = calculateATR(curKLines, 14);
+        // console.log("🚀 ~ file:", kLine3.closeTime, "down", max + atr, kLine3.close + kLine3.close * 0.01);
         return {
             trend: "down",
-            stopLoss: kLine3.close + kLine3.close * 0.01, // max + atr, // >>>>>> 这里有插针后引线过长导致止损过长的问题
-            stopProfit: kLine3.close - candleHeight * howManyCandleHeight, // kLine3.close - candleHeight * howManyCandleHeight, // 止盈大一点
+            stopLoss: kLine3.high, // kLine3.close + kLine3.close * 0.01, // max + atr,
+            stopProfit: kLine3.close - (kLine3.close - atr), // 止盈大一点
         };
     }
     return {

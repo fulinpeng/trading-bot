@@ -6,7 +6,7 @@ const fs = require("fs");
 const fapi = "https://fapi.binance.com/fapi";
 const { HttpsProxyAgent } = require("https-proxy-agent");
 const { SocksProxyAgent } = require("socks-proxy-agent");
-const symbol = "ethUSDT";
+const symbol = "opUSDT";
 
 // mac 小地球仪
 let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
@@ -64,7 +64,7 @@ const getDatas = async (symbol, startTime, num) => {
             break;
         }
     }
-    writeInFile(`./tests/source/${symbol}-15m.js`, {
+    writeInFile(`./tests/source/${symbol}-15m-2.js`, {
         kLineData: result,
     });
 };
@@ -75,4 +75,4 @@ function writeInFile(fileName, data) {
     });
 }
 // 顶上引入文件也要改
-// getDatas(symbol, 1688140800000, 395);
+getDatas(symbol, 1722268800000, 5);
