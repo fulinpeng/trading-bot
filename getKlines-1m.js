@@ -6,7 +6,7 @@ const fs = require("fs");
 const fapi = "https://fapi.binance.com/fapi";
 const { HttpsProxyAgent } = require("https-proxy-agent");
 const { SocksProxyAgent } = require("socks-proxy-agent");
-const symbol = "iotxUSDT";
+const symbol = "dogeUSDT";
 
 // mac 小地球仪
 let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
@@ -75,4 +75,4 @@ function writeInFile(fileName, data) {
     });
 }
 // 顶上引入文件也要改
-getDatas(symbol, 1701360000000, 247);
+getDatas(symbol, 1704038400000, 220);

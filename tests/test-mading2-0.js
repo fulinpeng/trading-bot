@@ -19,7 +19,8 @@ const { calculateBBKeltnerSqueeze } = require("../utils/BBKeltner.js");
 // let { kLineData } = require("./source/bomeUSDT-1m.js");
 // let { kLineData } = require("./source/zkUSDT-1m.js");
 // let { kLineData } = require("./source/dogeUSDT-1m.js");
-let { kLineData } = require("./source/1000pepeUSDT-1m.js");
+let { kLineData } = require("./source/dogeUSDT-1m-2.js");
+// let { kLineData } = require("./source/1000pepeUSDT-1m.js");
 // let { kLineData } = require("./source/peopleUSDT-1m.js");
 // let { kLineData } = require("./source/bigtimeUSDT-1m.js");
 // let { kLineData } = require("./source/beamxUSDT-1m.js");
@@ -80,30 +81,30 @@ let { kLineData } = require("./source/1000pepeUSDT-1m.js");
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-// const symbol = "dogeUSDT";
-// const profitRate = 5;
-// const diff = 2;
-// let times = getSequenceArr(diff, 100);
-// const maPeriod = 60; // ma
-// const BBK_PERIOD = 100;
-// const RSI_PERIOD = 60;
-// const B2mult = 1;
-// const Kmult = 1.5;
-// const atrRate = 0.01;
-// const availableMoney = 6;
-// const howManyCandleHeight = 2.5;
-// const howManyNumForAvarageCandleHight = 12;
-// // const mostCount = 3; // 是通过 canStop = false 跑出来的结果
-// let overNumberToRest = 16; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// const canStop = true; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// const stopLossRate = 0.6;
-// const protectValue = 500;
-// const protectProfit = false; // true false; // 更保守的话开启利润保护
-// const howManyNumBegainPlus = 11;
-// const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
+const symbol = "dogeUSDT";
+const profitRate = 5;
+const diff = 2;
+let times = getSequenceArr(diff, 100);
+const maPeriod = 60; // ma
+const BBK_PERIOD = 100;
+const RSI_PERIOD = 60;
+const B2mult = 1;
+const Kmult = 1.5;
+const atrRate = 0.01;
+const availableMoney = 7;
+const howManyCandleHeight = 2.5;
+const howManyNumForAvarageCandleHight = 12;
+// const mostCount = 3; // 是通过 canStop = false 跑出来的结果
+let overNumberToRest = 16; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
+const canStop = true; // true false; // 开启 启动/停止 模式 ⭐️
+let isResting = false; // 启动/停止
+const stopLossRate = 0.6;
+const protectValue = 500;
+const protectProfit = false; // true false; // 更保守的话开启利润保护
+const howManyNumBegainPlus = 11;
+const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
 
-// const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
+const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 // const symbol = "1000pepeUSDT";
 // const profitRate = 6;
@@ -128,28 +129,28 @@ let { kLineData } = require("./source/1000pepeUSDT-1m.js");
 // const howManyNumBegainPlus = 11;
 // const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
 ////////////////////////////////////////////////////////////////
-const symbol = "1000pepeUSDT";
-const profitRate = 6;
-const diff = 10; // 1053/1410
-let times = getSequenceArr(diff, 100);
-const maPeriod = 60; // ma
-const BBK_PERIOD = 100;
-const RSI_PERIOD = 60;
-const B2mult = 1;
-const Kmult = 1.5;
-const atrRate = 0.01;
-const availableMoney = 10;
-const howManyCandleHeight = 3;
-const howManyNumForAvarageCandleHight = 20;
-// const mostCount = 3; // 是通过 canStop = false 跑出来的结果
-let overNumberToRest = 15; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-const canStop = true; // true false; // 开启 启动/停止 模式 ⭐️
-let isResting = false; // 启动/停止
-const stopLossRate = 0.6;
-const protectValue = 500;
-const protectProfit = false; // true false; // 更保守的话开启利润保护
-const howManyNumBegainPlus = 11;
-const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
+// const symbol = "1000pepeUSDT";
+// const profitRate = 6;
+// const diff = 10; // 1053/1410
+// let times = getSequenceArr(diff, 100);
+// const maPeriod = 60; // ma
+// const BBK_PERIOD = 100;
+// const RSI_PERIOD = 60;
+// const B2mult = 1;
+// const Kmult = 1.5;
+// const atrRate = 0.01;
+// const availableMoney = 10;
+// const howManyCandleHeight = 3;
+// const howManyNumForAvarageCandleHight = 20;
+// // const mostCount = 3; // 是通过 canStop = false 跑出来的结果
+// let overNumberToRest = 15; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
+// const canStop = true; // true false; // 开启 启动/停止 模式 ⭐️
+// let isResting = false; // 启动/停止
+// const stopLossRate = 0.6;
+// const protectValue = 500;
+// const protectProfit = false; // true false; // 更保守的话开启利润保护
+// const howManyNumBegainPlus = 11;
+// const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -327,16 +328,16 @@ const getStop = () => {
 };
 
 const start = () => {
-    // let index = kLineData.findIndex((v) => v.openTime === "2024-05-24_00-00-00");
-    // kLineData = kLineData.slice(index);
+    let index = kLineData.findIndex((v) => v.openTime === "2024-08-07_19-58-00");
+    kLineData = kLineData.slice(index);
     let num = 0;
-    for (let idx = 260; idx < kLineData.length; idx++) {
+    for (let idx = 100; idx < kLineData.length; idx++) {
         if (getStop()) {
             testMoneyHistory.push(testMoney);
             date.push(curkLine.closeTime);
             return;
         }
-        curKLines = kLineData.slice(idx - 260, idx);
+        curKLines = kLineData.slice(idx - 100, idx);
         prices = curKLines.map((v) => v.close);
 
         maArr = [
@@ -388,6 +389,7 @@ const start = () => {
                     }
                 } else {
                     readyTradingDirection = maArr[2] < maArr[3] ? "up" : "down";
+                    !closeOrderHistory.length && console.log("🚀 ~ readyTradingDirection:", curkLine);
                 }
             }
             if (readyTradingDirection !== "hold") {
@@ -706,7 +708,7 @@ for (let i = 0; i < candleHeightAndGridPoints.length; i++) {
 }
 let transformDatasRate_candleHeight = maxMoney / maxCandleHeight / 2;
 
-setLinesClose(); // 添加最后的仓位情况
+closeOrderHistory.length && setLinesClose(); // 添加最后的仓位情况
 
 const result = {
     profitRate,

@@ -20,34 +20,25 @@ const {
     base,
     availableMoney,
     invariableBalance,
-    leverage,
-    numForAverage,
-    maxRepeatNum,
-    mixReversetime,
-    // howManyCandleHeight,
-    minGridHight,
-    maxGridHight,
-    stopLossRate,
-    // profitRate,
-    EMA_PERIOD,
     klineStage,
     logsFolder,
     errorsFolder,
-    // overNumber,
+    diff,
+    profitRate,
+    overNumberToRest, // 多少次对冲后去休息
+    howManyCandleHeight,
+    howManyNumForAvarageCandleHight,
+    maPeriod, // ma
+    BBK_PERIOD,
+    RSI_PERIOD,
+    B2mult,
+    Kmult, // 1.5
+    judgeByBBK, //  true false; 根据bbk指标来开单 ⭐️
 } = config["zk"];
-const diff = 2;
-let times = getSequenceArr(diff, 100);
-const profitRate = 1;
+
+const times = getSequenceArr(diff, 100);
+
 let isResting = false; // 休息一段时间（空档跑网格，出网格继续跑）
-let overNumberToRest = 10; // 多少次对冲后去休息
-const howManyCandleHeight = 1;
-const howManyNumForAvarageCandleHight = 100;
-const maPeriod = 60; // ma
-const BBK_PERIOD = 100;
-// const RSI_PERIOD = 60;
-const B2mult = 1;
-const Kmult = 1.5; // 1.5
-const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
@@ -268,7 +259,7 @@ const getHistoryClosePrices = async () => {
     // 初始化指标
     initEveryIndex();
 
-    candleHeight = calculateCandleHeight(kLineData);
+    candleHeight = calculateCandleHeight(getLastFromArr(kLineData, howManyNumForAvarageCandleHight));
     let _gridHight = candleHeight * howManyCandleHeight;
     gridHight = _gridHight;
 };
@@ -805,6 +796,7 @@ const getHistoryData = () => {
             isProfitRun: __isProfitRun,
             gridPoints2: __gridPoints2,
             testMoney: __testMoney,
+            hasOrder: __hasOrder,
             isResting: __isResting, // 休息一段时间（空档跑网格，出网格继续跑）
             candleHeight: __candleHeight,
             gridHight: __gridHight,
@@ -840,6 +832,7 @@ const recoverHistoryData = async (historyDatas) => {
         tradingInfo: __tradingInfo,
         gridPoints2: __gridPoints2,
         testMoney: __testMoney,
+        hasOrder: __hasOrder,
         isResting: __isResting, // 休息一段时间（空档跑网格，出网格继续跑）
         candleHeight: __candleHeight,
         gridHight: __gridHight,
@@ -855,6 +848,7 @@ const recoverHistoryData = async (historyDatas) => {
     gridPoints = __gridPoints; // 网格每个交易点
     tradingInfo = __tradingInfo;
     testMoney = __testMoney;
+    hasOrder = __hasOrder;
     isResting = __isResting; // 休息一段时间（空档跑网格，出网格继续跑）
     candleHeight = __candleHeight;
     gridHight = __gridHight;
@@ -874,6 +868,7 @@ const recoverHistoryDataByPosition = async (historyDatas, { up, down }) => {
         gridPoints: __gridPoints, // 网格每个交易点
         tradingInfo: __tradingInfo,
         testMoney: __testMoney,
+        hasOrder: __hasOrder,
         isResting: __isResting, // 休息一段时间（空档跑网格，出网格继续跑）
         candleHeight: __candleHeight,
         gridHight: __gridHight,
@@ -889,6 +884,7 @@ const recoverHistoryDataByPosition = async (historyDatas, { up, down }) => {
     gridPoints = __gridPoints; // 网格每个交易点
     tradingInfo = __tradingInfo;
     testMoney = __testMoney;
+    hasOrder = __hasOrder;
     isResting = __isResting; // 休息一段时间（空档跑网格，出网格继续跑）
     candleHeight = __candleHeight;
     gridHight = __gridHight;
@@ -925,6 +921,7 @@ const checkOverGrid = async ({ up, down }) => {
         prePrice = currentPrice; // 记录当前价格的前一个
         currentPointIndex = -1; // 当前网格
         isProfitRun = false;
+        hasOrder = false;
         isResting = false;
     }
     if (currentPrice >= gridPoints[3]) {
@@ -934,6 +931,7 @@ const checkOverGrid = async ({ up, down }) => {
         prePrice = currentPrice; // 记录当前价格的前一个
         currentPointIndex = -1; // 当前网格
         isProfitRun = false;
+        hasOrder = false;
         isResting = false;
     }
 };
@@ -1064,7 +1062,7 @@ const closePointOrders = async (pointIndex) => {
                     testMoney +=
                         currentPrice * quantity -
                         orderPrice * quantity -
-                        (currentPrice * quantity + orderPrice * quantity) * 0.0005;
+                        (currentPrice * quantity + orderPrice * quantity) * 0.0007;
                     console.log("平多 closePointOrders ~ currentPrice testMoney:", currentPrice, testMoney);
                 }
                 tradingDatas[pointIndex].up = null;
@@ -1080,7 +1078,7 @@ const closePointOrders = async (pointIndex) => {
                     testMoney +=
                         orderPrice * quantity -
                         currentPrice * quantity -
-                        (currentPrice * quantity + orderPrice * quantity) * 0.0005;
+                        (currentPrice * quantity + orderPrice * quantity) * 0.0007;
                     console.log("平空 closePointOrders ~ currentPrice testMoney:", currentPrice, testMoney);
                 }
                 tradingDatas[pointIndex].down = null;
@@ -1114,7 +1112,7 @@ const closeAllOrders = async ({ up, down }) => {
                 testMoney +=
                     currentPrice * up.quantity -
                     up.orderPrice * up.quantity -
-                    (currentPrice * up.quantity + up.orderPrice * up.quantity) * 0.0005;
+                    (currentPrice * up.quantity + up.orderPrice * up.quantity) * 0.0007;
                 console.log("平多 closeAllOrders ~ currentPrice testMoney:", currentPrice, testMoney);
             }
             console.log("平多完成");
@@ -1129,7 +1127,7 @@ const closeAllOrders = async ({ up, down }) => {
                 testMoney +=
                     down.orderPrice * down.quantity -
                     currentPrice * down.quantity -
-                    (currentPrice * down.quantity + down.orderPrice * down.quantity) * 0.0005;
+                    (currentPrice * down.quantity + down.orderPrice * down.quantity) * 0.0007;
                 console.log("平空 closeAllOrders ~ currentPrice testMoney:", currentPrice, testMoney);
             }
             console.log("平空完成");
@@ -1593,6 +1591,7 @@ function saveGlobalVariables() {
                 testMoney,
                 candleHeight,
                 gridHight,
+                hasOrder,
                 isResting, // 休息一段时间（空档跑网格，出网格继续跑）
             });
             fs.writeFileSync(`data/${isTest ? "test" : "prod"}-mading-${SYMBOL}.js`, `module.exports = ${data}`, {
