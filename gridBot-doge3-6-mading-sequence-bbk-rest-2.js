@@ -802,7 +802,7 @@ const getHistoryData = () => {
             gridHight: __gridHight,
         } = historyDatas;
         console.log("上一次停止程序时，交易情况", historyDatas);
-
+        isResting = __isResting;
         if (
             __historyEntryPoints.length > 0 &&
             __currentPrice != 0 &&
@@ -890,15 +890,43 @@ const recoverHistoryDataByPosition = async (historyDatas, { up, down }) => {
     gridHight = __gridHight;
 
     // 兼容 currentPointIndex === 0 或者 currentPointIndex === 3 的情况
-    if (__currentPointIndex === 3 && currentPrice > gridPoints[2] && currentPrice < gridPoints[3]) {
+    if (up && __currentPointIndex === 3 && currentPrice > gridPoints[2] && currentPrice < gridPoints[3]) {
         currentPointIndex = 2;
         prePointIndex = 2;
         if (__historyEntryPoints[__historyEntryPoints.length - 1] === 3) __historyEntryPoints.pop();
     }
-    if (__currentPointIndex === 0 && currentPrice > gridPoints[0] && currentPrice < gridPoints[1]) {
+    if (down && __currentPointIndex === 0 && currentPrice > gridPoints[0] && currentPrice < gridPoints[1]) {
         currentPointIndex = 1;
         prePointIndex = 1;
         if (__historyEntryPoints[__historyEntryPoints.length - 1] === 0) __historyEntryPoints.pop();
+    }
+    if (up && __currentPointIndex === 2 && currentPrice < gridPoints[1]) {
+        console.log(
+            `有仓位up，但是错过一个 1 的开空 currentPointIndex historyEntryPoints tradingDatas:`,
+            currentPointIndex,
+            historyEntryPoints,
+            tradingDatas,
+        );
+        await closeAllOrders({ up });
+        prePrice = currentPrice; // 记录当前价格的前一个
+        currentPointIndex = -1; // 当前网格
+        isProfitRun = false;
+        hasOrder = false;
+        isResting = false;
+    }
+    if (down && __currentPointIndex === 1 && currentPrice > gridPoints[2]) {
+        console.log(
+            `有仓位down，错过一个 2 的开多 currentPointIndex historyEntryPoints tradingDatas:`,
+            currentPointIndex,
+            historyEntryPoints,
+            tradingDatas,
+        );
+        await closeAllOrders({ down });
+        prePrice = currentPrice; // 记录当前价格的前一个
+        currentPointIndex = -1; // 当前网格
+        isProfitRun = false;
+        hasOrder = false;
+        isResting = false;
     }
 
     await checkOverGrid({ up, down });
@@ -914,9 +942,9 @@ const recoverHistoryDataByPosition = async (historyDatas, { up, down }) => {
 
 const checkOverGrid = async ({ up, down }) => {
     await getCurrentPrice();
-    if (currentPrice <= gridPoints[0]) {
+    if (currentPrice <= gridPoints[0] && down) {
         console.log(`初始化时，价格超出网格区间，重置仓位（盈利），当前价格小于gridPoints[0]`);
-        await closeAllOrders({ up, down });
+        await closeAllOrders({ down });
 
         prePrice = currentPrice; // 记录当前价格的前一个
         currentPointIndex = -1; // 当前网格
@@ -924,9 +952,9 @@ const checkOverGrid = async ({ up, down }) => {
         hasOrder = false;
         isResting = false;
     }
-    if (currentPrice >= gridPoints[3]) {
+    if (currentPrice >= gridPoints[3] && up) {
         console.log(`初始化时，价格超出网格区间，重置仓位（盈利），当前价格大于gridPoints[3]`);
-        await closeAllOrders({ up, down });
+        await closeAllOrders({ up });
 
         prePrice = currentPrice; // 记录当前价格的前一个
         currentPointIndex = -1; // 当前网格
@@ -1013,10 +1041,15 @@ const startTrading = async () => {
         // 测试
         if (isTest) {
             await getCurrentPrice();
-            historyDatas && (await recoverHistoryData(historyDatas));
-            // 测试环境就不弄太复杂，记住上次的 testMoney 然后直接重新开单
-            tradingDatas = {};
-            initializeTrading();
+            if (historyDatas) {
+                await recoverHistoryDataByPosition(historyDatas, {
+                    up: tradingDatas[2] || null,
+                    down: tradingDatas[1] || null,
+                });
+            } else {
+                // 测试环境就直接恢复数据
+                initializeTrading();
+            }
         } else {
             // 初始化 tradingDatas
             allPositionDetail = await getPositionRisk(); // 获取当前仓位信息
@@ -1029,13 +1062,17 @@ const startTrading = async () => {
                     await recoverHistoryDataByPosition(historyDatas, allPositionDetail);
                 } else {
                     console.log("该币现有仓位和上次保留的数据不符合，请手动处理！！！");
-                    console.error("该币现有仓位和上次保留的数据不符合，请手动处理！！！");
                     return;
                 }
             } else {
                 // 如果还没仓位
-                console.log("还没仓位，initializeTrading");
-                initializeTrading();
+                if (isResting) {
+                    console.log("还没仓位，正在休息，所以什么都不做");
+                } else {
+                    console.log("还没仓位，也不是休息状态，initializeTrading");
+                    await getCurrentPrice();
+                    initializeTrading();
+                }
             }
         }
         await startWebSocket(); // 启动websocket更新价格
@@ -1368,7 +1405,7 @@ const startRunGrid = async (_prePrice, _currentPrice) => {
             await gridPointTrading2(); // 交易
         } else {
             // 相同交易点
-            console.log("🚀 ~ file:相同交易点");
+            // console.log("🚀 ~ file:相同交易点");
         }
     }
 };
@@ -1417,7 +1454,7 @@ const startWebSocket = async () => {
             judgeAndTrading(curKLine); // isResting 时不下单 内部有判断
         }
         // 相等的话直接退出，因为它到不了任何交易点，继续执行也没有意义
-        if (isLoading() || prePrice === currentPrice) {
+        if (isLoading() || prePrice === currentPrice || isResting) {
             return;
         } else {
             hasOrder && (await startRunGrid(prePrice, currentPrice)); // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流

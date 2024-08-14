@@ -546,6 +546,27 @@ const config = {
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
     },
+    zeta: {
+        SYMBOL: "zetaUSDT".toLowerCase(), // 交易对
+        base: "USDT",
+        howManyCandleHeight: 3,
+        availableMoney: 7, // 可用的USDT数量
+        diff: 2,
+        profitRate: 5,
+        overNumberToRest: 9, // 多少次对冲后去休息
+        howManyNumForAvarageCandleHight: 20, // 通过多少个k线来计算 candleHight
+        klineStage: 1, // k线级别
+        invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
+
+        maPeriod: 60, // ma 指标开单
+        BBK_PERIOD: 100,
+        RSI_PERIOD: 60,
+        B2mult: 1,
+        Kmult: 1.5, // 1.5
+        judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
+        logsFolder: "logs", // 日志配置
+        errorsFolder: "errors",
+    },
 };
 // [2, 4, 16, 48, 144]
 // [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]

@@ -12,5 +12,6 @@ forever stop -a gridBot-wif.js
 forever stop -a gridBot-wld.js
 forever stop -a gridBot-ygg.js
 forever stop -a gridBot-zk.js
+forever stop -a gridBot-zeta.js
 
 ps -ef | grep node
