@@ -6,7 +6,7 @@ const fs = require("fs");
 const dayjs = require("dayjs");
 const fapi = "https://fapi.binance.com/fapi";
 const { HttpsProxyAgent } = require("https-proxy-agent");
-const symbol = "opUSDT";
+const symbol = "tUSDT";
 const data1 = require(`./tests/source/${symbol}-1m.js`);
 
 // mac 小地球仪
@@ -85,7 +85,7 @@ const getDatas = async (symbol) => {
             console.log("🚀 ~ file: getKlines.js:46 ~ getDatas ~ resItem:", resItem);
             // getKLineData 返回没有数据，说明api次数被用完了
             isErro = true;
-            break
+            break;
         }
     }
     if (restMinute && !isErro) {
