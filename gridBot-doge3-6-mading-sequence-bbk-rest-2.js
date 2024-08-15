@@ -801,6 +801,7 @@ const getHistoryData = () => {
             testMoney: __testMoney,
             hasOrder: __hasOrder,
             isResting: __isResting, // 休息一段时间（空档跑网格，出网格继续跑）
+            nextTimeBig: __nextTimeBig,
             candleHeight: __candleHeight,
             gridHight: __gridHight,
         } = historyDatas;
@@ -840,6 +841,7 @@ const recoverHistoryDataByPosition = async (historyDatas, { up, down }) => {
         testMoney: __testMoney,
         hasOrder: __hasOrder,
         isResting: __isResting, // 休息一段时间（空档跑网格，出网格继续跑）
+        nextTimeBig: __nextTimeBig,
         candleHeight: __candleHeight,
         gridHight: __gridHight,
     } = historyDatas;
@@ -856,6 +858,7 @@ const recoverHistoryDataByPosition = async (historyDatas, { up, down }) => {
     testMoney = __testMoney;
     hasOrder = __hasOrder;
     isResting = __isResting; // 休息一段时间（空档跑网格，出网格继续跑）
+    nextTimeBig = __nextTimeBig;
     candleHeight = __candleHeight;
     gridHight = __gridHight;
 
@@ -1681,6 +1684,7 @@ function saveGlobalVariables() {
                 gridHight,
                 hasOrder,
                 isResting, // 休息一段时间（空档跑网格，出网格继续跑）
+                nextTimeBig,
             });
             fs.writeFileSync(`data/${isTest ? "test" : "prod"}-mading-${SYMBOL}.js`, `module.exports = ${data}`, {
                 flag: "w",
