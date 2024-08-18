@@ -31,7 +31,7 @@ const { calculateBBKeltnerSqueeze } = require("../utils/BBKeltner.js");
 // let { kLineData } = require("./source/omUSDT-1m.js");
 // let { kLineData } = require("./source/opUSDT-1m.js");
 // let { kLineData } = require("./source/wldUSDT-1m.js");
-let { kLineData } = require("./source/tUSDT-1m.js");
+let { kLineData } = require("./source/blurUSDT-1m.js");
 
 // let howManyCandle = 1;
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -227,7 +227,7 @@ let { kLineData } = require("./source/tUSDT-1m.js");
 // const maPeriod = 60; // ma
 // const BBK_PERIOD = 2;
 // const RSI_PERIOD = 60;
-// const bigPositionRate = 5;
+// const bigPositionRate = 2;
 // const B2mult = 1;
 // const Kmult = 1.5;
 
@@ -511,6 +511,33 @@ let { kLineData } = require("./source/tUSDT-1m.js");
 // const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 // const symbol = "tUSDT";
+// const profitRate = 6;
+// const diff = 2;
+// let times = getSequenceArr(diff, 100);
+// const maPeriod = 60; // ma
+// const BBK_PERIOD = 2;
+// const RSI_PERIOD = 60;
+// const bigPositionRate = 5;
+// const B2mult = 1;
+// const Kmult = 1.5;
+
+// const availableMoney = 6;
+// const howManyCandleHeight = 5;
+// const howManyNumForAvarageCandleHight = 20;
+// const nextBig = false; // true false // tUSDT 不适合
+
+// let overNumberToRest = 19; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
+// const canStop = true; // true false; // 开启 启动/停止 模式 ⭐️
+// let isResting = false; // 启动/停止
+// const stopLossRate = 0.6;
+// const protectValue = 500;
+// const protectProfit = false; // true false; // 更保守的话开启利润保护
+// const howManyNumBegainPlus = 11;
+// const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
+
+// const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
+////////////////////////////////////
+// const symbol = "tUSDT";
 // const profitRate = 5;
 // const diff = 2;
 // let times = getSequenceArr(diff, 100);
@@ -524,7 +551,34 @@ let { kLineData } = require("./source/tUSDT-1m.js");
 // const availableMoney = 6;
 // const howManyCandleHeight = 3;
 // const howManyNumForAvarageCandleHight = 50;
-// const nextBig = false; // true false // 大仓后下一次开仓延续大仓
+// const nextBig = false; // true false // tUSDT 不适合
+
+// let overNumberToRest = 30; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
+// const canStop = true; // true false; // 开启 启动/停止 模式 ⭐️
+// let isResting = false; // 启动/停止
+// const stopLossRate = 0.6;
+// const protectValue = 500;
+// const protectProfit = false; // true false; // 更保守的话开启利润保护
+// const howManyNumBegainPlus = 11;
+// const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
+
+// const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
+///////////////////////////////////////
+// const symbol = "tUSDT";
+// const profitRate = 10;
+// const diff = 2;
+// let times = getSequenceArr(diff, 100);
+// const maPeriod = 60; // ma
+// const BBK_PERIOD = 2;
+// const RSI_PERIOD = 60;
+// const bigPositionRate = 5;
+// const B2mult = 1;
+// const Kmult = 1.5;
+
+// const availableMoney = 6;
+// const howManyCandleHeight = 6;
+// const howManyNumForAvarageCandleHight = 180;
+// const nextBig = true; // true false // 大仓后下一次开仓延续大仓
 
 // let overNumberToRest = 23; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
 // const canStop = true; // true false; // 开启 启动/停止 模式 ⭐️
@@ -536,9 +590,9 @@ let { kLineData } = require("./source/tUSDT-1m.js");
 // const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
 
 // const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-///////////////////////////////////////
-const symbol = "tUSDT";
-const profitRate = 7;
+// //////////////////////////////////////////////////////////////////////////////////////////////////////
+const symbol = "blurUSDT";
+const profitRate = 10;
 const diff = 2;
 let times = getSequenceArr(diff, 100);
 const maPeriod = 60; // ma
@@ -551,7 +605,7 @@ const Kmult = 1.5;
 const availableMoney = 6;
 const howManyCandleHeight = 6;
 const howManyNumForAvarageCandleHight = 180;
-const nextBig = true; // true false // 大仓后下一次开仓延续大仓
+const nextBig = false; // true false // 大仓后下一次开仓延续大仓
 
 let overNumberToRest = 23; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
 const canStop = true; // true false; // 开启 启动/停止 模式 ⭐️

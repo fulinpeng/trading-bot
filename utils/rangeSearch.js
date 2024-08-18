@@ -98,4 +98,11 @@ function checkVandAPoint(slice, tolerance) {
 // console.log('V形态最低值:', vPointsMin);
 // console.log('A形态最高值:', aPointsMax);
 
-module.exports = { findVandAPoints };
+const findMaxAndMin = (recentKlines) => {
+    // 获取最近180根K线中的最高价和最低价
+    const maxHigh = Math.max(...recentKlines.map((kline) => parseFloat(kline.high)));
+    const minLow = Math.min(...recentKlines.map((kline) => parseFloat(kline.low)));
+
+    return { minLow, maxHigh };
+};
+module.exports = { findVandAPoints, findMaxAndMin };

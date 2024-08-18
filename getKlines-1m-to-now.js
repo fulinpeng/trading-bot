@@ -6,7 +6,7 @@ const fs = require("fs");
 const dayjs = require("dayjs");
 const fapi = "https://fapi.binance.com/fapi";
 const { HttpsProxyAgent } = require("https-proxy-agent");
-const symbol = "tUSDT";
+const symbol = "rareUSDT";
 const data1 = require(`./tests/source/${symbol}-1m.js`);
 
 // mac 小地球仪
