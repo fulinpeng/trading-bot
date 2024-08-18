@@ -704,11 +704,12 @@ const start = () => {
         else {
             if (modelType === 1) {
                 if (hasOrder) {
-                    if (s_count % 90 === 0) {
-                        // if (Math.abs(s_prePrice - curkLine.close) / s_prePrice >= 0.02) {
+                    // needContinue = beforBeforStartRunGrid(curkLine, 0.2);
+                    // if (needContinue && s_count % 1 === 0) {
+                    if (Math.abs(s_prePrice - curkLine.close) / s_prePrice >= 0.01) {
                         // if (Math.abs(s_prePrice - curkLine.close) / s_prePrice >= 0.08) {
                         s_prePrice = curkLine.close;
-                        needContinue = beforStartRunGrid(curkLine);
+                        needContinue = beforStartRunGrid(curkLine, 2);
                     }
                     needContinue && startRunGrid(curkLine);
                 }
@@ -797,7 +798,7 @@ const teadeSell = (_currentPrice) => {
     // setLine 辅助指标线
     setLinesOpen();
 };
-const beforStartRunGrid = (curkLine) => {
+const beforBeforStartRunGrid = (curkLine, profit) => {
     let _currentPrice = 0;
     if (isResting) return;
     let dis = 0;
@@ -814,7 +815,33 @@ const beforStartRunGrid = (curkLine) => {
     }
     let sum = _money.reduce((sum, cur) => sum + cur, 0);
 
-    if (sum > 0) {
+    if (sum >= profit) {
+        closeOrderHistory.push([...historyEntryPoints, -1]);
+        closeTrend(orderPrice, _currentPrice);
+        setLinesClose("success");
+        reset();
+        return false;
+    }
+    return true;
+};
+const beforStartRunGrid = (curkLine, profit) => {
+    let _currentPrice = 0;
+    if (isResting) return;
+    let dis = 0;
+    let _money = [...s_money];
+    if (trend === "up") {
+        _currentPrice = curkLine.close;
+        dis = quantity * (_currentPrice - orderPrice) - quantity * (orderPrice + _currentPrice) * 0.0007;
+        _money.push(dis);
+    }
+    if (trend === "down") {
+        _currentPrice = curkLine.close;
+        dis = quantity * (orderPrice - _currentPrice) - quantity * (orderPrice + _currentPrice) * 0.0007;
+        _money.push(dis);
+    }
+    let sum = _money.reduce((sum, cur) => sum + cur, 0);
+
+    if (sum >= profit) {
         closeOrderHistory.push([...historyEntryPoints, -1]);
         closeTrend(orderPrice, _currentPrice);
         setLinesClose("success");
