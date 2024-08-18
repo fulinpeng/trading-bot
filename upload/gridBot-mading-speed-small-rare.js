@@ -291,7 +291,7 @@ const _refreshPrice = (curKLine) => {
 
 // 判断+交易
 const judgeAndTrading = async (curkLine) => {
-    console.log("judgeAndTrading isResting hasOrder:", isResting, hasOrder);
+    // console.log("judgeAndTrading isResting hasOrder:", isResting, hasOrder);
     if (isResting || hasOrder) return;
     let readyTradingDirection = "";
     if (judgeByBBK) {
@@ -636,7 +636,7 @@ const placeOrder = async (side, quantity, resetTradingDatas) => {
                     side,
                     orderPrice: _currentPrice,
                     quantity: Math.abs(origQty),
-                    // orderTime: Date.now(),
+                    orderTime: timestamp,
                 });
             } else {
                 await recordTradingDatas(index, trend, {
@@ -644,7 +644,7 @@ const placeOrder = async (side, quantity, resetTradingDatas) => {
                     side,
                     orderPrice: _currentPrice,
                     quantity: Math.abs(origQty),
-                    // orderTime: Date.now(),
+                    orderTime: timestamp,
                 });
             }
             saveGlobalVariables();
@@ -1386,7 +1386,7 @@ const gridPointTrading2 = async () => {
 
     onGridPoint = false;
 };
-const beforStartRunGrid = async () => {
+const beforStartRunGrid = async (profit) => {
     if (!hasOrder || !needContinue) return false;
     let _currentPrice = currentPrice;
     let dis = 0;
@@ -1423,7 +1423,7 @@ const beforStartRunGrid = async () => {
     let sum = _money.reduce((sum, cur) => sum + cur, 0);
 
     console.log("sum:", sum);
-    if (sum > 0) {
+    if (sum >= profit) {
         historyEntryPoints.push("s");
         console.log(`交替穿过${historyEntryPoints.length}次交易点，是 小仓win，重置仓位（盈利）！！！`);
         await closeOtherPointAllOrders([1, 2], -1);
@@ -1523,11 +1523,12 @@ const startWebSocket = async () => {
             await judgeAndTrading(curKLine); // isResting 时不下单 内部有判断 // >>>>>>>> 浪费了一分钟，可以立即开单
 
             if (hasOrder) {
-                if (s_count % 180 === 0) {
-                    // if (Math.abs(s_prePrice - curKLine.close) / s_prePrice >= 0.02) {
-                    // if (Math.abs(s_prePrice - curKLine.close) / s_prePrice >= 0.08) {
-                    // s_prePrice = curKLine.close;
-                    needContinue = await beforStartRunGrid();
+                // console.log("s_count s_prePrice s_money:", s_count, s_prePrice, s_money);
+                // if (needContinue && s_count % 1=== 0) {
+                // if (Math.abs(s_prePrice - curKLine.close) / s_prePrice >= 0.02) {
+                if (Math.abs(s_prePrice - curKLine.close) / s_prePrice >= 0.01) {
+                    s_prePrice = curKLine.close;
+                    needContinue = await beforStartRunGrid(2);
                     // console.log("needContinue:", needContinue);
                 }
             }
