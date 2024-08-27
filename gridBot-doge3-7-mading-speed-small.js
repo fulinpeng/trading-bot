@@ -36,6 +36,9 @@ const {
     B2mult,
     Kmult, // 1.5
     judgeByBBK, //  true false; 根据bbk指标来开单 ⭐️
+    modelType,
+    model1,
+    model2,
 } = config["rare"];
 
 const times = getSequenceArr(diff, 150);
@@ -1523,13 +1526,17 @@ const startWebSocket = async () => {
             await judgeAndTrading(curKLine); // isResting 时不下单 内部有判断 // >>>>>>>> 浪费了一分钟，可以立即开单
 
             if (hasOrder) {
-                // console.log("s_count s_prePrice s_money:", s_count, s_prePrice, s_money);
-                // if (needContinue && s_count % 1=== 0) {
-                // if (Math.abs(s_prePrice - curKLine.close) / s_prePrice >= 0.02) {
-                if (Math.abs(s_prePrice - curKLine.close) / s_prePrice >= 0.01) {
-                    s_prePrice = curKLine.close;
-                    needContinue = await beforStartRunGrid(2);
-                    // console.log("needContinue:", needContinue);
+                if (modelType === 1) {
+                    if (s_count % model1.timeDis === 0) {
+                        s_prePrice = curKLine.close;
+                        needContinue = await beforStartRunGrid(model1.profit);
+                    }
+                }
+                if (modelType === 2) {
+                    if (Math.abs(s_prePrice - curKLine.close) / s_prePrice >= model2.priceDis) {
+                        s_prePrice = curKLine.close;
+                        needContinue = await beforStartRunGrid(model2.profit);
+                    }
                 }
             }
             s_count++; // 新的一根k线计数 +1

@@ -4,7 +4,7 @@
  * 测试发现非常有效果
  * 根据 howManyNumForAvarageCandleHight 计算 candleHeight ，再计算 gridHeight
  * [1, 0] 之后99%的胜率，先关闭此选项测试出最佳数据，再开启即可
- * 每次盈利超过某个值就关闭仓位
+ * 每次盈利超过某个值就关闭仓位 rest 模式
  */
 
 const { getLastFromArr, getSequenceArr } = require("../utils/functions");

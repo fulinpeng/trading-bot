@@ -6,18 +6,17 @@ const fs = require("fs");
 const fapi = "https://fapi.binance.com/fapi";
 const { HttpsProxyAgent } = require("https-proxy-agent");
 const { SocksProxyAgent } = require("socks-proxy-agent");
-const symbol = "rareUSDT";
+const symbol = "1000flokiUSDT";
 
 // mac 小地球仪
-let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
-let socksProxyAgent = new SocksProxyAgent("socks5://127.0.0.1:31550");
+// let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
 // 创建公用的 Axios 实例
 const axiosInstance = axios.create({
     // headers: {
     //     "Content-Type": "application/json",
     //     "X-MBX-APIKEY": apiKey,
     // },
-    httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
+    // httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
 });
 const getKLineData = async (symbol, interval, limit, startTime) => {
     try {
@@ -77,4 +76,5 @@ function writeInFile(fileName, data) {
 // 顶上引入文件也要改
 // 2024-01-01: 1704038400000
 // 2024-07-01: 1719763200000
-getDatas(symbol, 1723726800000, 1);
+// 2024-01-16: 1705334400000
+getDatas(symbol, 1704038400000, 60);
