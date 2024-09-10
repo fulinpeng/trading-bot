@@ -39,6 +39,9 @@ const {
     modelType,
     model1,
     model2,
+    isScale,
+    scaleOverNum,
+    scaleHight,
 } = config["rare"];
 
 const times = getSequenceArr(diff, 150);
@@ -1356,6 +1359,9 @@ const gridPointTrading2 = async () => {
                 ];
                 await Promise.all(promises);
             }
+            if (isScale && allPoints === scaleOverNum) {
+                gridPoints[2] += candleHeight * scaleHight;
+            }
         } else if (_currentPointIndex === 2) {
             // 休息后只给一次机会
             if (nextBig && !isResting && allPoints === overNumberToRest) {
@@ -1375,6 +1381,9 @@ const gridPointTrading2 = async () => {
                     closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex),
                 ];
                 await Promise.all(promises);
+            }
+            if (isScale && allPoints === scaleOverNum) {
+                gridPoints[1] -= candleHeight * scaleHight;
             }
         }
     } else {

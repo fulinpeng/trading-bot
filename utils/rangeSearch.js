@@ -100,9 +100,14 @@ function checkVandAPoint(slice, tolerance) {
 
 const findMaxAndMin = (recentKlines) => {
     // 获取最近180根K线中的最高价和最低价
-    const maxHigh = Math.max(...recentKlines.map((kline) => parseFloat(kline.high)));
-    const minLow = Math.min(...recentKlines.map((kline) => parseFloat(kline.low)));
+    let maxK = recentKlines[0];
+    let minK = recentKlines[0];
 
-    return { minLow, maxHigh };
+    recentKlines.forEach((k) => {
+        if (k.high > maxK.high) maxK = k;
+        if (k.low < maxK.low) minK = k;
+    });
+
+    return { minK, maxK };
 };
 module.exports = { findVandAPoints, findMaxAndMin };

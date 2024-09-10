@@ -39,6 +39,9 @@ const {
     modelType,
     model1,
     model2,
+    isScale,
+    scaleOverNum,
+    scaleHight,
 } = config["people"];
 
 const times = getSequenceArr(diff, 150);
@@ -48,7 +51,7 @@ let nextTimeBig = false; // nextBig 开启后生效，碰到 [1,0] 或者 [2,3] 
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
-const isTest = false; // 将此标志设置为  false/true 使用沙盒环境
+const isTest = true; // 将此标志设置为  false/true 使用沙盒环境
 const showProfit = true;
 const api = "https://api.binance.com/api";
 const fapi = "https://fapi.binance.com/fapi";
@@ -1356,6 +1359,9 @@ const gridPointTrading2 = async () => {
                 ];
                 await Promise.all(promises);
             }
+            if (isScale && historyEntryPointsLlen === scaleOverNum) {
+                gridPoints[2] += candleHeight * scaleHight;
+            }
         } else if (_currentPointIndex === 2) {
             // 休息后只给一次机会
             if (nextBig && !isResting && allPoints === overNumberToRest) {
@@ -1375,6 +1381,9 @@ const gridPointTrading2 = async () => {
                     closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex),
                 ];
                 await Promise.all(promises);
+            }
+            if (isScale && historyEntryPointsLlen === scaleOverNum) {
+                gridPoints[1] -= candleHeight * scaleHight;
             }
         }
     } else {

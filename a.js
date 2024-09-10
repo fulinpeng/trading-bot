@@ -1,0 +1,28 @@
+a = {
+    historyEntryPoints: [
+        1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1,
+        2, 1, 2, 1, 2,
+    ],
+    currentPrice: 0.12259,
+    prePrice: 0.12256,
+    curGridPoint: 0.12126133333333333,
+    prePointIndex: 1,
+    currentPointIndex: 2,
+    tradingDatas: {
+        1: { down: null },
+        2: { up: { trend: "up", side: "BUY", orderPrice: 0.1213, quantity: 6843, orderTime: 1725773810517 } },
+    },
+    tradingInfo: { trend: "", side: "", orderPrice: 0, quantity: 0, times: 0 },
+    gridPoints: [-5.5, 0.11, 0.12126133333333333, 5.534594666666649],
+    isProfitRun: false,
+    gridPoints2: [],
+    testMoney: -101.98678118000066,
+    candleHeight: 0.00018083333333333344,
+    gridHight: 0.000632916666666667,
+    hasOrder: true,
+    isResting: false,
+    nextTimeBig: false,
+    s_money: [-121.6181607890006],
+    s_count: 0,
+    s_prePrice: 0.12259,
+};

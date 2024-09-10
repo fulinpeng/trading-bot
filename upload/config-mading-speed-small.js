@@ -21,6 +21,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -52,6 +55,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -83,6 +89,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -114,6 +123,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -145,6 +157,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -176,6 +191,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: true,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -207,6 +225,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -238,6 +259,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -269,6 +293,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -300,6 +327,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -331,6 +361,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -362,6 +395,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -393,6 +429,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -424,6 +463,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -455,6 +497,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -486,6 +531,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -517,6 +565,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -548,6 +599,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -579,6 +633,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -610,6 +667,9 @@ const config = {
     //     judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
     //     logsFolder: "logs", // 日志配置
     //     errorsFolder: "errors",
+    isScale: false,
+    scaleOverNum: 20,
+    scaleHight: 3,
     modelType: 2,
     model1: {
         timeDis: 180,
@@ -640,6 +700,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -671,6 +734,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -702,6 +768,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -733,6 +802,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -764,6 +836,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -795,6 +870,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -826,6 +904,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -857,6 +938,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -888,6 +972,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -919,6 +1006,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -950,6 +1040,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -981,6 +1074,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -1011,6 +1107,9 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
         modelType: 2,
         model1: {
             timeDis: 180,
@@ -1041,10 +1140,13 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
-        modelType: 2,
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 1,
         model1: {
             timeDis: 180,
-            profit: 1,
+            profit: 0.1,
         },
         model2: {
             priceDis: 0.005,

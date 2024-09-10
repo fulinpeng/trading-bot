@@ -1324,7 +1324,7 @@ const gridPointTrading2 = async () => {
             console.log(`交替穿过${allPoints}次交易点，是 2~3，重置仓位（盈利）！！！，并当前继续开多`);
             await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
 
-            isResting = false;
+            teadeBuy(times[allPoints - 1]), (isResting = false);
             hasOrder = false;
             onGridPoint = false;
 
