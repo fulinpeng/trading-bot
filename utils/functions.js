@@ -87,7 +87,7 @@ function throttleImmediate(func, delay, immediate = true) {
     };
 }
 
-const getDate = (date) => {
+const getDate = (date, showMillise) => {
     const currentDate = date ? new Date(date) : new Date();
     const year = currentDate.getFullYear();
     let month = currentDate.getMonth() + 1; // 月份是从 0 开始的，所以要加 1
@@ -101,7 +101,14 @@ const getDate = (date) => {
     let seconds = currentDate.getSeconds();
     if (seconds < 10) seconds = `0${seconds}`;
 
-    return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
+    if (showMillise) {
+        let milliseconds = currentDate.getMilliseconds();
+        return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}--${milliseconds}`;
+    } else {
+        return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
+    }
+
+    
 };
 // 计算数组平均值的函数
 function calculateAverage(values, period) {

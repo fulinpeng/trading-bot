@@ -5,8 +5,10 @@
  * 根据 howManyNumForAvarageCandleHight 计算 candleHeight ，再计算 gridHeight
  * [1, 0] 之后99%的胜率，先关闭此选项测试出最佳数据，再开启即可
  * 每次盈利超过某个值就关闭仓位
- * 1. 在test-mading4-3.js基础上
- * 2. gridPoints[0] gridPoints[3] 直接平仓，但是开仓时从 time === 10 开始
+ * 1. 在 test-mading4-3.js 基础上
+ * 2. gridPoints[0] gridPoints[3] 直接平仓，但是开仓时从 上一次平仓的交易次数 开始
+ * 
+ * 不理想还是没有 test-mading4-3.js 牛逼
  */
 
 const { getLastFromArr, getSequenceArr } = require("../utils/functions");
@@ -862,13 +864,13 @@ let { kLineData } = require("./source/1000flokiUSDT-1m.js");
 // const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 const symbol = "1000flokiUSDT";
-const profitRate = 10;
+const profitRate = 10000;
 const diff = 2;
-let times = getSequenceArr(diff, 200);
+let times = getSequenceArr(diff, 1000);
 let modelType = 1;
 const model1 = {
     timeDis: 180,
-    profit: 0.1,
+    profit: 1,
 };
 const model2 = {
     priceDis: 0.005,
@@ -884,7 +886,7 @@ const bigPositionRate = 6;
 const B2mult = 1;
 const Kmult = 1.5;
 
-const availableMoney = 10;
+const availableMoney = 100;
 const howManyCandleHeight = 3.5;
 const howManyNumForAvarageCandleHight = 180;
 const nextBig = false; // true false // 大仓后下一次开仓延续大仓
@@ -1077,7 +1079,7 @@ const start = () => {
     judgeByBBK && console.log("🚀 ~ 挤压k数量，总k数量，挤压/总k:", num, kLineData.length, num / kLineData.length);
 };
 let s_moneyArr = [];
-const reset = () => {
+const reset = (sum) => {
     // 如果上一次轮回是大仓位成交，下一次就继续大仓，前提是必须得让测试数据尽量少达到overNumberToRest比较好
     if (nextBig) {
         if (historyEntryPoints.length === 2) {
@@ -1086,9 +1088,34 @@ const reset = () => {
             nextTimeBig = false;
         }
     }
+    // 经过 gridPoints 0 3 点，并且未盈利
+    // 就还是开大仓，即 historyEntryPoints 保持不变
+    if (isStopByPoint_0_3) {
+        if (isLastTurnsNotProfit) {
+            // historyEntryPoints 未盈利，只减一个
+            historyEntryPoints.shift();
+            s_count = -1;
+            s_money = [sum];
+        } else {
+            // 加入时间，方便查看
+            s_money.unshift(curkLine.closeTime);
+            s_moneyArr.push(s_money);
 
-    s_money.unshift(curkLine.closeTime);
-    s_moneyArr.push(s_money);
+            // 重置
+            historyEntryPoints = [];
+            s_count = -1;
+            s_money = [];
+        }
+    } else {
+        // 加入时间，方便查看
+        s_money.unshift(curkLine.closeTime);
+        s_moneyArr.push(s_money);
+
+        // 重置
+        historyEntryPoints = [];
+        s_count = -1;
+        s_money = [];
+    }
 
     orderPrice = 0;
     trend = "";
@@ -1114,10 +1141,8 @@ const setGridPoints = (trend, _currentPrice, curkLine, _profitRate = profitRate)
         const point0 = point1 - gridHeight * _profitRate;
 
         gridPoints = [point0, point1, point2, point3];
-        if (!historyEntryPoints.length) {
-            historyEntryPoints = [2];
-            currentPointIndex = 2;
-        }
+        historyEntryPoints.push(2);
+        currentPointIndex = 2;
         // isResting 的时候，gridPoints会在 0/3 处被 重置
     }
 
@@ -1130,6 +1155,9 @@ const setGridPoints = (trend, _currentPrice, curkLine, _profitRate = profitRate)
         gridPoints = [point0, point1, point2, point3];
         if (!historyEntryPoints.length) {
             historyEntryPoints = [1];
+            currentPointIndex = 1;
+        } else {
+            historyEntryPoints.push(1);
             currentPointIndex = 1;
         }
         // isResting 的时候，gridPoints会在 0/3 处被 重置
@@ -1155,29 +1183,27 @@ const teadeSell = (_currentPrice) => {
     // setLine 辅助指标线
     setLinesOpen();
 };
-
-const beforStartRunGrid = (curkLine, profit) => {
-    let _currentPrice = 0;
-    if (isResting) return;
+const getDis = (_currentPrice) => {
     let dis = 0;
-    let sum = s_money.reduce((sum, cur) => sum + cur, 0);
     if (trend === "up") {
-        _currentPrice = curkLine.close;
         dis = quantity * (_currentPrice - orderPrice) - quantity * (orderPrice + _currentPrice) * 0.0007;
     }
     if (trend === "down") {
-        _currentPrice = curkLine.close;
         dis = quantity * (orderPrice - _currentPrice) - quantity * (orderPrice + _currentPrice) * 0.0007;
     }
+    return dis;
+};
+const beforStartRunGrid = (curkLine, profit) => {
+    if (isResting) return;
+    let dis = getDis(curkLine.close);
+    let sum = s_money.reduce((sum, cur) => sum + cur, 0);
 
     if (sum + dis >= profit) {
         closeOrderHistory.push([...historyEntryPoints, -1]);
-        closeTrend(orderPrice, _currentPrice);
+        closeTrend(orderPrice, curkLine.close);
         setLinesClose("success");
+        isLastTurnsNotProfit = false;
         reset();
-        historyEntryPoints = [];
-        s_count = -1;
-        s_money = [];
         return false;
     }
     return true;
@@ -1251,6 +1277,7 @@ const gridPointTrading2 = () => {
     const _historyEntryPoints = historyEntryPoints;
     const gridH = gridPoints[2] - gridPoints[1];
     const historyEntryPointsLlen = _historyEntryPoints.length;
+    let profit = modelType === 1 ? model1.profit : model2.profit;
     if (_currentPointIndex === 0) {
         if (isResting) {
         } else {
@@ -1258,13 +1285,21 @@ const gridPointTrading2 = () => {
             closeTrend(orderPrice, _currentPrice);
             setLinesClose("success");
         }
-        reset();
+        isStopByPoint_0_3 = true;
+        let sum = s_money.reduce((sum, cur) => sum + cur, 0);
+        let dis = getDis(_currentPrice);
+
+        if (sum + dis >= profit) {
+            isLastTurnsNotProfit = false;
+        } else {
+            isLastTurnsNotProfit = true;
+        }
+        reset(sum + dis);
 
         if (protectProfit && testMoney / maxMoney < stopLossRate) {
             stop = true;
         }
 
-        isStopByPoint_0_3 = true;
         return;
     } else if (_currentPointIndex === 3) {
         if (isResting) {
@@ -1273,12 +1308,20 @@ const gridPointTrading2 = () => {
             closeTrend(orderPrice, _currentPrice);
             setLinesClose("success");
         }
-        reset();
+        isStopByPoint_0_3 = true;
+        let sum = s_money.reduce((sum, cur) => sum + cur, 0);
+        let dis = getDis(_currentPrice);
+
+        if (sum + dis >= profit) {
+            isLastTurnsNotProfit = false;
+        } else {
+            isLastTurnsNotProfit = true;
+        }
+        reset(sum + dis);
 
         if (protectProfit && testMoney / maxMoney < stopLossRate) {
             stop = true;
         }
-        isStopByPoint_0_3 = true;
         return;
     } else if (_currentPointIndex === 1) {
         if (!isResting) {
@@ -1329,7 +1372,7 @@ function setLinesClose(type) {
     crossGrideLength.push(lastTrendInfo.length);
     positionType.push(type === "success" ? 1 : -1);
     candleHeightAndGridPoints.push({
-        date: curkLine.openTime,
+        date: curkLine.closeTime,
         trend,
         orderPrice,
         candleHeight,
