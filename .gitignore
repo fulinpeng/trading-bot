@@ -2,6 +2,10 @@ node_modules
 logs
 errors
 English
-README.md
+README*
+# !/README.md
 .env
 garbage
+.vscode
+.cer
+.pem

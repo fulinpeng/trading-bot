@@ -14,7 +14,7 @@ const { calculateBBKeltnerSqueeze } = require("./utils/BBKeltner.js");
 const { calculateSimpleMovingAverage } = require("./utils/ma.js");
 
 let testMoney = 0;
-
+let testMoneyArr = [];
 const {
     SYMBOL,
     base,
@@ -39,6 +39,9 @@ const {
     modelType,
     model1,
     model2,
+    isScale,
+    scaleOverNum,
+    scaleHight,
 } = config["1000floki"];
 
 const times = getSequenceArr(diff, 150);
@@ -48,7 +51,7 @@ let nextTimeBig = false; // nextBig 开启后生效，碰到 [1,0] 或者 [2,3] 
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
-const isTest = false; // 将此标志设置为  false/true 使用沙盒环境
+const isTest = true; // 将此标志设置为  false/true 使用沙盒环境
 const showProfit = true;
 const api = "https://api.binance.com/api";
 const fapi = "https://fapi.binance.com/fapi";
@@ -1143,6 +1146,7 @@ const closePointOrders = async (pointIndex) => {
                 if (showProfit) {
                     // 测试
                     testMoney += dis;
+                    testMoneyArr.push(testMoney);
                     console.log("平多 closePointOrders ~ currentPrice testMoney:", currentPrice, testMoney);
                 }
                 tradingDatas[pointIndex].up = null;
@@ -1162,6 +1166,7 @@ const closePointOrders = async (pointIndex) => {
                 if (showProfit) {
                     // 测试
                     testMoney += dis;
+                    testMoneyArr.push(testMoney);
                     console.log("平空 closePointOrders ~ currentPrice testMoney:", currentPrice, testMoney);
                 }
                 tradingDatas[pointIndex].down = null;
@@ -1199,6 +1204,7 @@ const closeAllOrders = async ({ up, down }) => {
                     (currentPrice * up.quantity + up.orderPrice * up.quantity) * 0.0007;
                 //测试
                 testMoney += dis;
+                testMoneyArr.push(testMoney);
 
                 console.log("平多 closeAllOrders ~ currentPrice testMoney:", currentPrice, testMoney);
             }
@@ -1216,6 +1222,7 @@ const closeAllOrders = async ({ up, down }) => {
                     (currentPrice * down.quantity + down.orderPrice * down.quantity) * 0.0007;
                 // 测试
                 testMoney += dis;
+                testMoneyArr.push(testMoney);
 
                 console.log("平空 closeAllOrders ~ currentPrice testMoney:", currentPrice, testMoney);
             }
@@ -1356,6 +1363,9 @@ const gridPointTrading2 = async () => {
                 ];
                 await Promise.all(promises);
             }
+            if (isScale && allPoints === scaleOverNum) {
+                gridPoints[2] += candleHeight * scaleHight;
+            }
         } else if (_currentPointIndex === 2) {
             // 休息后只给一次机会
             if (nextBig && !isResting && allPoints === overNumberToRest) {
@@ -1375,6 +1385,9 @@ const gridPointTrading2 = async () => {
                     closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex),
                 ];
                 await Promise.all(promises);
+            }
+            if (isScale && allPoints === scaleOverNum) {
+                gridPoints[1] -= candleHeight * scaleHight;
             }
         }
     } else {
@@ -1705,6 +1718,7 @@ function saveGlobalVariables() {
                 isProfitRun,
                 gridPoints2,
                 testMoney,
+                testMoneyArr,
                 candleHeight,
                 gridHight,
                 hasOrder,

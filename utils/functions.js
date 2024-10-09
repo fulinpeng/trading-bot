@@ -107,8 +107,6 @@ const getDate = (date, showMillise) => {
     } else {
         return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
     }
-
-    
 };
 // 计算数组平均值的函数
 function calculateAverage(values, period) {
@@ -226,9 +224,17 @@ function calculateHighLow(klineData, period = 25) {
     };
 }
 function getSequenceArr(diff, num) {
+    let arr = [10];
+    for (let i = 0; i < num; i++) {
+        let item = arr[arr.length - 1];
+        arr.push(item + diff);
+    }
+    return arr;
+}
+function getRatioArr(diff, num) {
     let arr = [1];
     for (let i = 0; i < num; i++) {
-        arr.push(arr[arr.length - 1] + diff);
+        arr.push(arr[arr.length - 1] * diff);
     }
     return arr;
 }
@@ -248,4 +254,5 @@ module.exports = {
     getLastFromArr,
     calculateHighLow,
     getSequenceArr,
+    getRatioArr,
 };

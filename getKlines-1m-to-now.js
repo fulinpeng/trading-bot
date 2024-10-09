@@ -6,7 +6,16 @@ const fs = require("fs");
 const dayjs = require("dayjs");
 const fapi = "https://fapi.binance.com/fapi";
 // const { HttpsProxyAgent } = require("https-proxy-agent");
-const symbol = "peopleusdt";
+
+console.log("🚀process.argv:", process.argv);
+
+let symbol = process.argv[2];
+
+// 检查参数是否提供正确
+if (!symbol) {
+    console.error("请提供symbol");
+    process.exit(1);
+}
 const data1 = require(`./tests/source/${symbol}-1m.js`);
 
 // mac 小地球仪

@@ -6,13 +6,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 2,
+        profitRate: 10000,
         overNumberToRest: 10, // 多少次对冲后去休息
-        howManyNumForAvarageCandleHight: 100, // 通过多少个k线来计算 candleHight
+        howManyNumForAvarageCandleHight: 1, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -21,6 +21,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     wld: {
         SYMBOL: "wldUSDT".toLowerCase(), // 交易对
@@ -28,13 +40,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 2,
+        profitRate: 10000,
         overNumberToRest: 10, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 100, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -43,6 +55,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     doge: {
         SYMBOL: "dogeUSDT".toLowerCase(), // 交易对
@@ -50,13 +74,13 @@ const config = {
         howManyCandleHeight: 2.5,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 5,
+        profitRate: 10000,
         overNumberToRest: 15, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 12, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -65,6 +89,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     fil: {
         SYMBOL: "filUSDT".toLowerCase(), // 交易对
@@ -72,13 +108,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 2,
+        profitRate: 10000,
         overNumberToRest: 10, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 100, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -87,6 +123,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     avax: {
         SYMBOL: "avaxUSDT".toLowerCase(), // 交易对
@@ -94,13 +142,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 2,
+        profitRate: 10000,
         overNumberToRest: 10, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 100, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -109,6 +157,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     people: {
         SYMBOL: "peopleUSDT".toLowerCase(), // 交易对
@@ -116,13 +176,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 6,
+        profitRate: 10000,
         overNumberToRest: 12, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 9, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -131,6 +191,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: true,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 0.1,
+        },
+        model2: {
+            priceDis: 0.002,
+            profit: 0.5,
+        },
     },
     bome: {
         SYMBOL: "bomeUSDT".toLowerCase(), // 交易对
@@ -138,13 +210,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 8,
+        profitRate: 10000,
         overNumberToRest: 25, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 20, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -153,6 +225,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     inj: {
         SYMBOL: "injUSDT".toLowerCase(), // 交易对
@@ -160,13 +244,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 2,
+        profitRate: 10000,
         overNumberToRest: 10, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 100, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -175,6 +259,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     ordi: {
         SYMBOL: "ordiUSDT".toLowerCase(), // 交易对
@@ -182,13 +278,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 2,
+        profitRate: 10000,
         overNumberToRest: 10, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 100, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -197,6 +293,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     eth: {
         SYMBOL: "ethUSDT".toLowerCase(), // 交易对
@@ -204,13 +312,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 2,
+        profitRate: 10000,
         overNumberToRest: 10, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 100, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -219,6 +327,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     btc: {
         SYMBOL: "btcUSDT".toLowerCase(), // 交易对
@@ -226,13 +346,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 2,
+        profitRate: 10000,
         overNumberToRest: 10, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 100, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -241,6 +361,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     op: {
         SYMBOL: "opUSDT".toLowerCase(), // 交易对
@@ -248,13 +380,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 2,
+        profitRate: 10000,
         overNumberToRest: 10, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 100, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -263,6 +395,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     ygg: {
         SYMBOL: "yggUSDT".toLowerCase(), // 交易对
@@ -270,13 +414,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 2,
+        profitRate: 10000,
         overNumberToRest: 10, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 100, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -285,6 +429,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     arb: {
         SYMBOL: "arbUSDT".toLowerCase(), // 交易对
@@ -292,13 +448,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 2,
+        profitRate: 10000,
         overNumberToRest: 10, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 100, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -307,6 +463,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     aevo: {
         SYMBOL: "aevoUSDT".toLowerCase(), // 交易对
@@ -314,13 +482,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 2,
+        profitRate: 10000,
         overNumberToRest: 10, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 100, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -329,6 +497,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     om: {
         SYMBOL: "omUSDT".toLowerCase(), // 交易对
@@ -336,13 +516,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 2,
+        profitRate: 10000,
         overNumberToRest: 10, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 100, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -351,6 +531,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     sol: {
         SYMBOL: "solUSDT".toLowerCase(), // 交易对
@@ -358,13 +550,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 2,
+        profitRate: 10000,
         overNumberToRest: 10, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 100, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -373,6 +565,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     wif: {
         SYMBOL: "wifUSDT".toLowerCase(), // 交易对
@@ -380,13 +584,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 2,
+        profitRate: 10000,
         overNumberToRest: 10, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 100, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -395,6 +599,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     blur: {
         SYMBOL: "blurUSDT".toLowerCase(), // 交易对
@@ -402,36 +618,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 2,
+        profitRate: 10000,
         overNumberToRest: 10, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 100, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
-        maPeriod: 60, // ma 指标开单
-        BBK_PERIOD: 100,
-        RSI_PERIOD: 60,
-        B2mult: 1,
-        Kmult: 1.5, // 1.5
-        judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
-        logsFolder: "logs", // 日志配置
-        errorsFolder: "errors",
-    },
-    zk: {
-        SYMBOL: "zkUSDT".toLowerCase(), // 交易对
-        base: "USDT",
-        howManyCandleHeight: 2.5,
-        availableMoney: 7, // 可用的USDT数量
-        diff: 2,
-        profitRate: 6,
-        overNumberToRest: 12, // 多少次对冲后去休息
-        howManyNumForAvarageCandleHight: 180, //9, // 通过多少个k线来计算 candleHight
-        klineStage: 1, // k线级别
-        invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
+        nextBig: false, // 下一次开大仓
 
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -440,20 +633,32 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     // zk: {
     //     SYMBOL: "zkUSDT".toLowerCase(), // 交易对
     //     base: "USDT",
-    //     howManyCandleHeight: 0.3, //2.5,
+    //     howManyCandleHeight: 2.5,
     //     availableMoney: 7, // 可用的USDT数量
     //     diff: 2,
-    //     profitRate: 1, // 6,
-    //     overNumberToRest: 4, // 12, // 多少次对冲后去休息
+    //     profitRate: 10000,
+    //     overNumberToRest: 12, // 多少次对冲后去休息
     //     howManyNumForAvarageCandleHight: 180, //9, // 通过多少个k线来计算 candleHight
     //     klineStage: 1, // k线级别
-    //     invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填    //
-    nextBig: true, // 大仓后下一次开仓延续大仓
-    //     bigPositionRate: 5, // 大仓位是之前的多少倍
+    //     invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
+    //     nextBig: false, // 下一次开大仓
+
     //     maPeriod: 60, // ma 指标开单
     //     BBK_PERIOD: 100,
     //     RSI_PERIOD: 60,
@@ -462,20 +667,31 @@ const config = {
     //     judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
     //     logsFolder: "logs", // 日志配置
     //     errorsFolder: "errors",
+    isScale: false,
+    scaleOverNum: 20,
+    scaleHight: 3,
+    modelType: 2,
+    model1: {
+        timeDis: 180,
+        profit: 1,
+    },
+    model2: {
+        priceDis: 0.01,
+        profit: 2,
+    },
     // },
-    "1000pepe": {
-        SYMBOL: "1000pepeUSDT".toLowerCase(), // 交易对
+    zk: {
+        SYMBOL: "zkUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        howManyCandleHeight: 3,
+        howManyCandleHeight: 0.3, //2.5,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 6,
-        overNumberToRest: 15, // 多少次对冲后去休息
-        howManyNumForAvarageCandleHight: 20, // 通过多少个k线来计算 candleHight
+        profitRate: 10000, // 6,
+        overNumberToRest: 4, // 12, // 多少次对冲后去休息
+        howManyNumForAvarageCandleHight: 180, //9, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
-        invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填    //
+        nextBig: false, // 下一次开大仓
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -484,6 +700,54 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
+    },
+    "1000pepe": {
+        SYMBOL: "1000pepeUSDT".toLowerCase(), // 交易对
+        base: "USDT",
+        howManyCandleHeight: 5,
+        availableMoney: 10, // 可用的USDT数量
+        diff: 2,
+        profitRate: 10000,
+        overNumberToRest: 15, // 多少次对冲后去休息
+        howManyNumForAvarageCandleHight: 90, // 通过多少个k线来计算 candleHight
+        klineStage: 1, // k线级别
+        invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
+        nextBig: false, // 下一次开大仓
+
+        maPeriod: 60, // ma 指标开单
+        BBK_PERIOD: 100,
+        RSI_PERIOD: 60,
+        B2mult: 1,
+        Kmult: 1.5, // 1.5
+        judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
+        logsFolder: "logs", // 日志配置
+        errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 1,
+            profit: 1.5,
+        },
+        model2: {
+            priceDis: 0.001,
+            profit: 1.5,
+        },
+        howTimesToModGridPoints: 2, // 经过几次交易点之内需要修改gridPoints
+        howMinutesToGetAaverage: 15, // 修改gridPoints时需要几根k线求极值
     },
     alice: {
         SYMBOL: "aliceUSDT".toLowerCase(), // 交易对
@@ -491,13 +755,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 2,
+        profitRate: 10000,
         overNumberToRest: 10, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 100, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -506,6 +770,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     hft: {
         SYMBOL: "hftUSDT".toLowerCase(), // 交易对
@@ -513,13 +789,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 2,
+        profitRate: 10000,
         overNumberToRest: 10, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 100, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -528,6 +804,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     bigtime: {
         SYMBOL: "bigtimeUSDT".toLowerCase(), // 交易对
@@ -535,13 +823,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 5,
+        profitRate: 10000,
         overNumberToRest: 16, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 20, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -550,6 +838,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     beamx: {
         SYMBOL: "beamxUSDT".toLowerCase(), // 交易对
@@ -557,13 +857,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 6,
+        profitRate: 10000,
         overNumberToRest: 17, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 20, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -572,6 +872,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     iotx: {
         SYMBOL: "iotxUSDT".toLowerCase(), // 交易对
@@ -579,13 +891,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 4,
+        profitRate: 10000,
         overNumberToRest: 16, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 14, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -594,6 +906,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     zeta: {
         SYMBOL: "zetaUSDT".toLowerCase(), // 交易对
@@ -601,13 +925,13 @@ const config = {
         howManyCandleHeight: 3,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 5,
+        profitRate: 10000,
         overNumberToRest: 18, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 20, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -616,6 +940,18 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
     },
     t: {
         SYMBOL: "tUSDT".toLowerCase(), // 交易对
@@ -623,13 +959,13 @@ const config = {
         howManyCandleHeight: 6,
         availableMoney: 7, // 可用的USDT数量
         diff: 2,
-        profitRate: 7,
+        profitRate: 10000,
         overNumberToRest: 23, // 多少次对冲后去休息
         howManyNumForAvarageCandleHight: 180, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        nextBig: true, // 大仓后下一次开仓延续大仓
-        bigPositionRate: 5, // 大仓位是之前的多少倍
+        nextBig: false, // 下一次开大仓
+
         maPeriod: 60, // ma 指标开单
         BBK_PERIOD: 100,
         RSI_PERIOD: 60,
@@ -638,6 +974,186 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
+    },
+    rare: {
+        SYMBOL: "rareUSDT".toLowerCase(), // 交易对
+        base: "USDT",
+        howManyCandleHeight: 3,
+        availableMoney: 10, // 可用的USDT数量
+        diff: 2,
+        profitRate: 10000,
+        overNumberToRest: 23, // 多少次对冲后去休息
+        howManyNumForAvarageCandleHight: 180, // 通过多少个k线来计算 candleHight
+        klineStage: 1, // k线级别
+        invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
+        nextBig: false, // 下一次开大仓
+
+        maPeriod: 60, // ma 指标开单
+        BBK_PERIOD: 100,
+        RSI_PERIOD: 60,
+        B2mult: 1,
+        Kmult: 1.5, // 1.5
+        judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
+        logsFolder: "logs", // 日志配置
+        errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 2,
+        },
+    },
+    token: {
+        SYMBOL: "tokenUSDT".toLowerCase(), // 交易对
+        base: "USDT",
+        howManyCandleHeight: 4,
+        availableMoney: 10, // 可用的USDT数量
+        diff: 2,
+        profitRate: 10000,
+        overNumberToRest: 23, // 多少次对冲后去休息
+        howManyNumForAvarageCandleHight: 180, // 通过多少个k线来计算 candleHight
+        klineStage: 1, // k线级别
+        invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
+        nextBig: false, // 下一次开大仓
+
+        maPeriod: 60, // ma 指标开单
+        BBK_PERIOD: 100,
+        RSI_PERIOD: 60,
+        B2mult: 1,
+        Kmult: 1.5, // 1.5
+        judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
+        logsFolder: "logs", // 日志配置
+        errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.01,
+            profit: 1,
+        },
+    },
+    trx: {
+        SYMBOL: "trxUSDT".toLowerCase(), // 交易对
+        base: "USDT",
+        howManyCandleHeight: 3.1,
+        availableMoney: 10, // 可用的USDT数量
+        diff: 2,
+        profitRate: 10000,
+        overNumberToRest: 23, // 多少次对冲后去休息
+        howManyNumForAvarageCandleHight: 180, // 通过多少个k线来计算 candleHight
+        klineStage: 1, // k线级别
+        invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
+        nextBig: false, // 下一次开大仓
+
+        maPeriod: 60, // ma 指标开单
+        BBK_PERIOD: 100,
+        RSI_PERIOD: 60,
+        B2mult: 1,
+        Kmult: 1.5, // 1.5
+        judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
+        logsFolder: "logs", // 日志配置
+        errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.005,
+            profit: 0.7,
+        },
+    },
+    matic: {
+        SYMBOL: "maticUSDT".toLowerCase(), // 交易对
+        base: "USDT",
+        howManyCandleHeight: 4,
+        availableMoney: 10, // 可用的USDT数量
+        diff: 2,
+        profitRate: 10000,
+        overNumberToRest: 23, // 多少次对冲后去休息
+        howManyNumForAvarageCandleHight: 180, // 通过多少个k线来计算 candleHight
+        klineStage: 1, // k线级别
+        invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
+        nextBig: false, // 下一次开大仓
+        maPeriod: 60, // ma 指标开单
+        BBK_PERIOD: 100,
+        RSI_PERIOD: 60,
+        B2mult: 1,
+        Kmult: 1.5, // 1.5
+        judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
+        logsFolder: "logs", // 日志配置
+        errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.005,
+            profit: 0.5,
+        },
+    },
+    "1000floki": {
+        SYMBOL: "1000flokiUSDT".toLowerCase(), // 交易对
+        base: "USDT",
+        howManyCandleHeight: 3.5,
+        availableMoney: 10, // 可用的USDT数量
+        diff: 2,
+        profitRate: 10000,
+        overNumberToRest: 23, // 多少次对冲后去休息
+        howManyNumForAvarageCandleHight: 180, // 通过多少个k线来计算 candleHight
+        klineStage: 1, // k线级别
+        invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
+        nextBig: false, // 下一次开大仓
+        maPeriod: 60, // ma 指标开单
+        BBK_PERIOD: 100,
+        RSI_PERIOD: 60,
+        B2mult: 1,
+        Kmult: 1.5, // 1.5
+        judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
+        logsFolder: "logs", // 日志配置
+        errorsFolder: "errors",
+        isScale: false,
+        scaleOverNum: 20,
+        scaleHight: 3,
+        modelType: 2,
+        model1: {
+            timeDis: 180,
+            profit: 1,
+        },
+        model2: {
+            priceDis: 0.005,
+            profit: 0.5,
+        },
     },
 };
 // [2, 4, 16, 48, 144]

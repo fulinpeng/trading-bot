@@ -6,8 +6,27 @@ const fs = require("fs");
 const fapi = "https://fapi.binance.com/fapi";
 const { HttpsProxyAgent } = require("https-proxy-agent");
 const { SocksProxyAgent } = require("socks-proxy-agent");
-const symbol = "1000flokiUSDT";
+// const symbol = "1000flokiUSDT";
 
+console.log("🚀process.argv:", process.argv);
+
+let symbol = process.argv[2];
+let startTime = Number(process.argv[3]);
+let num = Number(process.argv[4]);
+
+// 检查参数是否提供正确
+if (!symbol) {
+    console.error("请提供symbol");
+    process.exit(1);
+}
+if (!startTime) {
+    console.error("请提供startTime");
+    process.exit(1);
+}
+if (!num) {
+    console.error("请提供num");
+    process.exit(1);
+}
 // mac 小地球仪
 // let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
 // 创建公用的 Axios 实例
@@ -77,4 +96,4 @@ function writeInFile(fileName, data) {
 // 2024-01-01: 1704038400000
 // 2024-07-01: 1719763200000
 // 2024-01-16: 1705334400000
-getDatas(symbol, 1704038400000, 60);
+getDatas(symbol, startTime, num);

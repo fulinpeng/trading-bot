@@ -173,12 +173,12 @@ const config = {
     people: {
         SYMBOL: "peopleUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        howManyCandleHeight: 3,
-        availableMoney: 7, // 可用的USDT数量
+        howManyCandleHeight: 5,
+        availableMoney: 10, // 可用的USDT数量
         diff: 2,
         profitRate: 10000,
         overNumberToRest: 12, // 多少次对冲后去休息
-        howManyNumForAvarageCandleHight: 9, // 通过多少个k线来计算 candleHight
+        howManyNumForAvarageCandleHight: 90, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         nextBig: false, // 下一次开大仓
@@ -194,10 +194,10 @@ const config = {
         isScale: true,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
-            timeDis: 180,
-            profit: 1,
+            timeDis: 1,
+            profit: 2.1,
         },
         model2: {
             priceDis: 0.002,
@@ -716,12 +716,12 @@ const config = {
     "1000pepe": {
         SYMBOL: "1000pepeUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        howManyCandleHeight: 4,
-        availableMoney: 7, // 可用的USDT数量
+        howManyCandleHeight: 5,
+        availableMoney: 10, // 可用的USDT数量
         diff: 2,
         profitRate: 10000,
         overNumberToRest: 15, // 多少次对冲后去休息
-        howManyNumForAvarageCandleHight: 20, // 通过多少个k线来计算 candleHight
+        howManyNumForAvarageCandleHight: 90, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         nextBig: false, // 下一次开大仓
@@ -737,14 +737,14 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
-            timeDis: 180,
-            profit: 1,
+            timeDis: 1,
+            profit: 1.5,
         },
         model2: {
-            priceDis: 0.002,
-            profit: 0.8,
+            priceDis: 0.001,
+            profit: 1.5,
         },
     },
     alice: {
@@ -1123,12 +1123,12 @@ const config = {
     "1000floki": {
         SYMBOL: "1000flokiUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        howManyCandleHeight: 3.5,
+        howManyCandleHeight: 4,
         availableMoney: 10, // 可用的USDT数量
         diff: 2,
         profitRate: 10000,
         overNumberToRest: 23, // 多少次对冲后去休息
-        howManyNumForAvarageCandleHight: 180, // 通过多少个k线来计算 candleHight
+        howManyNumForAvarageCandleHight: 90, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         nextBig: false, // 下一次开大仓
@@ -1145,8 +1145,8 @@ const config = {
         scaleHight: 3,
         modelType: 1,
         model1: {
-            timeDis: 180,
-            profit: 0.1,
+            timeDis: 1,
+            profit: 2,
         },
         model2: {
             priceDis: 0.005,

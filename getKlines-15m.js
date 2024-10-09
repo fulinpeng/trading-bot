@@ -6,8 +6,27 @@ const fs = require("fs");
 const fapi = "https://fapi.binance.com/fapi";
 const { HttpsProxyAgent } = require("https-proxy-agent");
 const { SocksProxyAgent } = require("socks-proxy-agent");
-const symbol = "opUSDT";
+// const symbol = "opUSDT";
 
+console.log("🚀process.argv:", process.argv);
+
+let symbol = process.argv[2];
+let startTime = Number(process.argv[3]);
+let num = Number(process.argv[4]);
+
+// 检查参数是否提供正确
+if (!symbol) {
+    console.error("请提供symbol");
+    process.exit(1);
+}
+if (!startTime) {
+    console.error("请提供startTime");
+    process.exit(1);
+}
+if (!num) {
+    console.error("请提供num");
+    process.exit(1);
+}
 // mac 小地球仪
 let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
 let socksProxyAgent = new SocksProxyAgent("socks5://127.0.0.1:31550");

@@ -14,7 +14,7 @@ const { calculateBBKeltnerSqueeze } = require("./utils/BBKeltner.js");
 const { calculateSimpleMovingAverage } = require("./utils/ma.js");
 
 let testMoney = 0;
-
+let testMoneyArr = [];
 const {
     SYMBOL,
     base,
@@ -1146,6 +1146,7 @@ const closePointOrders = async (pointIndex) => {
                 if (showProfit) {
                     // 测试
                     testMoney += dis;
+                    testMoneyArr.push(testMoney);
                     console.log("平多 closePointOrders ~ currentPrice testMoney:", currentPrice, testMoney);
                 }
                 tradingDatas[pointIndex].up = null;
@@ -1165,6 +1166,7 @@ const closePointOrders = async (pointIndex) => {
                 if (showProfit) {
                     // 测试
                     testMoney += dis;
+                    testMoneyArr.push(testMoney);
                     console.log("平空 closePointOrders ~ currentPrice testMoney:", currentPrice, testMoney);
                 }
                 tradingDatas[pointIndex].down = null;
@@ -1202,6 +1204,7 @@ const closeAllOrders = async ({ up, down }) => {
                     (currentPrice * up.quantity + up.orderPrice * up.quantity) * 0.0007;
                 //测试
                 testMoney += dis;
+                testMoneyArr.push(testMoney);
 
                 console.log("平多 closeAllOrders ~ currentPrice testMoney:", currentPrice, testMoney);
             }
@@ -1219,6 +1222,7 @@ const closeAllOrders = async ({ up, down }) => {
                     (currentPrice * down.quantity + down.orderPrice * down.quantity) * 0.0007;
                 // 测试
                 testMoney += dis;
+                testMoneyArr.push(testMoney);
 
                 console.log("平空 closeAllOrders ~ currentPrice testMoney:", currentPrice, testMoney);
             }
@@ -1359,7 +1363,7 @@ const gridPointTrading2 = async () => {
                 ];
                 await Promise.all(promises);
             }
-            if (isScale && historyEntryPointsLlen === scaleOverNum) {
+            if (isScale && allPoints === scaleOverNum) {
                 gridPoints[2] += candleHeight * scaleHight;
             }
         } else if (_currentPointIndex === 2) {
@@ -1382,7 +1386,7 @@ const gridPointTrading2 = async () => {
                 ];
                 await Promise.all(promises);
             }
-            if (isScale && historyEntryPointsLlen === scaleOverNum) {
+            if (isScale && allPoints === scaleOverNum) {
                 gridPoints[1] -= candleHeight * scaleHight;
             }
         }
@@ -1714,6 +1718,7 @@ function saveGlobalVariables() {
                 isProfitRun,
                 gridPoints2,
                 testMoney,
+                testMoneyArr,
                 candleHeight,
                 gridHight,
                 hasOrder,
