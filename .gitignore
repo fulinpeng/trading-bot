@@ -1,11 +1,11 @@
 node_modules
 logs
 errors
-English
-README*
+garbage
+README.*
 # !/README.md
 .env
-garbage
 .vscode
-.cer
-.pem
+*.cer
+*.pem
+upload
