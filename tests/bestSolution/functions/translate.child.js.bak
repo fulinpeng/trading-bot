@@ -1,0 +1,118 @@
+// 该任务，不需要用到子进程来优化，因为不好分配任务
+
+const fs = require("fs");
+const path = require("path");
+const { fork } = require("child_process");
+const os = require("os");
+
+// 动态参数范围对象
+const paramRangesObj = {
+    timeDis: { min: 1, max: 300, step: 1 },
+    profit: { min: 0.1, max: 10, step: 0.1 },
+    howManyCandleHeight: { min: 3, max: 10, step: 1 },
+    howManyNumForAvarageCandleHight: { min: 6, max: 300, step: 1 },
+};
+
+// 参数文件路径
+const paramsDir = path.resolve(__dirname, "params");
+const paramsPath = path.join(paramsDir, "params.jsonl");
+
+// 确保目录存在
+function ensureParamsDirExists() {
+    if (!fs.existsSync(paramsDir)) {
+        fs.mkdirSync(paramsDir);
+    }
+}
+
+// 生成指定范围内的所有参数值数组
+function generateParams(min, max, step) {
+    const params = [];
+    for (let i = min; i <= max; i = Math.round((i + step) * 100) / 100) {
+        params.push(i);
+    }
+    return params;
+}
+
+// 将组合数组转换为对象
+function convertToCombinationObject(keys, values) {
+    const combinationObj = {};
+    keys.forEach((key, index) => {
+        combinationObj[key] = values[index];
+    });
+    return combinationObj;
+}
+
+// 创建子进程处理写入的逻辑
+function runChildProcess() {
+    return fork(__filename, { silent: true }); // 启动子进程
+}
+
+// 主线程逻辑
+if (process.send) {
+    // 子进程逻辑
+    process.on("message", (data) => {
+        const { batch, allKeys } = data;
+
+        // 将组合发送到主进程
+        batch.forEach((combination) => {
+            const combinationObj = convertToCombinationObject(allKeys, combination);
+            process.send(JSON.stringify(combinationObj)); // 发送组合给主进程
+        });
+
+        process.exit(0); // 退出子进程
+    });
+} else {
+    // 主线程逻辑
+    ensureParamsDirExists();
+    const allKeys = Object.keys(paramRangesObj);
+    const allParams = allKeys.map((key) =>
+        generateParams(paramRangesObj[key].min, paramRangesObj[key].max, paramRangesObj[key].step),
+    );
+
+    const writeStream = fs.createWriteStream(paramsPath, { flags: "a" }); // 创建写入流，用于将数据写入文件
+
+    const batchSize = 1000; // 每个子进程处理的组合数量
+    let currentBatch = []; // 当前批次组合
+    let combinationCount = 0; // 组合计数
+
+    // 生成组合并处理
+    function generateCombinations(currentIndex, currentCombination) {
+        if (currentIndex === allParams.length) {
+            currentBatch.push(currentCombination); // 将完整的组合加入当前批次
+            combinationCount++;
+            process.stdout.write(`正在处理 ${combinationCount} 组参数\r`); // 更新控制台输出
+
+            // 如果达到批次大小，则发送给子进程处理
+            if (currentBatch.length >= batchSize) {
+                const child = runChildProcess();
+                child.send({ batch: currentBatch, allKeys }); // 发送当前批次
+                currentBatch = []; // 清空当前批次
+            }
+            return;
+        }
+
+        // 遍历当前参数的所有可能值
+        for (const value of allParams[currentIndex]) {
+            generateCombinations(currentIndex + 1, [...currentCombination, value]); // 递归生成下一个组合
+        }
+    }
+
+    generateCombinations(0, []); // 从索引 0 开始生成所有组合
+
+    // 处理主进程接收到的组合
+    process.on("message", (combination) => {
+        writeStream.write(combination + "\n"); // 写入文件
+    });
+
+    // 如果有未处理的组合，发送给子进程
+    if (currentBatch.length > 0) {
+        const child = runChildProcess();
+        child.send({ batch: currentBatch, allKeys }); // 发送最后的批次
+    }
+
+    // 结束写入流
+    process.on("exit", () => {
+        writeStream.end(); // 结束写入流
+        console.log(`所有参数组合已保存到 ${paramsPath}`);
+    });
+}

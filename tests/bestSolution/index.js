@@ -5,7 +5,8 @@ const { evaluateStrategy } = require("../test-mading4-6.js");
 // const { evaluateStrategy } = require("./strategies/test-demo");
 const { mutationFunction } = require("./functions/mutationFunction");
 
-const symbol = "bigtimeUSDT";
+// const symbol = "bigtimeUSDT";
+const symbol = "1000pepeUSDT";
 
 let defaultParams = null;
 const qualifiedSolutionsPath = path.join(__dirname, `qualifiedSolutions/${symbol}.js`);
