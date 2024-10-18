@@ -10,3 +10,4 @@ README.*
 *.pem
 __upload
 source
+*.jsonl

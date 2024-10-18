@@ -1,39 +1,36 @@
 // 给定的参数范围对象形式
 const paramRangesObj = {
-    model1: {
-        timeDis: { min: 1, max: 300 }, // 整数
-        profit: { min: 0.1, max: 10 }, // 小数，保留一位
-    },
+    timeDis: { min: 1, max: 300 }, // 整数
+    profit: { min: 0.1, max: 10 }, // 小数，保留一位
     howManyCandleHeight: { min: 3, max: 10 }, // 整数
     howManyNumForAvarageCandleHight: { min: 6, max: 300 }, // 整数
 };
 
 // 转换为数组形式，按顺序存储每个参数的范围
 const paramRanges = [
-    paramRangesObj.model1.timeDis, // 对应 model1.timeDis (整数)
-    paramRangesObj.model1.profit, // 对应 model1.profit (小数)
+    paramRangesObj.timeDis, // 对应 timeDis (整数)
+    paramRangesObj.profit, // 对应 profit (小数)
     paramRangesObj.howManyCandleHeight, // 对应 howManyCandleHeight (整数)
     paramRangesObj.howManyNumForAvarageCandleHight, // 对应 howManyNumForAvarageCandleHight (整数)
 ];
 
 // 固定变异率
 const mutationRate = 0.2; // 设定固定变异率，如 0.2
+function getAdaptiveMutationRate(currentIteration, maxIterations) {
+    const initialRate = 0.3; // 初始变异率较高
+    const finalRate = 0.05; // 最终变异率较低
+    const progress = currentIteration / maxIterations;
+    return initialRate * (1 - progress) + finalRate * progress;
+}
 
-// 自适应变异函数，基于数组的参数处理
-function mutationFunction(phenotype) {
-    // 遍历数组中的每个参数，并根据其索引范围进行变异
+function mutationFunction(phenotype, currentIteration, maxIterations) {
+    const mutationRate = getAdaptiveMutationRate(currentIteration, maxIterations);
     return phenotype.map((value, index) => {
-        // 获取当前参数的范围
         const range = paramRanges[index];
-
-        // 变异当前值，确保值在合法范围内并不是NaN
         let mutatedValue = mutateValue(value, range, mutationRate, index);
-
-        // 防止变异后产生NaN，设置回合法值
         if (isNaN(mutatedValue)) {
-            mutatedValue = range.min; // 将其设置为最小合法值
+            mutatedValue = range.min;
         }
-
         return mutatedValue;
     });
 }

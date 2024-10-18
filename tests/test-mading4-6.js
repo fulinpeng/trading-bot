@@ -21,20 +21,15 @@
  */
 
 const { getLastFromArr, getSequenceArr } = require("../utils/functions");
-const { calculateCandleHeight, isBigAndYang, isBigAndYin } = require("../utils/kLineTools");
-// const { findVandAPoints } = require("../utils/rangeSearch");
-const { calculateATR } = require("../utils/atr.js");
-const { calculateKDJ } = require("../utils/KDJ.js");
+const { calculateCandleHeight } = require("../utils/kLineTools");
 const { calculateSimpleMovingAverage } = require("../utils/ma.js");
 const fs = require("fs");
-const { calculateRSI } = require("../utils/rsi.js");
-// const { emaMacrossover } = require("../utils/ema_ma_crossover.js");
 const { calculateBBKeltnerSqueeze } = require("../utils/BBKeltner.js");
 // let { kLineData } = require("./source/bomeUSDT-1m.js");
 // let { kLineData } = require("./source/zkUSDT-1m.js");
 // let { kLineData } = require("./source/dogeUSDT-1m.js");
-let { kLineData } = require("./source/1000pepeUSDT-1m.js");
-// let { kLineData } = require("./source/peopleUSDT-1m.js");
+// let { kLineData } = require("./source/1000pepeUSDT-1m.js");
+let { kLineData } = require("./source/peopleUSDT-1m.js");
 // let { kLineData } = require("./source/bigtimeUSDT-1m.js");
 // let { kLineData } = require("./source/beamxUSDT-1m.js");
 // let { kLineData } = require("./source/iotxUSDT-1m.js");
@@ -52,130 +47,10 @@ let { kLineData } = require("./source/1000pepeUSDT-1m.js");
 // let { kLineData } = require("./source/maticUSDT-1m.js");
 // let { kLineData } = require("./source/1000flokiUSDT-1m.js");
 
-// let howManyCandle = 1;
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// const symbol = "bomeUSDT";
-// const profitRate = 10000;
-// const diff = 2;
-// let times = getSequenceArr(diff, 100);
-// let modelType = 1;
-// let model1 = {
-//     timeDis: 1,
-//     profit: 1,
-// };
-// let model2 = {
-//     priceDis: 0.005,
-//     profit: 0.1,
-// };
-// let targetTime = null;
-// let isScale = false;
-// let scaleOverNum = 20;
-// let scaleHight = 3;
-// let maPeriod = 60; // ma
-// let BBK_PERIOD = 100;
-// let RSI_PERIOD = 60;
-// let bigPositionRate = 5;
-// let B2mult = 1;
-// let Kmult = 1.5;
-
-// let availableMoney = 10;
-// let howManyCandleHeight = 5;
-// let howManyNumForAvarageCandleHight = 90;
-// let nextBig = false; // 大仓后下一次开仓延续大仓
-
-// let overNumberToRest = 25; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// let canStop = false; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// let stopLossRate = 0.6;
-// let protectValue = 500;
-// let protectProfit = false; // true false; // 更保守的话开启利润保护
-// let howManyNumBegainPlus = 11;
-// let overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// let judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-// //////////////////////////////////////////////////////////////////////////////////////////////////////////
-// const symbol = "zkUSDT";
-// const profitRate = 6.6;
-// const diff = 2;
-// let times = getSequenceArr(diff, 100);
-// let modelType = 1;
-// const model1 = {
-//     timeDis: 180,
-//     profit: 1,
-// };
-// const model2 = {
-//     priceDis: 0.01,
-//     profit: 1,
-// };
-// const maPeriod = 60; // ma
-// const isScale = true;
-// const scaleOverNum = 20;
-// const scaleHight = 3;
-// const BBK_PERIOD = 100;
-// const RSI_PERIOD = 60;
-// const bigPositionRate = 5;
-// const B2mult = 1;
-// const Kmult = 1.5;
-
-// const availableMoney = 10;
-// const howManyCandleHeight = 5;
-// const howManyNumForAvarageCandleHight = 180;
-// const nextBig = true; // 大仓后下一次开仓延续大仓
-
-// let overNumberToRest = 13; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// const canStop = true; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// const stopLossRate = 0.6;
-// const protectValue = 500;
-// const protectProfit = false; // true false; // 更保守的话开启利润保护
-// const howManyNumBegainPlus = 11;
-// const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// const symbol = "dogeUSDT";
-// const profitRate = 10000;
-// const diff = 2; // 1053/1410
-// let times = getSequenceArr(diff, 100);
-// let modelType = 1;
-// let model1 = {
-//     timeDis: 1,
-//     profit: 1.5,
-// };
-// let model2 = {
-//     priceDis: 0.002,
-//     profit: 0.8,
-// };
-
-// let availableMoney = 10;
-// let howManyCandleHeight = 5;
-// let howManyNumForAvarageCandleHight = 86;
-// let targetTime = null; // "2024-09-29_21-14-00";
-// let maPeriod = 60; // ma
-// let isScale = false;
-// let scaleOverNum = 20;
-// let scaleHight = 3;
-// let BBK_PERIOD = 10;
-// let RSI_PERIOD = 60;
-// let bigPositionRate = 5;
-// let B2mult = 1;
-// let Kmult = 1.5;
-
-// let nextBig = false; // 大仓后下一次开仓延续大仓
-
-// let overNumberToRest = 15; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// let canStop = false; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// let stopLossRate = 0.6;
-// let protectValue = 500;
-// let protectProfit = false; // true false; // 更保守的话开启利润保护
-// let howManyNumBegainPlus = 11;
-// let judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-const symbol = "1000pepeUSDT";
+const symbol = "peopleUSDT";
 const profitRate = 10000;
+let _kLineData = [...kLineData];
 const diff = 2; // 1053/1410
 let times = getSequenceArr(diff, 100);
 let modelType = 1;
@@ -205,670 +80,6 @@ let protectValue = 500;
 let protectProfit = false; // true false; // 更保守的话开启利润保护
 let howManyNumBegainPlus = 11;
 let judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// const symbol = "peopleUSDT";
-// const profitRate = 10000;
-// const diff = 2;
-// let times = getSequenceArr(diff, 1000);
-// let modelType = 1;
-// let model1 = {
-//     timeDis: 1,
-//     profit: 2.1,
-// };
-// let model2 = {
-//     priceDis: 0.001,
-//     profit: 0.5,
-// };
-// let availableMoney = 10;
-// let howManyCandleHeight = 5;
-// let howManyNumForAvarageCandleHight = 90;
-// let targetTime = null; // "2024-09-29_21-14-00";
-// let maPeriod = 60; // ma
-// let isScale = false;
-// let scaleOverNum = 20;
-// let scaleHight = 3;
-// let BBK_PERIOD = 100;
-// let RSI_PERIOD = 60;
-// let bigPositionRate = 5;
-// let B2mult = 1;
-// let Kmult = 1.5;
-
-// let nextBig = false; // 大仓后下一次开仓延续大仓
-// let overNumberToRest = 16; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// let canStop = false; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// let stopLossRate = 0.6;
-// let protectValue = 500;
-// let protectProfit = false; // true false; // 更保守的话开启利润保护
-// let howManyNumBegainPlus = 11;
-// let overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// let judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-// const symbol = "bigtimeUSDT";
-// const profitRate = 10000;
-// const diff = 2;
-// let times = getSequenceArr(diff, 1000);
-// let modelType = 1;
-// let model1 = {
-//     timeDis: 1,
-//     profit: 2.1,
-// };
-// let model2 = {
-//     priceDis: 0.001,
-//     profit: 0.5,
-// };
-// let availableMoney = 10;
-// let howManyCandleHeight = 5;
-// let howManyNumForAvarageCandleHight = 90;
-// let targetTime = null; // "2024-09-29_21-14-00";
-// let maPeriod = 60; // ma
-// let isScale = false;
-// let scaleOverNum = 20;
-// let scaleHight = 3;
-// let BBK_PERIOD = 100;
-// let RSI_PERIOD = 60;
-// let bigPositionRate = 5;
-// let B2mult = 1;
-// let Kmult = 1.5;
-
-// let nextBig = false; // 大仓后下一次开仓延续大仓
-// let overNumberToRest = 16; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// let canStop = false; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// let stopLossRate = 0.6;
-// let protectValue = 500;
-// let protectProfit = false; // true false; // 更保守的话开启利润保护
-// let howManyNumBegainPlus = 11;
-// let overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// let judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-
-// //////////////////////////////////////////////////////////////////////////////////////////////////////
-// const symbol = "zetaUSDT";
-// const profitRate = 10000;
-// const diff = 2;
-// let times = getSequenceArr(diff, 100);
-// let modelType = 1;
-// const model1 = {
-//     timeDis: 180,
-//     profit: 1,
-// };
-// const model2 = {
-//     priceDis: 0.01,
-//     profit: 0.6,
-// };
-// const maPeriod = 60; // ma
-// const isScale = true;
-// const scaleOverNum = 20;
-// const scaleHight = 3;
-// const BBK_PERIOD = 2;
-// const RSI_PERIOD = 60;
-// const bigPositionRate = 5;
-// const B2mult = 1;
-// const Kmult = 1.5;
-
-// const availableMoney = 10;
-// const howManyCandleHeight = 3;
-// const howManyNumForAvarageCandleHight = 180;
-// const nextBig = true; // true false // 大仓后下一次开仓延续大仓
-
-// let overNumberToRest = 12; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// const canStop = false; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// const stopLossRate = 0.6;
-// const protectValue = 500;
-// const protectProfit = false; // true false; // 更保守的话开启利润保护
-// const howManyNumBegainPlus = 11;
-// const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-// const symbol = "beamxUSDT";
-// const profitRate = 6;
-// const diff = 2;
-// let times = getSequenceArr(diff, 100);
-// let modelType = 1;
-// const model1 = {
-//     timeDis: 180,
-//     profit: 1,
-// };
-// const model2 = {
-//     priceDis: 0.01,
-//     profit: 1,
-// };
-// const maPeriod = 60; // ma
-// const isScale = true;
-// const scaleOverNum = 20;
-// const scaleHight = 3;
-// const BBK_PERIOD = 2;
-// const RSI_PERIOD = 60;
-// const bigPositionRate = 5;
-// const B2mult = 1;
-// const Kmult = 1.5;
-
-// const availableMoney = 10;
-// const howManyCandleHeight = 3;
-// const howManyNumForAvarageCandleHight = 20;
-// const nextBig = true; // true false // 大仓后下一次开仓延续大仓
-
-// let overNumberToRest = 17; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// const canStop = true; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// const stopLossRate = 0.6;
-// const protectValue = 500;
-// const protectProfit = false; // true false; // 更保守的话开启利润保护
-// const howManyNumBegainPlus = 11;
-// const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-// const symbol = "iotxUSDT";
-// const profitRate = 10000;
-// const diff = 2;
-// let times = getSequenceArr(diff, 100);
-// let modelType = 1;
-// const model1 = {
-//     timeDis: 180,
-//     profit: 1,
-// };
-// const model2 = {
-//     priceDis: 0.005,
-//     profit: 1,
-// };
-// const maPeriod = 60; // ma
-// const isScale = true;
-// const scaleOverNum = 20;
-// const scaleHight = 3;
-// const BBK_PERIOD = 2;
-// const RSI_PERIOD = 60;
-// const bigPositionRate = 5;
-// const B2mult = 1;
-// const Kmult = 1.5;
-
-// const availableMoney = 10;
-// const howManyCandleHeight = 3;
-// const howManyNumForAvarageCandleHight = 100;
-// const nextBig = false; // 大仓后下一次开仓延续大仓
-
-// let overNumberToRest = 16; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// const canStop = false; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// const stopLossRate = 0.6;
-// const protectValue = 500;
-// const protectProfit = false; // true false; // 更保守的话开启利润保护
-// const howManyNumBegainPlus = 11;
-// const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// const symbol = "solUSDT";
-// const profitRate = 10000;
-// const diff = 2;
-// let times = getSequenceArr(diff, 100);
-// let modelType = 1;
-// const model1 = {
-//     timeDis: 180,
-//     profit: 0,
-// };
-// const model2 = {
-//     priceDis: 0.02,
-//     profit: 0.1,
-// };
-// const maPeriod = 60; // ma
-// const isScale = true;
-// const scaleOverNum = 20;
-// const scaleHight = 3;
-// const BBK_PERIOD = 100;
-// const RSI_PERIOD = 60;
-// const bigPositionRate = 5;
-// const B2mult = 1;
-// const Kmult = 1.5;
-
-// const availableMoney = 10;
-// const howManyCandleHeight = 3;
-// const howManyNumForAvarageCandleHight = 180;
-// const nextBig = false; // 大仓后下一次开仓延续大仓
-
-// let overNumberToRest = 17; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// const canStop = false; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// const stopLossRate = 0.6;
-// const protectValue = 500;
-// const protectProfit = false; // true false; // 更保守的话开启利润保护
-// const howManyNumBegainPlus = 11;
-// const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-// ////////////////////////////////////////////////////////////////////////////////////////////////////////
-// const symbol = "omUSDT";
-// const profitRate = 10000;
-// const diff = 2;
-// let times = getSequenceArr(diff, 100);
-// let modelType = 1;
-// const model1 = {
-//     timeDis: 180,
-//     profit: 1,
-// };
-// const model2 = {
-//     priceDis: 0.01,
-//     profit: 2.2,
-// };
-// const maPeriod = 60; // ma
-// const isScale = true;
-// const scaleOverNum = 20;
-// const scaleHight = 3;
-// const BBK_PERIOD = 100;
-// const RSI_PERIOD = 60;
-// const bigPositionRate = 5;
-// const B2mult = 1;
-// const Kmult = 1;
-// const availableMoney = 10;
-// const howManyCandleHeight = 3;
-// const howManyNumForAvarageCandleHight = 100;
-// const nextBig = false; // 大仓后下一次开仓延续大仓
-
-// let overNumberToRest = 22; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// const canStop = false; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// const stopLossRate = 0.6;
-// const protectValue = 500;
-// const protectProfit = false; // true false; // 更保守的话开启利润保护
-// const howManyNumBegainPlus = 11;
-// const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-// ////////////////////////////////////////////////////////////////////////////////////////////////////////
-// const symbol = "ondoUSDT";
-// const profitRate = 10000;
-// const diff = 2;
-// let times = getSequenceArr(diff, 100);
-// let modelType = 1;
-// const model1 = {
-//     timeDis: 180,
-//     profit: 1,
-// };
-// const model2 = {
-//     priceDis: 0.005,
-//     profit: 0.1,
-// };
-// const maPeriod = 60; // ma
-// const isScale = true;
-// const scaleOverNum = 20;
-// const scaleHight = 3;
-// const BBK_PERIOD = 100;
-// const RSI_PERIOD = 60;
-// const bigPositionRate = 5;
-// const B2mult = 1;
-// const Kmult = 1;
-// const availableMoney = 10;
-// const howManyCandleHeight = 3;
-// const howManyNumForAvarageCandleHight = 180;
-// const nextBig = false; // 大仓后下一次开仓延续大仓
-
-// let overNumberToRest = 11; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// const canStop = false; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// const stopLossRate = 0.6;
-// const protectValue = 500;
-// const protectProfit = false; // true false; // 更保守的话开启利润保护
-// const howManyNumBegainPlus = 11;
-// const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-// ////////////////////////////////////////////////////////////////////////////////////////////////////////
-// const symbol = "opUSDT";
-// const profitRate = 10000;
-// const diff = 2;
-// let times = getSequenceArr(diff, 100);
-// let modelType = 1;
-// const model1 = {
-//     timeDis: 180,
-//     profit: 1,
-// };
-// const model2 = {
-//     priceDis: 0.005,
-//     profit: 0.5,
-// };
-// const maPeriod = 60; // ma
-// const isScale = true;
-// const scaleOverNum = 20;
-// const scaleHight = 3;
-// const BBK_PERIOD = 100;
-// const RSI_PERIOD = 60;
-// const bigPositionRate = 5;
-// const B2mult = 1;
-// const Kmult = 1;
-// const availableMoney = 10;
-// const howManyCandleHeight = 3;
-// const howManyNumForAvarageCandleHight = 180;
-// const nextBig = false; // 大仓后下一次开仓延续大仓
-
-// let overNumberToRest = 17; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// const canStop = false; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// const stopLossRate = 0.6;
-// const protectValue = 500;
-// const protectProfit = false; // true false; // 更保守的话开启利润保护
-// const howManyNumBegainPlus = 11;
-// const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-////////////////////////////////////////////////////////////////////////////////////////////////////////
-// const symbol = "wldUSDT";
-// const profitRate = 10000;
-// const diff = 2;
-// let times = getSequenceArr(diff, 1000);
-// let modelType = 1;
-// let model1 = {
-//     timeDis: 1,
-//     profit: 2.1,
-// };
-// let model2 = {
-//     priceDis: 0.001,
-//     profit: 0.5,
-// };
-// let availableMoney = 10;
-// let howManyCandleHeight = 5;
-// let howManyNumForAvarageCandleHight = 90;
-// let targetTime = null; // "2024-09-29_21-14-00";
-// let maPeriod = 60; // ma
-// let isScale = false;
-// let scaleOverNum = 20;
-// let scaleHight = 3;
-// let BBK_PERIOD = 100;
-// let RSI_PERIOD = 60;
-// let bigPositionRate = 5;
-// let B2mult = 1;
-// let Kmult = 1.5;
-
-// let nextBig = false; // 大仓后下一次开仓延续大仓
-// let overNumberToRest = 16; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// let canStop = false; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// let stopLossRate = 0.6;
-// let protectValue = 500;
-// let protectProfit = false; // true false; // 更保守的话开启利润保护
-// let howManyNumBegainPlus = 11;
-// let overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// let judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-// const symbol = "tUSDT";
-// const profitRate = 10000;
-// const diff = 2;
-// let times = getSequenceArr(diff, 100);
-// let modelType = 1;
-// const model1 = {
-//     timeDis: 180,
-//     profit: 1,
-// };
-// const model2 = {
-//     priceDis: 0.01,
-//     profit: 1,
-// };
-// const maPeriod = 60; // ma
-// const isScale = true;
-// const scaleOverNum = 20;
-// const scaleHight = 3;
-// const BBK_PERIOD = 2;
-// const RSI_PERIOD = 60;
-// const bigPositionRate = 5;
-// const B2mult = 1;
-// const Kmult = 1.5;
-
-// const availableMoney = 10;
-// const howManyCandleHeight = 3;
-// const howManyNumForAvarageCandleHight = 180;
-// const nextBig = false; // true false // 大仓后下一次开仓延续大仓
-
-// let overNumberToRest = 23; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// const canStop = false; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// const stopLossRate = 0.6;
-// const protectValue = 500;
-// const protectProfit = false; // true false; // 更保守的话开启利润保护
-// const howManyNumBegainPlus = 11;
-// const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-// // //////////////////////////////////////////////////////////////////////////////////////////////////////
-// const symbol = "blurUSDT";
-// const profitRate = 10000;
-// const diff = 2;
-// let times = getSequenceArr(diff, 100);
-// let modelType = 1;
-// const model1 = {
-//     timeDis: 180,
-//     profit: 1,
-// };
-// const model2 = {
-//     priceDis: 0.02,
-//     profit: 0,
-// };
-// const maPeriod = 60; // ma
-// const isScale = true;
-// const scaleOverNum = 20;
-// const scaleHight = 3;
-// const BBK_PERIOD = 2;
-// const RSI_PERIOD = 60;
-// const bigPositionRate = 6;
-// const B2mult = 1;
-// const Kmult = 1.5;
-
-// const availableMoney = 10;
-// const howManyCandleHeight = 3;
-// const howManyNumForAvarageCandleHight = 180;
-// const nextBig = false; // true false // 大仓后下一次开仓延续大仓
-
-// let overNumberToRest = 18; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// const canStop = false; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// const stopLossRate = 0.6;
-// const protectValue = 500;
-// const protectProfit = false; // true false; // 更保守的话开启利润保护
-// const howManyNumBegainPlus = 11;
-// const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-//////////////////////////////////////////////////////////////////////////////////////////////////////
-// const symbol = "rareUSDT";
-// const profitRate = 10000;
-// const diff = 2;
-// let times = getSequenceArr(diff, 100);
-// let modelType = 1;
-// const model1 = {
-//     timeDis: 180,
-//     profit: 1,
-// };
-// const model2 = {
-//     priceDis: 0.01,
-//     profit: 1,
-// };
-// const maPeriod = 60; // ma
-// const isScale = true;
-// const scaleOverNum = 20;
-// const scaleHight = 3;
-// const BBK_PERIOD = 2;
-// const RSI_PERIOD = 60;
-// const bigPositionRate = 6;
-// const B2mult = 1;
-// const Kmult = 1.5;
-
-// const availableMoney = 10;
-// const howManyCandleHeight = 3;
-// const howManyNumForAvarageCandleHight = 180;
-// const nextBig = false; // true false // 大仓后下一次开仓延续大仓
-
-// let overNumberToRest = 18; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// const canStop = false; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// const stopLossRate = 0.6;
-// const protectValue = 500;
-// const protectProfit = false; // true false; // 更保守的话开启利润保护
-// const howManyNumBegainPlus = 11;
-// const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-// ////////////////////////////////////////////////////////////////////////////////////////////////////
-// const symbol = "tokenUSDT";
-// const profitRate = 10000;
-// const diff = 2;
-// let times = getSequenceArr(diff, 100);
-// let modelType = 1;
-// const model1 = {
-//     timeDis: 180,
-//     profit: 1,
-// };
-// const model2 = {
-//     priceDis: 0.01,
-//     profit: 1,
-// };
-// const maPeriod = 60; // ma
-// const isScale = true;
-// const scaleOverNum = 20;
-// const scaleHight = 3;
-// const BBK_PERIOD = 2;
-// const RSI_PERIOD = 60;
-// const bigPositionRate = 6;
-// const B2mult = 1;
-// const Kmult = 1.5;
-
-// const availableMoney = 10;
-// const howManyCandleHeight = 4;
-// const howManyNumForAvarageCandleHight = 180;
-// const nextBig = false; // true false // 大仓后下一次开仓延续大仓
-
-// let overNumberToRest = 18; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// const canStop = false; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// const stopLossRate = 0.6;
-// const protectValue = 500;
-// const protectProfit = false; // true false; // 更保守的话开启利润保护
-// const howManyNumBegainPlus = 11;
-// const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// const symbol = "trxUSDT";
-// const profitRate = 10000;
-// const diff = 2;
-// let times = getSequenceArr(diff, 100);
-// let modelType = 1;
-// const model1 = {
-//     timeDis: 180,
-//     profit: 1,
-// };
-// const model2 = {
-//     priceDis: 0.005,
-//     profit: 0.7,
-// };
-// const maPeriod = 60; // ma
-// const isScale = true;
-// const scaleOverNum = 20;
-// const scaleHight = 3;
-// const BBK_PERIOD = 2;
-// const RSI_PERIOD = 60;
-// const bigPositionRate = 6;
-// const B2mult = 1;
-// const Kmult = 1.5;
-
-// const availableMoney = 10;
-// const howManyCandleHeight = 3.1;
-// const howManyNumForAvarageCandleHight = 180;
-// const nextBig = false; // true false // 大仓后下一次开仓延续大仓
-
-// let overNumberToRest = 18; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// const canStop = false; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// const stopLossRate = 0.6;
-// const protectValue = 500;
-// const protectProfit = false; // true false; // 更保守的话开启利润保护
-// const howManyNumBegainPlus = 11;
-// const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-// ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// const symbol = "maticUSDT";
-// const profitRate = 10000;
-// const diff = 2;
-// let times = getSequenceArr(diff, 200);
-// let modelType = 1;
-// const model1 = {
-//     timeDis: 180,
-//     profit: 1,
-// };
-// const model2 = {
-//     priceDis: 0.005,
-//     profit: 0.5,
-// };
-// const maPeriod = 60; // ma
-// const isScale = true;
-// const scaleOverNum = 20;
-// const scaleHight = 3;
-// const BBK_PERIOD = 2;
-// const RSI_PERIOD = 60;
-// const bigPositionRate = 6;
-// const B2mult = 1;
-// const Kmult = 1.5;
-
-// const availableMoney = 10;
-// const howManyCandleHeight = 4;
-// const howManyNumForAvarageCandleHight = 180;
-// const nextBig = false; // true false // 大仓后下一次开仓延续大仓
-
-// let overNumberToRest = 18; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// const canStop = false; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// const stopLossRate = 0.6;
-// const protectValue = 500;
-// const protectProfit = false; // true false; // 更保守的话开启利润保护
-// const howManyNumBegainPlus = 11;
-// const overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// const judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// const symbol = "1000flokiUSDT";
-// const profitRate = 10000;
-// const diff = 2;
-// let times = getSequenceArr(diff, 200);
-// let modelType = 1;
-// let model1 = {
-//     timeDis: 1,
-//     profit: 2,
-// };
-// let model2 = {
-//     priceDis: 0.005,
-//     profit: 1.1,
-// };
-// let availableMoney = 10;
-// let howManyCandleHeight = 4;
-// let howManyNumForAvarageCandleHight = 90;
-// let targetTime = null; // "2024-09-29_21-14-00";
-// let maPeriod = 60; // ma
-// let isScale = true;
-// let scaleOverNum = 20;
-// let scaleHight = 3;
-// let BBK_PERIOD = 2;
-// let RSI_PERIOD = 60;
-// let bigPositionRate = 6;
-// let B2mult = 1;
-// let Kmult = 1.5;
-
-// let nextBig = false; // true false // 大仓后下一次开仓延续大仓
-
-// let overNumberToRest = 18; // 对冲次数超过 overNumberToRest ，就停止交易，空档跑网格
-// let canStop = false; // true false; // 开启 启动/停止 模式 ⭐️
-// let isResting = false; // 启动/停止
-// let stopLossRate = 0.6;
-// let protectValue = 500;
-// let protectProfit = false; // true false; // 更保守的话开启利润保护
-// let howManyNumBegainPlus = 11;
-// let overNumberHistory = []; // 对冲次数超过 overNumberToRest ，就记录一次当前 historyEntryPoints.length
-
-// let judgeByBBK = false; //  true false; 根据bbk指标来开单 ⭐️
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const getQuantity = (currentPrice) => {
@@ -952,8 +163,8 @@ const getStop = () => {
 let s_count = -1;
 let s_prePrice = 0;
 let needContinue = true;
-const start = (s, params) => {
-    const symbol = s;
+const start = (params) => {
+    // const symbol = s;
     gridPoints2 = [];
     maArr = [];
     closeOrderHistory = [];
@@ -961,10 +172,10 @@ const start = (s, params) => {
     trend = "";
     currentPointIndex = -2;
     testMoney = 0;
-    quantity = 0;
-    orderPrice = 0;
     maxMoney = 0;
     minMoney = 0;
+    quantity = 0;
+    orderPrice = 0;
     testMoneyHistory = [];
     readyTradingDirection = "hold";
     hasOrder = false;
@@ -999,17 +210,16 @@ const start = (s, params) => {
 
     if (targetTime) {
         let index = kLineData.findIndex((v) => v.openTime === targetTime);
-        kLineData = kLineData.slice(index);
+        _kLineData = [...kLineData].slice(index);
     }
-    // console.log("🚀 ~ start ~ kLineData:", kLineData[0].openTime);
-    for (let idx = 100; idx < kLineData.length; idx++) {
+    for (let idx = 100; idx < _kLineData.length; idx++) {
         s_count++;
         if (getStop()) {
             testMoneyHistory.push(testMoney);
             date.push(curkLine.closeTime);
             return;
         }
-        curKLines = kLineData.slice(idx - 100, idx);
+        curKLines = _kLineData.slice(idx - 100, idx);
         prices = curKLines.map((v) => v.close);
 
         maArr = [
@@ -1017,7 +227,7 @@ const start = (s, params) => {
             calculateSimpleMovingAverage(prices.slice(0, prices.length - 5), maPeriod),
             calculateSimpleMovingAverage(prices.slice(0, prices.length - 0), maPeriod),
         ];
-        curkLine = kLineData[idx];
+        curkLine = _kLineData[idx];
         if (judgeByBBK) {
             let { B2basis, B2upper, B2lower, Kma, Kupper, Klower, squeeze } = calculateBBKeltnerSqueeze(
                 curKLines,
@@ -1092,7 +302,6 @@ const start = (s, params) => {
     //         testMoney,
     //         maxMoney,
     //         minMoney,
-    //         params,
     //     });
     // }
     return {
@@ -1343,9 +552,10 @@ const gridPointTrading2 = () => {
 
 // start();
 // start({
-//     model1: { timeDis: 4, profit: 1.5 },
+//     timeDis: 1, profit: 1.5,
 //     howManyCandleHeight: 5,
-//     howManyNumForAvarageCandleHight: 94,
+//     howManyNumForAvarageCandleHight: 90,
+//     targetTimeNum: 9,
 // });
 
 module.exports = {

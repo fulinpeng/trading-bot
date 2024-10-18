@@ -2,19 +2,11 @@ const fs = require("fs");
 const path = require("path");
 
 // 动态参数范围对象
-// const paramRangesObj = {
-//     timeDis: { min: 1, max: 180, step: 1 }, // step为1
-//     profit: { min: 0.1, max: 2, step: 0.1 }, // step为0.1
-//     howManyCandleHeight: { min: 3, max: 6, step: 1 }, // step为1
-//     howManyNumForAvarageCandleHight: { min: 6, max: 180, step: 1 }, // step为1
-// };
-
-// 动态参数范围对象
 const paramRangesObj = {
-    timeDis: { min: 1, max: 300, step: 1 },
-    profit: { min: 0.1, max: 10, step: 0.1 },
-    howManyCandleHeight: { min: 3, max: 10, step: 1 },
-    howManyNumForAvarageCandleHight: { min: 6, max: 300, step: 1 },
+    timeDis: { min: 1, max: 180, step: 1 },
+    profit: { min: 0.1, max: 5, step: 0.1 },
+    howManyCandleHeight: { min: 3, max: 6, step: 1 },
+    howManyNumForAvarageCandleHight: { min: 6, max: 200, step: 1 },
 };
 
 // 参数文件路径

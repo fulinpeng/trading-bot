@@ -10,11 +10,14 @@
 const { fork } = require("child_process");
 const path = require("path");
 const fs = require("fs");
-const readline = require("readline");
 const os = require("os");
+const readline = require("readline");
+const { pipeline } = require("stream");
 
-const symbol = "1000pepeUSDT";
+const symbol = "peopleUSDT";
 const qualifiedSolutionsPath = path.join(__dirname, `qualifiedSolutions/${symbol}.js`);
+
+const batchSize = parseInt(os.cpus().length / 2); // 每次处理cpus个参数组合
 
 // 动态参数范围对象
 const paramRangesObj = {
@@ -42,15 +45,14 @@ function convertToCombinationObject(keys, values) {
 function saveQualifiedSolutions(newSolutions) {
     let existingSolutions = loadExistingQualifiedSolutions();
 
-    // newSolutions.forEach((item) => {
-    //     if (!existingSolutions.some((solution) => areSolutionsEqual(solution.params, item.params))) {
-    //         existingSolutions.push(item);
-    //     }
-    // });
-    existingSolutions.push(...newSolutions);
+    newSolutions.forEach((item) => {
+        if (!existingSolutions.some((solution) => areSolutionsEqual(solution.params, item.params))) {
+            existingSolutions.push(item);
+        }
+    });
     fs.writeFileSync(
         qualifiedSolutionsPath,
-        `module.exports = { qualifiedSolutions: ${JSON.stringify(existingSolutions)} }`,
+        `module.exports = { qualifiedSolutions: ${JSON.stringify(existingSolutions, null, 2)} }`, // 添加缩进提高可读性
     );
 }
 // 加载已存在的合格解决方案
@@ -88,27 +90,39 @@ function extractArray(str) {
 }
 // 逐行读取文件并分批发送给子进程
 async function parallelProcess() {
-    const batchSize = os.cpus().length - 1; // 每次处理cpus个参数组合
     let currentBatch = [];
 
     // 创建读行接口逐行读取大文件
     const rl = readline.createInterface({
         input: fs.createReadStream(paramsPath),
-        output: process.stdout,
-        terminal: false,
+        crlfDelay: Infinity,
     });
 
-    rl.on("line", async (line) => {
-        // 尝试解析 JSON，捕获任何可能的错误
-        try {
-            const param = extractArray(line.trim()); // 将每行参数转换为对象
-            process.stdout.write(`读取到最新一行数据：${line}\r`);
+    pipeline(
+        rl,
+        async function* (source) {
+            for await (const line of source) {
+                const param = extractArray(line.trim());
 
-            currentBatch.push(param);
+                process.stdout.write(`读取到最新一行数据：${line}\r`);
 
-            // 达到批次大小，开始处理当前批次
-            if (currentBatch.length === batchSize) {
-                rl.pause(); // 暂停读取，处理当前批次
+                currentBatch.push(param);
+
+                if (currentBatch.length === batchSize) {
+                    const batchRes = await processBatch(currentBatch);
+                    const realRes = batchRes.map((v) => v.value).filter((v) => !!v);
+                    if (realRes.length > 0) {
+                        saveQualifiedSolutions(realRes); // 保存合格参数
+                    } else {
+                        console.log("没有找到合适的参数");
+                    }
+                    currentBatch = []; // 清空批次
+                }
+            }
+
+            // 处理最后一批
+            if (currentBatch.length > 0 && currentBatch.length < batchSize) {
+                console.log("🚀处理最后一批:", currentBatch);
                 const batchRes = await processBatch(currentBatch);
                 const realRes = batchRes.map((v) => v.value).filter((v) => !!v);
                 if (realRes.length > 0) {
@@ -116,31 +130,17 @@ async function parallelProcess() {
                 } else {
                     console.log("没有找到合适的参数");
                 }
-                currentBatch = []; // 清空批次
-                rl.resume(); // 继续读取下一批
+                setTimeout(() => process.exit(0), 10000);
             }
-        } catch (error) {
-            console.error(`解析错误：${error.message}，行内容：${line}`); // 输出解析错误
-        }
-    });
-
-    rl.on("close", async () => {
-        // 处理最后一批
-        if (currentBatch.length > 0 && currentBatch.length < batchSize) {
-            console.log("🚀处理最后一批:", currentBatch);
-            const batchRes = await processBatch(currentBatch);
-            const realRes = batchRes.map((v) => v.value).filter((v) => !!v);
-            if (realRes.length > 0) {
-                saveQualifiedSolutions(realRes); // 保存合格参数
+        },
+        (err) => {
+            if (err) {
+                console.error("Pipeline encountered an error:", err);
             } else {
-                console.log("没有找到合适的参数");
+                console.log("Pipeline finished successfully.");
             }
-            setTimeout(() => process.exit(0), 10000);
-        }
-    });
-    rl.on("error", (err) => {
-        console.error("Readline encountered an error:", err);
-    });
+        },
+    );
 }
 
 // 处理一批参数
