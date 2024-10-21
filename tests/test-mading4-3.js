@@ -178,8 +178,8 @@ const diff = 2; // 1053/1410
 let times = getSequenceArr(diff, 100);
 let modelType = 1;
 const model1 = {
-    timeDis: 1,
-    profit: 1.5,
+    timeDis: 6,
+    profit: 0.3,
 };
 const model2 = {
     priceDis: 0.002,
@@ -187,10 +187,10 @@ const model2 = {
 };
 
 const availableMoney = 10;
-const howManyCandleHeight = 5;
-const howManyNumForAvarageCandleHight = 90;
+const howManyCandleHeight = 6;
+const howManyNumForAvarageCandleHight = 6;
 // 2024-09-29_22-54-00
-const targetTime = "2024-09-29_21-14-00";
+const targetTime = "2024-10-18_11-42-00";
 const maPeriod = 60; // ma
 const isScale = false;
 const scaleOverNum = 20;
@@ -1001,6 +1001,7 @@ let needContinue = true;
 const start = () => {
     if (targetTime) {
         let index = kLineData.findIndex((v) => v.openTime === targetTime);
+        console.log("🚀 ~ file: test-mading4-3.js:1004 ~ start ~ index:", index);
         kLineData = kLineData.slice(index);
     }
     let num = 0;
