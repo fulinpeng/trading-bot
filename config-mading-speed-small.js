@@ -24,7 +24,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -58,7 +58,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -92,7 +92,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -126,7 +126,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -160,7 +160,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -228,7 +228,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -262,7 +262,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -296,7 +296,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -330,7 +330,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -364,7 +364,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -398,7 +398,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -432,7 +432,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -466,7 +466,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -500,7 +500,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -534,7 +534,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -568,7 +568,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -602,7 +602,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -636,7 +636,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -670,7 +670,7 @@ const config = {
     isScale: false,
     scaleOverNum: 20,
     scaleHight: 3,
-    modelType: 2,
+    modelType: 1,
     model1: {
         timeDis: 180,
         profit: 1,
@@ -703,7 +703,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -771,7 +771,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -805,7 +805,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -839,7 +839,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -873,7 +873,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -907,7 +907,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -941,7 +941,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -975,7 +975,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -1009,7 +1009,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -1043,7 +1043,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -1077,7 +1077,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -1110,7 +1110,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 2,
+        modelType: 1,
         model1: {
             timeDis: 180,
             profit: 1,
