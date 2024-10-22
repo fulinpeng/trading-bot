@@ -189,8 +189,7 @@ const model2 = {
 const availableMoney = 10;
 const howManyCandleHeight = 6;
 const howManyNumForAvarageCandleHight = 6;
-// 2024-09-29_22-54-00
-const targetTime = "2024-10-18_11-42-00";
+const targetTime = null; // "2024-10-18_11-42-00";
 const maPeriod = 60; // ma
 const isScale = false;
 const scaleOverNum = 20;
@@ -1089,7 +1088,7 @@ const start = () => {
     testMoney = testMoneyHistory[testMoneyHistory.length - 1];
     closeOrderHistory.push([...historyEntryPoints]);
 
-    judgeByBBK && console.log("🚀 ~ 挤压k数量，总k数量，挤压/总k:", num, kLineData.length, num / kLineData.length);
+    // judgeByBBK && console.log("🚀 ~ 挤压k数量，总k数量，挤压/总k:", num, kLineData.length, num / kLineData.length);
     console.log(symbol, "🚀 ~ maxMoney:", {
         maxMoney,
         minMoney,
