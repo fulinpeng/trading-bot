@@ -42,7 +42,7 @@ const {
     isScale,
     scaleOverNum,
     scaleHight,
-} = config["rare"];
+} = config["1000pepe"];
 
 const times = getSequenceArr(diff, 150);
 
