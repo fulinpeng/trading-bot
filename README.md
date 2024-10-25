@@ -20,7 +20,7 @@
 #### 核心策略代码
 
 获取最佳参数：[index2-pipeline.js](https://github.com/fulinpeng/trading-bot/tree/main-deprecated/tests/bestSolution/index2-pipeline.js)
-策略：[gridBot-doge3-7-2-mading-speed-small.js](https://github.com/fulinpeng/trading-bot/tree/main-deprecated/gridBot-doge3-7-2-mading-speed-small.js)
+策略：[gridBot-doge3-7-1-mading-speed-small.js](https://github.com/fulinpeng/trading-bot/tree/main-deprecated/gridBot-doge3-7-1-mading-speed-small.js)
 
 #### 获取币安API_KEY
 先获取币安API_KEY，新建`.env`文件
@@ -94,10 +94,10 @@ node tests/test-mading4-3.js
 * 更详细的测试情况在 `tests/data/mading-1000pepeUSDT.js`，复制其中的`option`对象，浏览器打开 [echarts-line-simple](https://echarts.apache.org/examples/zh/editor.html?c=line-simple) 粘贴即可查看盈利曲线
 
 #### 调用正式环境api
-进入`gridBot-doge3-7-2-mading-speed-small.js` 后，修改 `isTest`值为false即可
+进入`gridBot-doge3-7-1-mading-speed-small.js` 后，修改 `isTest`值为false即可
 
 ```sh
-yarn 1000pepe
+forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-mading-speed-small-1000pepe.js
 ```
 
 * `data`目录下查看日志
@@ -106,10 +106,10 @@ yarn 1000pepe
 1. 访问不了api？
     * 需要代理
 2. 请在交易界面开启双向开仓功能
-3. 这三个文件的代码逻辑是一样的： gridBot-doge3-7-2-mading-speed-small.js test-mading4-3.js test-mading4-6.js
+3. 这三个文件的代码逻辑是一样的： gridBot-doge3-7-1-mading-speed-small.js test-mading4-3.js test-mading4-6.js
     * 不用疑惑，请谅解这是最初的代码，后续考虑只保留一套，并删除无用代码
     * 测试就关注 [test-mading4-3.js](https://github.com/fulinpeng/trading-bot/tree/main-deprecated/tests/test-mading4-3.js) [test-mading4-6.js](https://github.com/fulinpeng/trading-bot/tree/main-deprecated/tests/test-mading4-6.js) 这俩文件
-    * 正式环境只关注 [gridBot-doge3-7-2-mading-speed-small.js](https://github.com/fulinpeng/trading-bot/tree/main-deprecated/gridBot-doge3-7-2-mading-speed-small.js)
+    * 正式环境只关注 [gridBot-doge3-7-1-mading-speed-small.js](https://github.com/fulinpeng/trading-bot/tree/main-deprecated/gridBot-doge3-7-1-mading-speed-small.js)
 
 #### 法律声明
 
