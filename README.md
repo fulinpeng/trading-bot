@@ -1,4 +1,7 @@
 #### 项目概述
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
 本项目是一个基于币安API开发的自动化交易机器人，旨在帮助用户实现高效、智能的加密货币交易。通过使用技术指标、策略和算法，该机器人能够自动分析市场动态，进行交易决策，减少手动交易带来的情绪干扰与操作失误。
 
 #### 功能特点
@@ -128,3 +131,34 @@ forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null 
 5. **第三方链接**：本项目可能包含第三方网站或服务的链接，项目发起人对这些第三方网站或服务的内容和使用不承担任何责任。
 
 使用本项目即表示您已阅读、理解并同意上述法律声明。如您不同意，请勿使用本项目。
+
+## Contributors ✨
+
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/webmapLee"><img src="https://avatars.githubusercontent.com/u/20334500?v=4?s=100" width="100px;" alt="webmapLee"/><br /><sub><b>webmapLee</b></sub></a><br /><a href="https://github.com/fulinpeng/trading-bot/commits?author=webmapLee" title="Code">💻</a></td>
+    </tr>
+  </tbody>
+  <tfoot>
+    <tr>
+      <td align="center" size="13px" colspan="7">
+        <img src="https://raw.githubusercontent.com/all-contributors/all-contributors-cli/1b8533af435da9854653492b1327a23a4dbd0a10/assets/logo-small.svg">
+          <a href="https://all-contributors.js.org/docs/en/bot/usage">Add your contributions</a>
+        </img>
+      </td>
+    </tr>
+  </tfoot>
+</table>
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
