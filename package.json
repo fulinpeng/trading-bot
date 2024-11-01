@@ -1,33 +1,26 @@
 {
     "name": "trading-bot",
     "version": "1.0.0",
-    "description": "",
-    "main": "index.js",
+    "description": "一个基于 币安API 的交易机器人",
+    "main": "app.js",
     "scripts": {
-        "start-6-13": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot6-13.js",
-        "start-6-14": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot6-14.js",
-        "uni": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-uni.js",
-        "fil": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-fil.js",
-        "doge": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-doge.js",
-        "wld": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-wld.js",
-        "avax": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-avax.js",
-        "inj": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-inj.js",
-        "sol": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-sol.js",
-        "people": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-people.js",
-        "om": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-om.js",
-        "wif": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-wif.js",
-        "op": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-op.js",
-        "ygg": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-ygg.js",
-        "zk": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-zk.js",
-        "eth": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-eth.js",
-        "1000pepe": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-1000pepe.js",
-        "alice": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-alice.js",
-        "hft": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-hft.js",
+        "uni": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-1000pepe.js",
         "restart-all": "forever restartall",
         "forever-list": "forever list",
         "stop-all": "forever stopall",
-        "log-all": "forever logs",
+        "start": "node index.js",
         "test": "jest"
+    },
+    "pkg": {
+        "assets": [
+            "botStrategies/**/*"
+        ],
+        "targets": [
+            "node16-linux-x64",
+            "node16-macos-x64",
+            "node16-win-x64"
+        ],
+        "outputPath": "build"
     },
     "keywords": [],
     "author": "",
@@ -45,8 +38,6 @@
         "node-binance-api": "^0.13.1",
         "nodemailer": "^6.9.13",
         "socks-proxy-agent": "^8.0.2",
-        "ta-lib": "^0.11.0",
-        "tunnel": "^0.0.6",
         "ws": "^8.16.0"
     },
     "devDependencies": {

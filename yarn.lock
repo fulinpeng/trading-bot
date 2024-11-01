@@ -2714,11 +2714,6 @@ supports-preserve-symlinks-flag@^1.0.0:
   resolved "https://registry.npmmirror.com/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz"
   integrity sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==
 
-ta-lib@^0.11.0:
-  version "0.11.0"
-  resolved "https://registry.npmmirror.com/ta-lib/-/ta-lib-0.11.0.tgz"
-  integrity sha512-QY2/fPe8d1j++peFOVMBCDLP0WRz4YF9/zQ/u/KsOfYlOS12sOD2+I0DzzfKwnFGapJ20dpt7coATM+BFbEpFg==
-
 test-exclude@^6.0.0:
   version "6.0.0"
   resolved "https://registry.npmmirror.com/test-exclude/-/test-exclude-6.0.0.tgz"
@@ -2766,11 +2761,6 @@ tunnel-agent@^0.6.0:
   integrity sha512-McnNiV1l8RYeY8tBgEpuodCC1mLUdbSN+CYBL7kJsJNInOP8UjDDEwdk6Mw60vdLLrr5NHKZhMAOSrR2NZuQ+w==
   dependencies:
     safe-buffer "^5.0.1"
-
-tunnel@^0.0.6:
-  version "0.0.6"
-  resolved "https://registry.npmmirror.com/tunnel/-/tunnel-0.0.6.tgz"
-  integrity sha512-1h/Lnq9yajKY2PEbBadPXj3VxsDDu844OnaAo52UVmIzIvwwtBPIuNvkjuzBlTWpfJyUbG3ez0KSBibQkj4ojg==
 
 tweetnacl@^0.14.3, tweetnacl@~0.14.0:
   version "0.14.5"
