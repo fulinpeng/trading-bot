@@ -3,7 +3,6 @@ logs
 errors
 garbage
 README.*
-# !/README.md
 .env
 .vscode
 *.cer
@@ -12,3 +11,5 @@ __upload
 source
 *.jsonl
 qualifiedSolutions
+yarn.lock
+package-lock.json

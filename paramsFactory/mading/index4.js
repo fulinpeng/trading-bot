@@ -191,7 +191,7 @@ function getParamsHash(params) {
 }
 function fitnessFunction(phenotype) {
     const params = decodeParams(phenotype);
-    const { maxMoney, minMoney, testMoney } = evaluateStrategy(params);
+    const { maxMoney, minMoney, testMoney } = evaluateStrategy({params,symbol});
 
     if (testMoney <= 0 || maxMoney <= 0) return 0;
 

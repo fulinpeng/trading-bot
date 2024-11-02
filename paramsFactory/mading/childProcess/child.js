@@ -3,7 +3,7 @@ const { evaluateStrategy } = require("../../test-mading4-6.js");
 process.on("message", (message) => {
     if (message.action === "evaluate") {
         const { params, symbol, childId } = message.params || {}; // 接收 symbol, params 和 childId 参数
-        const result = evaluateStrategy(params); // 使用 symbol 和 params 调用 evaluateStrategy
+        const result = evaluateStrategy({params, s: symbol}); // 使用 symbol 和 params 调用 evaluateStrategy
 
         // 假设 testMoney > 0 表示初步合格
         if (result.testMoney > 0) {

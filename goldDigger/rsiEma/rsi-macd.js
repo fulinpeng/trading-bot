@@ -1,5 +1,6 @@
+// 版本5
 require("dotenv").config(); // 引入dotenv模块，用于加载环境变量
-const sendMail = require("./mailer.js");
+const sendMail = require("/mailer");
 const axios = require("axios"); // HTTP请求库
 const crypto = require("crypto"); // 加密模块
 const WebSocket = require("ws"); // WebSocket库
@@ -7,8 +8,8 @@ const { HttpsProxyAgent } = require("https-proxy-agent");
 const { SocksProxyAgent } = require("socks-proxy-agent");
 // const Binance = require("node-binance-api");
 const fs = require("fs");
-const { getDate, hasUpDownVal, calculateAverage, calculateSlope } = require("../utils/functions.js");
-const config = require("./config.js");
+const { getDate, hasUpDownVal, calculateAverage, calculateSlope } = require("./utils/functions.js");
+const config = require("./config-rsi.js");
 
 let testMoney = 0;
 
@@ -34,7 +35,7 @@ const {
     errorsFolder,
     profitProtectRate,
     xAngle,
-} = config["sol"];
+} = config["eth"];
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
@@ -43,8 +44,6 @@ const api = "https://api.binance.com/api";
 const fapi = "https://fapi.binance.com/fapi";
 const apiKey = process.env.BINANCE_API_KEY; // 获取API密钥
 const secretKey = process.env.BINANCE_API_SECRET; // 获取API密钥的密钥
-
-console.log(isTest ? "测试环境～～～" : "正式环境～～～");
 
 // mac clash
 // let httpProxyAgent=new HttpsProxyAgent("http://127.0.0.1:7892");
@@ -149,23 +148,20 @@ let curRsi = 0;
 const overboughtThreshold = 69.5;
 const oversoldThreshold = 31.5;
 
-const maxKLinelen = 50; // 储存kLine最大数量
+const maxKLinelen = 200; // 储存kLine最大数量
 const STD_MULTIPLIER = 2; // 用来确定布林带的宽度
 const BOLL_PERIOD = 20;
-const RSI_PERIOD_MIN = 6; // RSI计算周期
-const RSI_PERIOD_MAX = 14; // RSI计算周期
+const RSI_PERIOD_MIN = 14; // RSI计算周期
+const RSI_PERIOD_MAX = 100; // RSI计算周期
 
 let rsiArr = [];
 let emaArr = [];
+let macdArr = [];
+let rsiGroupArr = [];
 let ema1Arr = [];
 let ema2Arr = [];
-let ema3Arr = [];
 
-const MACD_PERIOD = [12, 26, 9];
-let macdArr = [];
-
-const klineTimeRange = klineStage * 60 * 1000; // k线单位时间
-let emaMargin = [];
+const MACD_PERIOD = [40, 80, 9];
 
 // 日志
 let logStream = null;
@@ -290,12 +286,13 @@ const calculateCandleHeight = (klines) => {
 // 获取收盘价
 const getHistoryClosePrices = async () => {
     // 在getKLineData方法中获取至少15分钟内的价格数据
-    kLineData = await getKLineData(B_SYMBOL, `${klineStage}m`, 50);
+    kLineData = await getKLineData(B_SYMBOL, `${klineStage}m`, maxKLinelen);
     historyClosePrices = kLineData.map((data) => data.close); // K线数据有一个close字段表示收盘价，根据实际情况调整
     console.log("k线收盘价:", historyClosePrices);
 
-    initEmaArr();
-    initMacd();
+    // initEmaArr();
+
+    initEveryIndex();
     candleHeight = calculateCandleHeight(kLineData);
     if (candleHeight / currentPrice < 0.001) {
         candleHeight = currentPrice * 0.001;
@@ -312,16 +309,16 @@ const getHistoryClosePrices = async () => {
     // 0.00009
     // console.log("k线最后一个蜡烛的收盘时间差 preCloseTime, nextCloseTime, x:", preCloseTime, nextCloseTime, x);
 };
+const initEveryIndex = () => {
+    const len = historyClosePrices.length;
+    for (let index = 0; index < 10; index++) {
+        setEveryIndex(historyClosePrices.slice(0, len - 10));
+    }
+};
 const initEmaArr = () => {
     const len = historyClosePrices.length;
     for (let index = 0; index < 10; index++) {
         setSimpleEmaArr(historyClosePrices.slice(0, len - 10), BOLL_PERIOD);
-    }
-};
-const initMacd = () => {
-    const len = historyClosePrices.length;
-    for (let index = 0; index < len; index++) {
-        calculateMacdArr(historyClosePrices.slice(0, len - 10));
     }
 };
 // 获取EMA（指数移动平均线）值
@@ -331,12 +328,57 @@ const getCurrentPriceEma = async () => {
     console.log("🚀 ~ file: gridBot5.js:396 ~ ws.on ~ currentPriceEma:", currentPriceEma);
 };
 
-const calculateMacdArr = (_historyClosePrices) => {
-    if (macdArr.length > 10) {
-        macdArr.shift();
+/**
+ * 计算单个真实范围（True Range, TR）
+ * @param {number} high 当前最高价
+ * @param {number} low 当前最低价
+ * @param {number} prevClose 前一收盘价
+ * @returns {number} 真实范围值
+ */
+function calculateTrueRange(high, low, prevClose) {
+    return Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose));
+}
+
+/**
+ * 计算平均真实范围（Average True Range, ATR）
+ * @param {Array} kLines K线数据数组，每个元素为一个对象，包含 {high, low, close} 属性
+ * @param {number} period 计算 ATR 的周期（例如 14）
+ * @returns {Array} ATR 值数组
+ */
+function calculateATR(kLines, period) {
+    let trValues = [];
+    let atrValues = [];
+
+    for (let i = 0; i < kLines.length; i++) {
+        if (i === 0) {
+            // 第一根 K 线没有前一收盘价，TR 值为最高价减最低价
+            trValues.push(kLines[i].high - kLines[i].low);
+        } else {
+            // 计算 TR 值
+            trValues.push(calculateTrueRange(kLines[i].high, kLines[i].low, kLines[i - 1].close));
+        }
+
+        // 计算 ATR 值
+        if (i >= period - 1) {
+            if (i === period - 1) {
+                // 第一个 ATR 值为前 period 个 TR 值的简单平均
+                const initialATR = trValues.slice(0, period).reduce((acc, val) => acc + val, 0) / period;
+                atrValues.push(initialATR);
+            } else {
+                // 后续 ATR 值为前一个 ATR 值与当前 TR 值的加权平均
+                const prevATR = atrValues[atrValues.length - 1];
+                const currentTR = trValues[i];
+                const currentATR = (prevATR * (period - 1) + currentTR) / period;
+                atrValues.push(currentATR);
+            }
+        }
     }
-    macdArr.push([calculateMACD(_historyClosePrices), calculateMACD(_historyClosePrices)]);
-};
+
+    return {
+        atrArr: atrValues,
+        atr: atrValues[atrValues.length - 1],
+    };
+}
 
 const refreshKLine = (curKLine) => {
     // 更新kLine信息
@@ -350,28 +392,41 @@ const refreshKLine = (curKLine) => {
     candleHeight = calculateCandleHeight(kLineData);
     // console.log("计算出实际蜡烛高度 candleHeight:", candleHeight);
 
-    // 更新ema
-    setSimpleEmaArr(historyClosePrices, BOLL_PERIOD);
+    // 设置各种指标
+    setEveryIndex([...historyClosePrices]);
+};
+const setEveryIndex = (prices) => {
+    // 计算 ema
+    // setSimpleEmaArr(historyClosePrices, BOLL_PERIOD);
 
-    calculateMacdArr(historyClosePrices);
+    // 计算macd
+    setMacdArr(prices);
 
-    // 更新指标并缓存到数组
-    if (isTest) {
-        // 好看rsi数据
-        // setRsiArr();
-        // atrResult.length >= 15 && atrResult.shift();
-        // const atr=calculateATR(kLineData, atrPeriod);
-        // atrResult.push(atr);
-        // console.log("封盘时间到，当前kLineData:", {
-        //     kLineData,
-        //     historyClosePrices,
-        //     atrResult,
-        //     rsiArr,
-        // });
-        // calculateEMASlope(emaArr, RSI_PERIOD_MIN / 2); // >>>>>
-    }
+    // 计算rsi
+    setRsiGroupArr(prices);
 };
 
+const setSimpleEmaArr = (prices, period) => {
+    if (emaArr.length >= 50) {
+        emaArr.shift();
+    }
+    emaArr.push(calculateEMA(prices, period));
+};
+const setMacdArr = (prices, period) => {
+    if (macdArr.length >= 50) {
+        macdArr.shift();
+    }
+    macdArr.push(calculateMACD(prices, period));
+};
+const setRsiGroupArr = (prices) => {
+    if (rsiGroupArr.length >= 50) {
+        rsiGroupArr.shift();
+    }
+    rsiGroupArr.push({
+        short: calculateRSI(prices, RSI_PERIOD_MIN),
+        long: calculateRSI(prices, RSI_PERIOD_MAX),
+    });
+};
 // 判断+交易
 const judgeAndTrading = async () => {
     if (hasOrder || loadingPlaceOrder || loadingInit) return; // 有订单就不需要执行以下逻辑
@@ -598,12 +653,6 @@ const setEmaArr = (prices, [period1, period2]) => {
     // console.log("setEmaArr: ema1Arr, ema2Arr", ema1Arr, ema2Arr);
     // console.log("setEmaArr: emaMargin", emaMargin);
 };
-const setSimpleEmaArr = (prices, period) => {
-    if (emaArr.length >= 50) {
-        emaArr.shift();
-    }
-    emaArr.push(calculateEMA(prices, period));
-};
 
 // 下单（开多操作/开空操作）
 const placeOrder = async (side, quantity) => {
@@ -733,6 +782,8 @@ const closeOrder = async (side, quantity, cb) => {
                 "🚀 ~ 平仓：平",
                 side === "BUY" ? "空" : "多",
                 "！！！！！！！！！！！！！！！！！！！！！！！！失败",
+                response,
+                tradingInfo,
             );
         }
         loadingCloseOrder = false;
@@ -791,6 +842,7 @@ const setInitData = async ({ up, down }) => {
             candleHeight: __candleHeight,
             isFirstGetProfit: __isFirstGetProfit,
             curProfitMaxPrice: __curProfitMaxPrice,
+            testMoney: __testMoney,
         } = require(`./data/${SYMBOL}.js`);
         console.log("上一次停止程序时，交易情况", {
             __currentPrice,
@@ -800,6 +852,7 @@ const setInitData = async ({ up, down }) => {
             __candleHeight,
             __isFirstGetProfit,
             __curProfitMaxPrice,
+            __testMoney,
         });
 
         if (__currentPrice != 0 && __prePrice != 0 && !hasUpDownVal(__tradingInfo) && __gridPoints.length > 0) {
@@ -811,10 +864,11 @@ const setInitData = async ({ up, down }) => {
             isFirstGetProfit = __isFirstGetProfit;
             curProfitMaxPrice = __curProfitMaxPrice;
             hasOrder = true; // 有仓位直接用
+            testMoney = __testMoney;
             console.log(`setInitData初始化数据完成 当前 tradingInfo:`, tradingInfo);
         } else {
             console.log("该币现有仓位和上次保留的数据不符合，先平仓再重新初始化！！！");
-            await closeAllOrders({ up, down });
+            // await closeOrder(tradingInfo.side, tradingInfo.quantity);
         }
     } else {
         console.error("error:: 该币有仓位，请先手动平仓！！！");
@@ -831,13 +885,13 @@ const setGridPoints = (trend, stopLoss, stopProfit) => {
     loadingNewPoints = true;
 
     if (trend === "up") {
-        let _stopLoss = stopLoss * 0.9999999999 - candleHeight / 10; // 止损
+        let _stopLoss = stopLoss * 0.9999999999; // 止损
         let _stopProfit = stopProfit * 0.9999999999; // 止盈
         gridPoints = [_stopLoss, _stopProfit];
     }
 
     if (trend === "down") {
-        let _stopLoss = stopLoss * 0.9999999999 + candleHeight / 10; // 止损
+        let _stopLoss = stopLoss * 0.9999999999; // 止损
         let _stopProfit = stopProfit * 0.9999999999; // 止盈
         gridPoints = [_stopProfit, _stopLoss];
     }
@@ -849,45 +903,58 @@ const setGridPoints = (trend, stopLoss, stopProfit) => {
 };
 
 // 更新止损位
-const modGridPoints = (protectRate = profitProtectRate) => {
+const modGridPoints = () => {
     const _currentPrice = currentPrice;
 
     loadingNewPoints = true;
 
+    const [point1, point2] = gridPoints;
+
     if (tradingInfo.trend === "up") {
-        // const minProfitPrice = tradingInfo.orderPrice * 1.001;
-        let stopLoss = tradingInfo.orderPrice + (_currentPrice - tradingInfo.orderPrice) * protectRate; // 止损
-        // 如果能成功盈利，那么回撤的保留利润必须能交手续费
-        // if (stopLoss < minProfitPrice) {
-        //     stopLoss = minProfitPrice;
-        // }
-        let stopProfit = _currentPrice + candleHeight / 3; // 止盈
+        let stopLoss = 0;
+        if (isFirstGetProfit) {
+            stopLoss = tradingInfo.orderPrice + (point2 - tradingInfo.orderPrice) * 0.9; // 止损
+        } else {
+            stopLoss = point1 + (point2 - point1) * 0.45; // 止损
+        }
+        let stopProfit = point2 + candleHeight; // 止盈
         gridPoints = [stopLoss, stopProfit];
+
+        const _testMoney =
+            testMoney +
+            tradingInfo.quantity * _currentPrice -
+            tradingInfo.orderPrice * tradingInfo.quantity -
+            (tradingInfo.quantity * _currentPrice + tradingInfo.orderPrice * tradingInfo.quantity) * 0.0005;
+        console.log(`已盈利(${_testMoney})，重新绘制网格 _currentPrice, gridPoints :`, currentPrice, gridPoints);
     }
 
     if (tradingInfo.trend === "down") {
-        // const minProfitPrice = tradingInfo.orderPrice * 0.999;
-        let stopLoss = tradingInfo.orderPrice - (tradingInfo.orderPrice - _currentPrice) * protectRate; // 止损
-        // 如果能成功盈利，那么回撤的保留利润必须能交手续费
-        // if (stopLoss > minProfitPrice) {
-        //     stopLoss = minProfitPrice;
-        // }
-        let stopProfit = _currentPrice - candleHeight / 3; // 止盈
+        let stopLoss = 0;
+        if (isFirstGetProfit) {
+            stopLoss = tradingInfo.orderPrice - (tradingInfo.orderPrice - point1) * 0.9; // 止损
+        } else {
+            stopLoss = point2 - (point2 - point1) * 0.45; // 止损
+        }
+
+        let stopProfit = point1 - candleHeight; // 止盈
         gridPoints = [stopProfit, stopLoss];
+
+        const _testMoney =
+            testMoney +
+            tradingInfo.quantity * tradingInfo.orderPrice -
+            tradingInfo.quantity * _currentPrice -
+            (tradingInfo.quantity * tradingInfo.orderPrice + tradingInfo.quantity * _currentPrice) * 0.0005;
+        console.log(`已盈利(${_testMoney})，重新绘制网格 _currentPrice, gridPoints :`, currentPrice, gridPoints);
     }
 
     saveGlobalVariables();
 
     loadingNewPoints = false;
-    console.log(
-        `已盈利，保留${protectRate * 10}成利润，重新绘制网格 _currentPrice, gridPoints :`,
-        currentPrice,
-        gridPoints,
-    );
 };
 
 // 5. 启动交易
 const startTrading = async () => {
+    console.log(isTest ? "测试环境～～～" : "正式环境～～～");
     try {
         await getServerTimeOffset(); // 同步服务器时间
 
@@ -937,7 +1004,7 @@ const closeAllOrders = async ({ up, down }) => {
             testMoney +=
                 up.quantity * currentPrice -
                 up.orderPrice * up.quantity -
-                (up.quantity * currentPrice + up.orderPrice * up.quantity) * 0.005;
+                (up.quantity * currentPrice + up.orderPrice * up.quantity) * 0.0005;
             console.log("平多 closeAllOrders ~ testMoney:", testMoney);
             // }
             console.log("平多完成");
@@ -962,7 +1029,7 @@ const closeAllOrders = async ({ up, down }) => {
             testMoney +=
                 down.quantity * down.orderPrice -
                 down.quantity * currentPrice -
-                (down.quantity * down.orderPrice + down.quantity * currentPrice) * 0.005;
+                (down.quantity * down.orderPrice + down.quantity * currentPrice) * 0.0005;
             console.log("平空 closeAllOrders ~ testMoney:", testMoney);
             // }
             console.log("平空完成");
@@ -1068,6 +1135,8 @@ const gridPointClearTrading = async (_currentPrice) => {
         if (_currentPrice >= point2) {
             // 移动止损保留盈利
             modGridPoints();
+            isFirstGetProfit = false;
+            onGridPoint = false;
         }
     } else {
         if (_currentPrice >= point2) {
@@ -1101,6 +1170,8 @@ const gridPointClearTrading = async (_currentPrice) => {
         if (_currentPrice <= point1) {
             // 移动止损保留盈利
             modGridPoints();
+            isFirstGetProfit = false;
+            onGridPoint = false;
         }
     }
     onGridPoint = false;
@@ -1208,11 +1279,11 @@ function calculateSimpleMovingAverage(prices, period) {
     const sum = slice.reduce((acc, price) => acc + price, 0);
     return sum / period;
 }
-const setRsiArr = () => {
-    if (rsiArr.length >= RSI_PERIOD_MAX) {
+const setRsiArr = (period = RSI_PERIOD_MIN) => {
+    if (rsiArr.length >= period) {
         rsiArr.shift();
     }
-    rsi = calculateRSI(historyClosePrices, RSI_PERIOD_MAX);
+    rsi = calculateRSI(historyClosePrices, period);
     rsiArr.push(rsi);
     console.log("setRsiArr ~ rsiArr:", rsiArr);
 };
@@ -1242,22 +1313,42 @@ function calculateBollingerBands(prices, period, multiplier) {
 
     return { upperBand, sma, lowerBand };
 }
+function calculateEmaArr(prices, period) {
+    const k = 2 / (period + 1);
+    let emaArray = [prices[0]];
+    for (let i = 1; i < prices.length; i++) {
+        const ema = prices[i] * k + emaArray[i - 1] * (1 - k);
+        emaArray.push(ema);
+    }
+    return emaArray;
+}
 
 // 计算 MACD 指标
-function calculateMACD(historyClosePrices, periods = MACD_PERIOD) {
-    const [shortPeriod, longPeriod, signalPeriod] = periods;
-    // 计算短期EMA
-    const dif = calculateEMA(historyClosePrices, shortPeriod);
-    // 计算长期EMA
-    const dea = calculateEMA(historyClosePrices, longPeriod);
-    // 计算 DIF（快速线）
-    // const dif = shortEMA.map((value, index) => value - longEMA[index]);
-    // 计算 DEA（慢速线）
-    // const dea = calculateEMA(dif, signalPeriod);
-    // 计算 MACD 柱状图
-    const macd = dif - dea;
-    return { dif, dea, macd };
+function calculateMACD(prices, periods) {
+    const [shortPeriod, longPeriod, signalPeriod] = periods || MACD_PERIOD;
+    if (prices.length < longPeriod) {
+        throw new Error("价格数组的长度必须大于长周期");
+    }
+
+    const shortEMA = calculateEmaArr(prices, shortPeriod);
+    const longEMA = calculateEmaArr(prices, longPeriod);
+
+    const macdLine = shortEMA.map((value, index) => value - longEMA[index]);
+
+    const signalLine = calculateEmaArr(macdLine.slice(longPeriod - shortPeriod), signalPeriod);
+    const histogram = macdLine.slice(longPeriod - shortPeriod).map((value, index) => value - signalLine[index]);
+
+    // 返回最新一组MACD值
+    // DIF 对应 macdLine：这是快线，即短周期EMA与长周期EMA的差。
+    // DEA 对应 signalLine：这是慢线，即DIF的信号线（DIF的EMA）。
+    // MACD 对应 histogram：这是柱状图，即DIF与DEA的差。
+    return {
+        dif: macdLine[macdLine.length - 1],
+        dea: signalLine[signalLine.length - 1],
+        macd: histogram[histogram.length - 1],
+    };
 }
+
 // 取出最后几根
 function getLastKlines(num = 3) {
     let res = [];
@@ -1268,9 +1359,18 @@ function getLastKlines(num = 3) {
     }
     return res;
 }
+function getLastFromArr(arr, num = 3) {
+    let res = [];
+    const len = arr.length;
+    while (num > 0) {
+        res.push(arr[len - num]);
+        num--;
+    }
+    return res;
+}
 // 是否突破前高
 function isBreakPreHigh(max) {
-    const tempLast = kLineData.slice(0, maxKLinelen - 3);
+    const tempLast = kLineData.slice(0, 14);
     let res = true;
     for (const item of tempLast) {
         if (item.high > max) {
@@ -1502,24 +1602,33 @@ function isBreakUp(kLine1, kLine2, kLine3) {
 }
 // 黄昏星
 function isDownStar(kLine1, kLine2, kLine3) {
+    const k1Body = Math.abs(kLine1.close - kLine1.open);
+    const k2Body = Math.abs(kLine2.close - kLine2.open);
+    const k3Body = Math.abs(kLine3.close - kLine3.open);
     const res =
         kLine1.open < kLine1.close &&
         kLine3.open > kLine3.close &&
-        kLine1.open + (kLine1.close - kLine1.open) / 2 > kLine3.close && // k1实体的中间位 要高于k3的收盘价
+        k1Body > k2Body &&
+        k3Body > k2Body &&
+        kLine1.open + k1Body / 2 > kLine3.low &&
         kLine2.low > kLine3.low &&
-        (isDownSwallow(kLine1, kLine3) || isBigAndYin(kLine3, 0.8));
+        (isDownSwallow(kLine1, kLine3) || isBigAndYin(kLine3, 0.8) || isDownCross(kLine1, kLine3));
     console.log("🚀 ~ 是否 黄昏星 ~ res:", res);
     return res;
 }
 // 启明星
 function isUpStar(kLine1, kLine2, kLine3) {
+    const k1Body = Math.abs(kLine1.close - kLine1.open);
+    const k2Body = Math.abs(kLine2.close - kLine2.open);
+    const k3Body = Math.abs(kLine3.close - kLine3.open);
     const res =
         kLine1.open > kLine1.close &&
-        kLine1.open < kLine1.close &&
-        kLine1.close + (kLine1.open - kLine1.close) / 2 < kLine3.close &&
+        kLine3.open < kLine3.close &&
+        k1Body > k2Body &&
+        k3Body > k2Body &&
+        kLine1.close + k1Body / 2 < kLine3.high &&
         kLine2.high < kLine3.high &&
-        isCross(kLine2) &&
-        (isUpSwallow(kLine1, kLine3) || isBigAndYang(kLine3, 0.8));
+        (isUpSwallow(kLine1, kLine3) || isBigAndYang(kLine3, 0.8) || isUpCross(kLine1, kLine3));
     console.log("🚀 ~ 是否 启明星 ~ res:", res);
     return res;
 }
@@ -1629,7 +1738,7 @@ const upPao = (one, two, three) => {
         isBigAndYang(three) &&
         twoBody < Math.abs(one.open - one.close) &&
         twoBody < Math.abs(three.open - three.close) &&
-        three.close < Math.max(one.high, two.high)
+        three.close > Math.max(one.high, two.high)
     ) {
         res = true;
     }
@@ -1694,7 +1803,7 @@ function isTrackTopReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLin
         kLine3.close >= kLine3.open, // k3不能是阳线
         kLine2.high > kLine3.high && kLine2.low < kLine3.low, // 孕线绝对不可以，机会多得是，放弃一次又怎样
         isAllDownTail(kLine1, kLine2, kLine3), // 有两个都是长下引线的不要
-        curRsiMax > 65, // rsi（14） 在35-65之间
+        curRsiMax > 70, // rsi（14） 在35-65之间
         isUpCross(kLine3, 0.4),
         isUpCross(kLine1, 0.4),
         // isK1Swallow(kLine1, kLine2, kLine3), // k1 body吞没k2，k3
@@ -1708,7 +1817,7 @@ function isTrackTopReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLin
         return false;
     } else {
         reasonPass = [
-            curRsiMax < 65,
+            curRsiMax < 70, // 挣小钱不需要这个
             isTopFractal(kLine1, kLine2, kLine3) || // 是否顶分形态
                 (isDownLinesGroup2(kLine2, kLine3) && (isDownCross(kLine3) || isBigAndYin(kLine3, 0.6))) || // 是否两个k形成垂线/光头阴
                 (isDownLinesGroup3(kLine1, kLine2, kLine3) &&
@@ -1737,7 +1846,7 @@ function isTrackBottomReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, k
         isDownCross(kLine1, 0.4),
         // tooManeyInTen(),
         isAllUpTail(kLine1, kLine2, kLine3), // 有两个都是长上引线的不要
-        curRsiMax < 35,
+        curRsiMax < 30, // 挣小钱不需要这个
         // isK1Swallow(kLine1, kLine2, kLine3), // k1 body吞没k2，k3
         // isK1Swallow(kLine2, kLine1, kLine3) && kLine2.close < kLine2.open,
         kLine3.high - kLine3.close >= (kLine3.high - kLine3.low) * 0.5, // 当前k收盘方向引线不能大于整体0.5
@@ -1749,7 +1858,7 @@ function isTrackBottomReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, k
         return false;
     } else {
         reasonPass = [
-            curRsiMax > 35, // rsi（14） 在35-65之间
+            curRsiMax > 30, // rsi（14） 在35-65之间
             isBottomFractal(kLine1, kLine2, kLine3) || // 是否底分形态
                 (isUpLinesGroup2(kLine2, kLine3) && (isUpCross(kLine1) || isBigAndYang(kLine1, 0.6))) || // 是否两个k形成垂线
                 (isUpLinesGroup3(kLine1, kLine2, kLine3) && (isBigAndYang(kLine3, 0.6) || isUpCross(kLine3, 0.45))) || // 是否三个k形成垂线
@@ -1958,102 +2067,84 @@ function isAllUpTail(kLine1, kLine2, kLine3) {
 // 根据指标生成交易信号
 function calculateTradingSignal() {
     const [kLine1, kLine2, kLine3] = getLastKlines(3);
-
-    // 计算布林带
-    const { upperBand, sma, lowerBand } = calculateBollingerBands([...historyClosePrices], BOLL_PERIOD, STD_MULTIPLIER);
-
     const max = Math.max(kLine1.high, kLine2.high, kLine3.high);
     const min = Math.min(kLine1.low, kLine2.low, kLine3.low);
-
     // const bodyMax = Math.max(kLine2.open, kLine2.close, kLine3.open, kLine3.close);
     // const bodyMin = Math.min(kLine1.close, kLine2.open, kLine2.close, kLine3.open, kLine3.close);
 
-    // 跨越上下轨的不做，很可能是横盘或者插针
-    if (kLine3.high > upperBand && lowerBand > kLine3.low) {
-        return { trend: "hold" };
-    }
+    // 计算macd
+    const [macd1, macd2, macd3] = getLastFromArr(macdArr, 3);
+    // 计算rsi
+    const [rsi1, rsi2, rsi3] = getLastFromArr(rsiGroupArr, 3);
+    // 计算atr
+    const { atr } = calculateATR([...kLineData], 14);
+    console.log("🚀 ~ atr:", atr, candleHeight);
 
-    // 从上轨下来(看最后一根k，引线在外即可，只做线上反转，才能保证1:1盈亏比)
-    if (
-        kLine3.close < kLine3.open &&
-        kLine3.close <= Math.max(kLine2.close, kLine2.open) - Math.abs(kLine2.close - kLine2.open) / 2 &&
-        max >= upperBand && // 避免错过机会
-        upperBand > kLine3.close &&
-        min > sma
-    ) {
-        // 不能是从sma跨到upperBand上的
-        // 是否上轨反转做空形态
-        if (isTrackTopReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
-            return {
-                trend: "down",
-                stopLoss: max,
-                stopProfit: currentPrice * 0.998,
-            };
-        }
-    }
-    // 从下轨上来(看最后一根k，引线在外即可)
-    if (
-        kLine3.close > kLine3.open &&
-        kLine3.close >= Math.min(kLine2.close, kLine2.open) + Math.abs(kLine2.close - kLine2.open) / 2 &&
-        min <= lowerBand && // 避免错过机会
-        lowerBand < kLine3.close &&
-        max < sma
-    ) {
-        // 不能是从sma跨到lowerBand下的
-        // 是否下轨反转做多形态
-        if (isTrackBottomReverse({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
-            return {
-                trend: "up",
-                stopLoss: min,
-                stopProfit: currentPrice * 1.002,
-            };
-        }
-    }
-
-    // 中轨 ==> 上轨 || 下轨 ==> 中轨（做多）
-    if (
-        kLine3.close > kLine3.open &&
-        (isBigAndYang(kLine3, 0.8) || isUpCross(kLine3, 0.5)) &&
-        ((kLine3.low <= sma && upperBand < kLine3.high) || (kLine3.low <= lowerBand && sma < kLine3.high))
-    ) {
-        return {
-            trend: "up",
-            stopLoss: kLine3.low,
-            stopProfit: currentPrice * 1.002,
-        };
-    }
-    // 中轨 ==> 下轨 || 上轨 ==> 中轨 (做空)
-    if (
-        kLine3.close < kLine3.open &&
-        (isBigAndYin(kLine3, 0.8) || isDownCross(kLine3, 0.5)) &&
-        ((kLine3.low < lowerBand && sma <= kLine3.high) || (kLine3.low < sma && upperBand <= kLine3.high))
-    ) {
-        return {
-            trend: "down",
-            stopLoss: kLine3.high,
-            stopProfit: currentPrice * 0.998,
-        };
-    }
-    // 是否从下往上突破中轨做多(看最后一根k，实体穿过才算)
-    if (kLine3.close > kLine3.open && kLine3.low <= sma && sma < kLine3.close) {
-        if (max < upperBand && isBreakthroughSmaUp({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
+    /*  
+        必要条件：rsi换边
+        辅助：macd： macdk2 < macdk3
+        止损：Min(k3)
+        止盈：1 : 1.5
+    */
+    if (rsi2.short < rsi2.long && rsi3.short > rsi3.long && kLine3.close > kLine3.open) {
+        // 看多
+        if (macd2.macd < macd3.macd) {
             return {
                 trend: "up",
                 stopLoss: kLine3.low,
-                stopProfit: currentPrice * 1.002,
+                stopProfit: currentPrice + (currentPrice - kLine3.low) * profitRate,
             };
         }
     }
-    // 是否从上往下突破中轨做空(看最后一根k，实体穿过才算)
-    if (kLine3.close < kLine3.open && kLine3.high >= sma && sma > kLine3.close) {
-        if (min > lowerBand && isBreakthroughSmaDown({ upperBand, sma, lowerBand }, { kLine1, kLine2, kLine3 })) {
+    if (rsi2.short > rsi2.long && rsi3.short < rsi3.long && kLine3.close < kLine3.open) {
+        // 看空
+        if (macd2.macd > macd3.macd) {
             return {
                 trend: "down",
                 stopLoss: kLine3.high,
-                stopProfit: currentPrice * 0.998,
+                stopProfit: currentPrice - (kLine3.high - currentPrice) * profitRate,
             };
         }
     }
+    /*
+        必要条件：macd柱子换边
+        辅助：rsi：rsi100 < Min(k2 k3) && k1 < k2 < k3（macd的参数比rsi要慢一些）
+        止损：Min(k3)
+        止盈：1 : 1.5
+    */
+    if (macd2.macd <= 0 && macd3.macd > 0) {
+        // 看多
+        if (
+            rsi1.short > rsi1.long &&
+            rsi2.short > rsi2.long &&
+            rsi3.short > rsi3.long && // rsi：rsi100 < Min(k2 k3)
+            rsi1.short < rsi2.short &&
+            rsi2.short < rsi3.short // k1 < k2 < k3
+        ) {
+            return {
+                trend: "up",
+                stopLoss: kLine3.low,
+                stopProfit: currentPrice + (currentPrice - kLine3.low) * profitRate,
+            };
+        }
+    }
+    if (macd2.macd >= 0 && macd3.macd < 0 && kLine3.close < kLine3.open) {
+        // 看空
+        if (
+            rsi1.short < rsi1.long &&
+            rsi2.short < rsi2.long &&
+            rsi3.short < rsi3.long && // rsi：rsi100 > Min(k2 k3)
+            rsi1.short > rsi2.short &&
+            rsi2.short > rsi3.short // k1 > k2 > k3
+        ) {
+            return {
+                trend: "down",
+                stopLoss: kLine3.high,
+                stopProfit: currentPrice - (kLine3.high - currentPrice) * profitRate,
+            };
+        }
+    }
+
     return { trend: "hold" }; // 默认为 hold
 }
 
@@ -2121,7 +2212,13 @@ const startWebSocket = async () => {
         process.exit(1);
     });
 };
-
+// 自定义函数将 Error 对象转为字符串
+function errorToString(error) {
+    if (error instanceof Error) {
+        return `${error.name}: ${error.message}\n${error.stack}`;
+    }
+    return error;
+}
 // logs
 const createLogs = () => {
     // 创建 logs 文件夹
@@ -2130,7 +2227,7 @@ const createLogs = () => {
     }
 
     // 重定向 console.log 到文件
-    logStream = fs.createWriteStream(`${logsFolder}/${SYMBOL}-${getDate()}.log`, { flags: "a" });
+    logStream = fs.createWriteStream(`${logsFolder}/rsi-macd-${SYMBOL}-${getDate()}.log`, { flags: "a" });
     // 保存原始的 console.log 函数
     const originalConsoleLog = console.log;
 
@@ -2157,7 +2254,7 @@ const createLogs = () => {
         fs.mkdirSync(errorsFolder);
     }
     // 重定向 console.error 到文件
-    errorStream = fs.createWriteStream(`${errorsFolder}/${SYMBOL}-${getDate()}.error`, { flags: "a" });
+    errorStream = fs.createWriteStream(`${errorsFolder}/rsi-macd-${SYMBOL}-${getDate()}.error`, { flags: "a" });
     // 保存原始的 console.error 函数
     const originalConsoleError = console.error;
 
@@ -2168,7 +2265,9 @@ const createLogs = () => {
         errorStream.write(
             `${getDate()}: ${args
                 .map((v) => {
-                    if (typeof v === "object") {
+                    if (v instanceof Error) {
+                        return errorToString(v);
+                    } else if (typeof v === "object") {
                         return JSON.stringify(v);
                     } else {
                         return v;
@@ -2238,8 +2337,9 @@ function saveGlobalVariables() {
                 gridPoints, // 网格每个交易点
                 candleHeight: candleHeight,
                 isFirstGetProfit: isFirstGetProfit,
+                testMoney,
             });
-            fs.writeFileSync(`data/${SYMBOL}.js`, `module.exports = ${data}`, { flag: "w" });
+            fs.writeFileSync(`data/rsi-macd-${SYMBOL}.js`, `module.exports = ${data}`, { flag: "w" });
             console.log(`Global variables saved to data/${SYMBOL}.js`);
         }
     }, 0);

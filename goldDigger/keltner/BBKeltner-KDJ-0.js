@@ -1554,7 +1554,7 @@ const calcEma1Ema2ByHistoryPrice = async () => {
     const len = ema1Arr.length;
     const ema1 = ema1Arr[len - 1];
     const ema2 = ema2Arr[len - 1];
-    const emaGap = Math.abs(ema1 - ema2) > THRESHOLD; // THRESHOLD 这里还需要调整参与对比才行？？？？?????>>>>>
+    const emaGap = Math.abs(ema1 - ema2) > THRESHOLD; // THRESHOLD 这里还需要调整参与对比才行？？？？TODO
 
     let trend = "";
 
@@ -1577,7 +1577,7 @@ const calcEma1Ema2 = (params = {}) => {
     let ema1 = calculateEMA([...historyClosePrices], emaPeriod1);
     let ema2 = calculateEMA([...historyClosePrices], emaPeriod2);
 
-    const emaGap = Math.abs(ema1 - ema2) > threshold; // threshold 这里还需要调整参与对比才行？？？？?????>>>>>
+    const emaGap = Math.abs(ema1 - ema2) > threshold; // threshold 这里还需要调整参与对比才行？？？？TODO
 
     let trend = "hold";
 

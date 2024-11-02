@@ -38,7 +38,7 @@ const { calculateBBKeltnerSqueeze } = require("../utils/BBKeltner.js");
 // let { kLineData } = require("./source/1000flokiUSDT-1m.js");
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
-const symbol = "peopleUSDT";
+let symbol = "1000pepeUSDT";
 const profitRate = 10000;
 let _kLineData = null;
 const diff = 2; // 1053/1410
@@ -153,8 +153,8 @@ const getStop = () => {
 let s_count = -1;
 let s_prePrice = 0;
 let needContinue = true;
-const start = (params) => {
-    const symbol = s;
+const start = ({params,s}) => {
+     symbol = s;
     const { kLineData } = require(`./source/${symbol}-1m.js`);
     _kLineData = [...kLineData];
     gridPoints2 = [];

@@ -103,30 +103,6 @@ const axiosInstance = axios.create({
 // const ws=new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@aggTrade`, {agent: socksProxyAgent});
 // const ws = new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineStage}m`, { agent: socksProxyAgent });
 const ws = new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineStage}m`);
-// {
-//     "e": "kline",     // 事件类型
-//     "E": 123456789,   // 事件时间
-//     "s": "BNBUSDT",    // 交易对
-//     "k": {
-//       "t": 123400000, // 这根K线的起始时间
-//       "T": 123460000, // 这根K线的结束时间
-//       "s": "BNBUSDT",  // 交易对
-//       "i": "1m",      // K线间隔
-//       "f": 100,       // 这根K线期间第一笔成交ID
-//       "L": 200,       // 这根K线期间末一笔成交ID
-//       "o": "0.0010",  // 这根K线期间第一笔成交价
-//       "c": "0.0020",  // 这根K线期间末一笔成交价
-//       "h": "0.0025",  // 这根K线期间最高成交价
-//       "l": "0.0015",  // 这根K线期间最低成交价
-//       "v": "1000",    // 这根K线期间成交量
-//       "n": 100,       // 这根K线期间成交笔数
-//       "x": false,     // 这根K线是否完结(是否已经开始下一根K线)
-//       "q": "1.0000",  // 这根K线期间成交额
-//       "V": "500",     // 主动买入的成交量
-//       "Q": "0.500",   // 主动买入的成交额
-//       "B": "123456"   // 忽略此参数
-//     }
-//   }
 // 全局变量
 let kLineData = [];
 let historyEntryPoints = [];
@@ -145,7 +121,6 @@ let allPositionDetail = {}; // 当前仓位信息
 let candleHeight = 0; // 蜡烛高度
 let gridHight = 0;
 let isProfitRun = false; // 让利润奔跑起来
-let shadowBodyRate = 3;
 let hasOrder = false;
 // 最新交易信息 利润奔跑模式使用
 let tradingInfo = {
@@ -310,7 +285,7 @@ const judgeAndTrading = async (curkLine) => {
             }
         }
     } else {
-        readyTradingDirection = maArr[2] < maArr[3] ? "up" : "down";
+        readyTradingDirection = maArr[2] < maArr[3] ? "up" : "down"; // TODO
     }
 
     // 开单
