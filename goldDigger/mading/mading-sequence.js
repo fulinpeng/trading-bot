@@ -12,6 +12,7 @@ const { calculateCandleHeight } = require("./utils/kLineTools.js");
 const config = require("./config-mading-speed-small.js");
 const { calculateBBKeltnerSqueeze } = require("./utils/BBKeltner.js");
 const { calculateSimpleMovingAverage } = require("./utils/ma.js");
+const { getGlobalVariables, setGlobalVariables } = require('../../redis/mading/globalVariables');
 
 let testMoney = 0;
 let testMoneyArr = [];
@@ -776,47 +777,43 @@ const recordTradingDatas = async (index, trend, info) => {
  * 3. 测试：肯定没有仓位，和线上无仓位处理方式一致
  *         1. 反正不知道到底跑了多少个点，就按最大的来存 __historyEntryPoints 经过几次，就把几次存到  中，h也存起来，重新开单
  */
-const getHistoryData = () => {
-    if (fs.existsSync(`./data/${isTest ? "test" : "prod"}-mading-${SYMBOL}.js`)) {
-        let historyDatas = require(`./data/${isTest ? "test" : "prod"}-mading-${SYMBOL}.js`);
-        const {
-            historyEntryPoints: __historyEntryPoints,
-            currentPrice: __currentPrice, // 记录当前价格
-            prePrice: __prePrice, // 记录当前价格的前一个
-            curGridPoint: __curGridPoint, // 当前网格
-            prePointIndex: __prePointIndex, // 上一个网格
-            currentPointIndex: __currentPointIndex, // 当前网格
-            tradingDatas: __tradingDatas, // 订单数据
-            gridPoints: __gridPoints, // 网格每个交易点
-            tradingInfo: __tradingInfo,
-            isProfitRun: __isProfitRun,
-            gridPoints2: __gridPoints2,
-            testMoney: __testMoney,
-            testMoneyArr: __testMoneyArr,
-            hasOrder: __hasOrder,
-            isResting: __isResting, // 休息一段时间（空档跑网格，出网格继续跑）
-            nextTimeBig: __nextTimeBig,
-            candleHeight: __candleHeight,
-            gridHight: __gridHight,
-            s_money: __s_money,
-            s_count: __s_count,
-            s_prePrice: __s_prePrice,
-        } = historyDatas;
-        console.log("上一次停止程序时，交易情况", historyDatas);
+const getHistoryData = async () => {
+    let historyDatas = await getGlobalVariables(SYMBOL)
+    const {
+        historyEntryPoints: __historyEntryPoints,
+        currentPrice: __currentPrice, // 记录当前价格
+        prePrice: __prePrice, // 记录当前价格的前一个
+        curGridPoint: __curGridPoint, // 当前网格
+        prePointIndex: __prePointIndex, // 上一个网格
+        currentPointIndex: __currentPointIndex, // 当前网格
+        tradingDatas: __tradingDatas, // 订单数据
+        gridPoints: __gridPoints, // 网格每个交易点
+        tradingInfo: __tradingInfo,
+        isProfitRun: __isProfitRun,
+        gridPoints2: __gridPoints2,
+        testMoney: __testMoney,
+        testMoneyArr: __testMoneyArr,
+        hasOrder: __hasOrder,
+        isResting: __isResting, // 休息一段时间（空档跑网格，出网格继续跑）
+        nextTimeBig: __nextTimeBig,
+        candleHeight: __candleHeight,
+        gridHight: __gridHight,
+        s_money: __s_money,
+        s_count: __s_count,
+        s_prePrice: __s_prePrice,
+    } = historyDatas;
+    console.log("上一次停止程序时，交易情况", historyDatas);
 
-        const has = hasUpDownVal(Object.values(__tradingDatas)) || __tradingInfo.quantity;
-        if (
-            __historyEntryPoints.length > 0 &&
-            __currentPrice != 0 &&
-            __prePrice != 0 &&
-            // 有仓位信息
-            (has || (!has && __isResting)) &&
-            __gridPoints.length > 0
-        ) {
-            return historyDatas;
-        } else {
-            return null;
-        }
+    const has = hasUpDownVal(Object.values(__tradingDatas)) || __tradingInfo.quantity;
+    if (
+        __historyEntryPoints.length > 0 &&
+        __currentPrice != 0 &&
+        __prePrice != 0 &&
+        // 有仓位信息
+        (has || (!has && __isResting)) &&
+        __gridPoints.length > 0
+    ) {
+        return historyDatas;
     } else {
         return null;
     }
@@ -1050,7 +1047,7 @@ const startTrading = async () => {
         if (!invariableBalance) {
             await getContractBalance(); // 获取当前合约账户中的 USDT
         }
-        const historyDatas = getHistoryData();
+        const historyDatas = await getHistoryData();
         // 测试
         if (isTest) {
             await getCurrentPrice();
@@ -1677,39 +1674,35 @@ process.on("uncaughtException", (err) => {
 
 // 保存全局变量到文件
 function saveGlobalVariables() {
-    setTimeout(() => {
-        // 创建 data 文件夹
-        if (!fs.existsSync("data")) {
-            fs.mkdirSync("data");
-        }
-        if (currentPrice !== 0 && prePrice !== 0) {
-            const data = JSON.stringify({
-                historyEntryPoints,
-                currentPrice, // 记录当前价格
-                prePrice, // 记录当前价格的前一个
-                curGridPoint, // 当前网格
-                prePointIndex, // 上一个网格
-                currentPointIndex, // 当前网格
-                tradingDatas, // 订单数据
-                tradingInfo, // 订单数据 利润奔跑模式
-                gridPoints, // 网格每个交易点
-                isProfitRun,
-                gridPoints2,
-                testMoney,
-                testMoneyArr,
-                candleHeight,
-                gridHight,
-                hasOrder,
-                isResting, // 休息一段时间（空档跑网格，出网格继续跑）
-                nextTimeBig,
-                s_money,
-                s_count,
-                s_prePrice,
-            });
-            fs.writeFileSync(`data/${isTest ? "test" : "prod"}-mading-${SYMBOL}.js`, `module.exports = ${data}`, {
-                flag: "w",
-            });
-            // console.log(`Global variables saved to data/${SYMBOL}.js`);
-        }
-    }, 0);
+
+    try {
+        // 更新 Redis 中的全局参数
+         setGlobalVariables(SYMBOL, {
+            historyEntryPoints,
+            currentPrice, // 记录当前价格
+            prePrice, // 记录当前价格的前一个
+            curGridPoint, // 当前网格
+            prePointIndex, // 上一个网格
+            currentPointIndex, // 当前网格
+            tradingDatas, // 订单数据
+            tradingInfo, // 订单数据 利润奔跑模式
+            gridPoints, // 网格每个交易点
+            isProfitRun,
+            gridPoints2,
+            testMoney,
+            testMoneyArr,
+            candleHeight,
+            gridHight,
+            hasOrder,
+            isResting, // 休息一段时间（空档跑网格，出网格继续跑）
+            nextTimeBig,
+            s_money,
+            s_count,
+            s_prePrice,
+        });
+
+        console.log('全局参数更新成功');
+    } catch (error) {
+        console.error('更新全局参数时出错:', error);
+    }
 }
