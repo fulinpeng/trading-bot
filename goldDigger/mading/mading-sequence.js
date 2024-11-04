@@ -12,7 +12,15 @@ const { calculateCandleHeight } = require("./utils/kLineTools.js");
 const config = require("./config-mading-speed-small.js");
 const { calculateBBKeltnerSqueeze } = require("./utils/BBKeltner.js");
 const { calculateSimpleMovingAverage } = require("./utils/ma.js");
-const { getGlobalVariables, setGlobalVariables } = require('../../redis/mading/globalVariables');
+const getMongoT = require('./updateGlobalVariables');
+
+let setGlobalVariables = null
+let getGlobalVariables = null
+const initMogoDB = async () => {
+    const bot = await getMongoTmpl();
+    setGlobalVariables = bot.saveTradingData;
+    getGlobalVariables = bot.loadLatestTradingData;
+}
 
 let testMoney = 0;
 let testMoneyArr = [];
@@ -1043,6 +1051,8 @@ const startTrading = async () => {
         await getServerTimeOffset(); // 同步服务器时间
 
         await getHistoryClosePrices(); // 初始化 historyClosePrices
+
+        await initMogoDB(); // 初始化mogoDB
 
         if (!invariableBalance) {
             await getContractBalance(); // 获取当前合约账户中的 USDT
