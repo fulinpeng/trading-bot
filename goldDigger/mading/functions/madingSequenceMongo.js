@@ -1,12 +1,11 @@
-const { connectMongoDB, TradingBot } = require("../../../mongoDB/saveGlobalVariables");
+const { connectMongoDB, TradingBot, initDataBaceLogs } = require("../../../mongoDB/saveGlobalVariables");
 
-module.exports = async () => {
+const madingSequenceMongo = async () => {
     // 连接到 MongoDB
     await connectMongoDB();
 
     // 示例数据
     const strategy = "mading-sequence"; // 策略名称
-    const symbol = "btcUSDT"; // 交易对
     const schema = {
         currentPrice: { type: Number, required: true },
         prePrice: { type: Number, required: true },
@@ -25,6 +24,9 @@ module.exports = async () => {
         s_count: { type: Number, required: true },
         s_prePrice: { type: Number, required: true },
     };
-    const bot = new TradingBot(strategy, symbol, schema); // 创建机器人实例
-    return bot
+    const botData = new TradingBot(strategy, schema); // 创建机器人数据实例
+    
+    return botData
 };
+
+module.exports = {madingSequenceMongo, initDataBaceLogs};

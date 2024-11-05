@@ -1,82 +1,94 @@
 // 引入 Mongoose 库
-const mongoose = require('mongoose');
-const winston = require('winston'); // 日志记录
+const mongoose = require("mongoose");
+const winston = require("winston"); // 日志记录
+const { getDate } = require("../common/functions.js");
+
 
 // 配置日志记录
-const logger = winston.createLogger({
-  transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: 'database.log' })
-  ]
-});
+let logger = null;
+function initDataBaceLogs (symbol) {
+    const logPath = path.join(__dirname, `logs/database/${symbol}-${getDate()}.js`);
+     logger = winston.createLogger({
+        transports: [new winston.transports.Console(), new winston.transports.File({ filename: logPath })],
+    });
+}
 
 // MongoDB 连接
 async function connectMongoDB() {
-  try {
-    await mongoose.connect('mongodb://localhost:27017/tradingBot', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      poolSize: 5,
-      serverSelectionTimeoutMS: 5000
-    });
-    logger.info("已成功连接到 MongoDB！");
-  } catch (error) {
-    logger.error("连接 MongoDB 失败:", error);
-    process.exit(1);
-  }
+    try {
+        await mongoose.connect(process.env.MONGO_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            maxPoolSize: 5,
+            serverSelectionTimeoutMS: 5000,
+        });
+        logger.info("已成功连接到 MongoDB！");
+    } catch (error) {
+        logger.error("连接 MongoDB 失败:", error);
+        process.exit(1);
+    }
 }
 
-// 动态生成模型的函数，仅在机器人启动时调用
-function createModel(strategy, symbol, schemaDefinition) {
-  // 生成模型名称
-  const modelName = `${strategy}_${symbol}`;
+// 动态生成模型的函数，在机器人启动时调用
+function createModel(strategy, schema) {
+    // 使用策略名称作为集合名称
+    const modelName = strategy;
 
-  // 创建自定义的 Schema
-  const tradingDataSchema = new mongoose.Schema({
-    ...schemaDefinition,
-    timestamp: { type: Date, default: Date.now, index: true }
-  });
+    // 创建自定义的 Schema
+    const tradingDataSchema = new mongoose.Schema({
+        symbol: { type: String, required: true }, // 每个交易对的标识符
+        data: schema, // 交易数据
+        timestamp: { type: Date, default: Date.now, index: true },
+    });
 
-  // 为模型 Schema 添加索引
-  tradingDataSchema.index({ timestamp: -1 });
+    // 为模型 Schema 添加降序索引
+    tradingDataSchema.index({ timestamp: 1 });
 
-  // 返回模型实例
-  return mongoose.model(modelName, tradingDataSchema, modelName);
+    // 返回模型实例
+    return mongoose.model(modelName, tradingDataSchema, modelName);
 }
 
 // 机器人类
 class TradingBot {
-  constructor(strategy, symbol, schemaDefinition) {
-    this.strategy = strategy;
-    this.symbol = symbol;
-    // 使用 createModel 创建模型实例
-    this.Model = createModel(strategy, symbol, schemaDefinition);
-  }
-
-  // 保存交易数据到当前机器人对应的模型中
-  async saveTradingData(data) {
-    try {
-      const tradingData = new this.Model(data);
-      await tradingData.save();
-      logger.info(`交易数据已保存到 ${this.strategy} 策略的 ${this.symbol} 交易对中`);
-    } catch (error) {
-      logger.error(`保存交易数据失败 [${this.strategy}/${this.symbol}]:`, error);
+    constructor(strategy, schema) {
+        this.strategy = strategy;
+        // 使用 createModel 创建模型实例
+        this.Model = createModel(strategy, schema);
     }
-  }
 
-  // 获取最新的交易数据
-  async loadLatestTradingData() {
-    try {
-      const latestData = await this.Model.findOne().sort({ timestamp: -1 });
-      return latestData || {};
-    } catch (error) {
-      logger.error(`读取交易数据失败 [${this.strategy}/${this.symbol}]:`, error);
-      return {};
+    // 保存交易数据到当前策略对应的集合中
+    async saveTradingData(symbol, data) {
+        try {
+            await this.Model.findOneAndUpdate(
+                { symbol: symbol }, // 查询条件
+                { $set: {data} }, // 更新的数据内容
+                { upsert: true, new: true } // 有则更新，无则插入
+            );
+            logger.info(`交易数据已保存到 ${this.strategy} 策略的 ${symbol} 交易对中`);
+        } catch (error) {
+            logger.error(`保存交易数据失败 [${this.strategy}/${symbol}]:`, error);
+        }
     }
-  }
+
+    // 获取某个 symbol 的最新交易数据
+    async loadLatestTradingData(symbol) {
+        try {
+            const latestData = await this.Model.findOne({ symbol }).sort({ timestamp: -1 });
+
+            if (latestData) {
+                return latestData.data || null;
+            } else {
+                return null;
+            }
+        } catch (error) {
+            logger.error(`读取交易数据失败 [${this.strategy}/${symbol}]:`, error);
+            return null;
+        }
+    }
 }
 
 module.exports = {
     connectMongoDB,
-    TradingBot
+    TradingBot,
+    initDataBaceLogs,
 };

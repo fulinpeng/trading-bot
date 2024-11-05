@@ -1,4 +1,4 @@
-const { getDate, hasUpDownVal, calculateAverage } = require("./functions.js");
+const { getDate, hasUpDownVal, calculateAverage } = require("../common/functions.js");
 
 const calculateCandleHeight = (klines, shadowBodyRate = 2) => {
     let selected = [];

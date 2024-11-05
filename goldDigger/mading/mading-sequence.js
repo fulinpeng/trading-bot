@@ -1,25 +1,26 @@
 // 版本5
 require("dotenv").config(); // 引入dotenv模块，用于加载环境变量
 const axios = require("axios"); // HTTP请求库
-const sendMail = require("./mailer.js");
+const sendMail = require("../../common/mailer.js");
 const crypto = require("crypto"); // 加密模块
 const WebSocket = require("ws"); // WebSocket库
-// const { HttpsProxyAgent } = require("https-proxy-agent");
-// const { SocksProxyAgent } = require("socks-proxy-agent");
+const { HttpsProxyAgent } = require("https-proxy-agent");
+const { SocksProxyAgent } = require("socks-proxy-agent");
 const fs = require("fs");
-const { getDate, hasUpDownVal, calculateAverage, getSequenceArr } = require("./utils/functions.js");
-const { calculateCandleHeight } = require("./utils/kLineTools.js");
-const config = require("./config-mading-speed-small.js");
-const { calculateBBKeltnerSqueeze } = require("./utils/BBKeltner.js");
-const { calculateSimpleMovingAverage } = require("./utils/ma.js");
-const getMongoT = require('./updateGlobalVariables');
+const { getDate, hasUpDownVal, calculateAverage, getSequenceArr } = require("../../common/functions.js");
+const { calculateCandleHeight } = require("../../klineIndex/kLineTools.js");
+const config = require("../../params/mading-sequence.js");
+const { calculateBBKeltnerSqueeze } = require("../../klineIndex/BBKeltner.js");
+const { calculateSimpleMovingAverage } = require("../../klineIndex//ma.js");
+const {madingSequenceMongo, initDataBaceLogs} = require('./functions/madingSequenceMongo');
 
 let setGlobalVariables = null
 let getGlobalVariables = null
-const initMogoDB = async () => {
-    const bot = await getMongoTmpl();
-    setGlobalVariables = bot.saveTradingData;
-    getGlobalVariables = bot.loadLatestTradingData;
+const initMogoDB = async (symbol) => {
+    initDataBaceLogs(symbol)
+    const bot = await madingSequenceMongo();
+    setGlobalVariables = bot.saveTradingData.bind(bot, symbol);
+    getGlobalVariables = bot.loadLatestTradingData.bind(bot, symbol);
 }
 
 let testMoney = 0;
@@ -78,8 +79,8 @@ console.log(isTest ? "测试环境～～～" : "正式环境～～～");
 // let socksProxyAgent=new SocksProxyAgent("socks5://127.0.0.1:7890");
 
 // mac 小地球仪
-// let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
-// let socksProxyAgent = new SocksProxyAgent("socks5://127.0.0.1:31550");
+let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
+let socksProxyAgent = new SocksProxyAgent("socks5://127.0.0.1:31550");
 
 // win 小地球仪
 // let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:15715");
@@ -105,13 +106,13 @@ const axiosInstance = axios.create({
         "Content-Type": "application/json",
         "X-MBX-APIKEY": apiKey,
     },
-    // httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
+    httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
 });
 
 // WebSocket连接，用于获取实时交易信息
 // const ws=new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@aggTrade`, {agent: socksProxyAgent});
-// const ws = new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineStage}m`, { agent: socksProxyAgent });
-const ws = new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineStage}m`);
+const ws = new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineStage}m`, { agent: socksProxyAgent });
+// const ws = new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineStage}m`);
 // 全局变量
 let kLineData = [];
 let historyEntryPoints = [];
@@ -786,7 +787,7 @@ const recordTradingDatas = async (index, trend, info) => {
  *         1. 反正不知道到底跑了多少个点，就按最大的来存 __historyEntryPoints 经过几次，就把几次存到  中，h也存起来，重新开单
  */
 const getHistoryData = async () => {
-    let historyDatas = await getGlobalVariables(SYMBOL)
+    let historyDatas = await getGlobalVariables()
     const {
         historyEntryPoints: __historyEntryPoints,
         currentPrice: __currentPrice, // 记录当前价格
@@ -1050,9 +1051,9 @@ const startTrading = async () => {
     try {
         await getServerTimeOffset(); // 同步服务器时间
 
-        await getHistoryClosePrices(); // 初始化 historyClosePrices
+        await initMogoDB(SYMBOL); // 初始化mogoDB
 
-        await initMogoDB(); // 初始化mogoDB
+        await getHistoryClosePrices(); // 初始化 historyClosePrices
 
         if (!invariableBalance) {
             await getContractBalance(); // 获取当前合约账户中的 USDT
@@ -1687,7 +1688,7 @@ function saveGlobalVariables() {
 
     try {
         // 更新 Redis 中的全局参数
-         setGlobalVariables(SYMBOL, {
+         setGlobalVariables({
             historyEntryPoints,
             currentPrice, // 记录当前价格
             prePrice, // 记录当前价格的前一个
@@ -1711,7 +1712,6 @@ function saveGlobalVariables() {
             s_prePrice,
         });
 
-        console.log('全局参数更新成功');
     } catch (error) {
         console.error('更新全局参数时出错:', error);
     }
