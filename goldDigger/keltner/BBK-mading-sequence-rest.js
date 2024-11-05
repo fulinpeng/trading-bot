@@ -1,16 +1,16 @@
 // 版本5
 require("dotenv").config(); // 引入dotenv模块，用于加载环境变量
 const axios = require("axios"); // HTTP请求库
-const sendMail = require("./mailer.js");
+const sendMail = require("../../common/mailer.js");
 const crypto = require("crypto"); // 加密模块
 const WebSocket = require("ws"); // WebSocket库
 const { HttpsProxyAgent } = require("https-proxy-agent");
 const { SocksProxyAgent } = require("socks-proxy-agent");
 const fs = require("fs");
-const { getDate, hasUpDownVal, calculateAverage, getSequenceArr } = require("./utils/functions.js");
-const { calculateCandleHeight } = require("./utils/kLineTools.js");
-const config = require("./config-mading.js");
-const { calculateBBKeltnerSqueeze } = require("./utils/BBKeltner.js");
+const { getDate, hasUpDownVal, calculateAverage, getSequenceArr } = require("../../common/functions.js");
+const { calculateCandleHeight } = require("../../klineIndex/kLineTools.js");
+const config = require("../../params/BBKeltner.js");
+const { calculateBBKeltnerSqueeze } = require("../../klineIndex/BBKeltner.js");
 
 let testMoney = 0;
 

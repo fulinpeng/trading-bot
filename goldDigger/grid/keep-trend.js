@@ -7,8 +7,8 @@ const { HttpsProxyAgent } = require("https-proxy-agent");
 const { SocksProxyAgent } = require("socks-proxy-agent");
 // const Binance = require("node-binance-api");
 const fs = require("fs");
-const { debounce, throttle, getDate } = require("./utils/functions.js");
-const config = require("./config.js");
+const { debounce, throttle, getDate } = require("../../common/functions.js");
+const config = require("../../params/grid.js");
 
 const {
     SYMBOL,

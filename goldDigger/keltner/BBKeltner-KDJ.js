@@ -1,6 +1,6 @@
 // 版本5
 require("dotenv").config(); // 引入dotenv模块，用于加载环境变量
-const sendMail = require("./mailer.js");
+const sendMail = require("../../common/mailer.js");
 const axios = require("axios"); // HTTP请求库
 const crypto = require("crypto"); // 加密模块
 const WebSocket = require("ws"); // WebSocket库
@@ -8,14 +8,14 @@ const WebSocket = require("ws"); // WebSocket库
 // const { SocksProxyAgent } = require("socks-proxy-agent");
 // const Binance = require("node-binance-api");
 const fs = require("fs");
-const { getDate, hasUpDownVal } = require("./utils/functions.js");
-const { calculateATR } = require("./utils/atr.js");
-const { calculateBBKeltnerSqueeze } = require("./utils/BBKeltner.js");
-const { calculateKDJ, calculateKDJs } = require("./utils/KDJ.js");
-const { calculateCandleHeight } = require("./utils/kLineTools.js");
-const config = require("./config-BBKeltner-KDJ.js");
-const { calculateRSI } = require("./utils/rsi.js");
-const { calculateSimpleMovingAverage, calculateEMA } = require("./utils/ma.js");
+const { getDate, hasUpDownVal } = require("../../common/functions.js");
+const { calculateATR } = require("../../klineIndex/atr.js");
+const { calculateBBKeltnerSqueeze } = require("../../klineIndex/BBKeltner.js");
+const { calculateKDJ, calculateKDJs } = require("../../klineIndex/KDJ.js");
+const { calculateCandleHeight } = require("../../klineIndex/kLineTools.js");
+const config = require("../../params/BBKeltner.js");
+const { calculateRSI } = require("../../klineIndex/rsi.js");
+const { calculateSimpleMovingAverage, calculateEMA } = require("../../klineIndex/ma.js");
 
 let testMoney = 0;
 

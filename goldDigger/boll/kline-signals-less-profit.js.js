@@ -1,6 +1,6 @@
 // 版本5
 require("dotenv").config(); // 引入dotenv模块，用于加载环境变量
-const sendMail = require("./mailer.js");
+const sendMail = require("../../common/mailer.js");
 const axios = require("axios"); // HTTP请求库
 const crypto = require("crypto"); // 加密模块
 const WebSocket = require("ws"); // WebSocket库
@@ -8,8 +8,8 @@ const { HttpsProxyAgent } = require("https-proxy-agent");
 const { SocksProxyAgent } = require("socks-proxy-agent");
 // const Binance = require("node-binance-api");
 const fs = require("fs");
-const { getDate, hasUpDownVal, calculateAverage, calculateSlope } = require("./utils/functions.js");
-const config = require("./config-boll.js");
+const { getDate, hasUpDownVal, calculateAverage, calculateSlope } = require("../../common/functions.js");
+const config = require("../../params/boll.js");
 
 let testMoney = 0;
 
