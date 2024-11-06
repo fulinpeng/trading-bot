@@ -1,4 +1,4 @@
-const { calculateSimpleMovingAverage, calculateEMA } = require("../utils/ma.js");
+const { calculateSimpleMovingAverage, calculateEMA } = require("./ma.js");
 
 //  HPotter 版权 v1.0 2014/06/20
 // 移动平均交叉交易策略可能是交易世界中最受欢迎的交易策略。

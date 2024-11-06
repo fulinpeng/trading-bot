@@ -1,10 +1,10 @@
-const { getDate, getLastFromArr } = require("../utils/functions");
-const { calculateCandleHeight, isBigAndYang, isBigAndYin } = require("../utils/kLineTools");
-const { calculateATR } = require("../utils/atr.js");
+const { getDate, getLastFromArr } = require("../../../common/functions");
+const { calculateCandleHeight, isBigAndYang, isBigAndYin } = require("../../../klineIndex/kLineTools");
+const { calculateATR } = require("../../../klineIndex/atr.js");
 const fs = require("fs");
-const { calculateRSI } = require("../utils/rsi.js");
-const { emaMacrossover } = require("../utils/ema_ma_crossover.js");
-let { kLineData } = require("./source/opUSDT-15m.js");
+const { calculateRSI } = require("../../../klineIndex/rsi.js");
+const { emaMacrossover } = require("../../../klineIndex/ema_ma_crossover.js");
+let { kLineData } = require("../../../source/opUSDT-15m.js");
 
 // eth: 5分钟 howManyCandle 3
 // sol: 15分钟 howManyCandle 1.6
@@ -12,9 +12,9 @@ let { kLineData } = require("./source/opUSDT-15m.js");
 // uni: 60分钟 howManyCandle 1.5
 // xrp: 60分钟 howManyCandle 1.5
 // arb: 60分钟 howManyCandle 1.7
-let availableMoney = 10000;
-let howManyCandle = 1;
 const symbol = "op";
+let availableMoney = 100;
+let howManyCandle = 2;
 let flagKlineCount = 0;
 const RSI_PERIOD = 14; // RSI计算周期
 const PERIOD = 10; // RSI计算周期
@@ -266,8 +266,8 @@ const result = {
 console.log("最终结果::", result);
 
 // https://echarts.apache.org/examples/zh/editor.html?c=line-simple
-writeInFile(`./tests/data/${symbol}-test-BBK-2.js`, {
-    ...result,
-    dateHistory,
-    testMoneyHistory,
-});
+// writeInFile(`./tests/data/${symbol}-test-BBK-2.js`, {
+//     ...result,
+//     dateHistory,
+//     testMoneyHistory,
+// });

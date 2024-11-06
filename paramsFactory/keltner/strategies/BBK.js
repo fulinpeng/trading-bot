@@ -1,39 +1,14 @@
-const { getDate, getLastFromArr } = require("../utils/functions");
-const { calculateKDJs } = require("../utils/KDJ");
-const { calculateBBKeltnerSqueeze } = require("../utils/BBKeltner");
-const { calculateCandleHeight, isBigAndYang, isBigAndYin } = require("../utils/kLineTools");
-const { calculateATR } = require("../utils/atr.js");
+const { getDate, getLastFromArr } = require("../../../common/functions");
+const { calculateKDJs } = require("../../../klineIndex/KDJ");
+const { calculateBBKeltnerSqueeze } = require("../../../klineIndex/BBKeltner");
+const { calculateCandleHeight, isBigAndYang, isBigAndYin } = require("../../../klineIndex/kLineTools");
+const { calculateATR } = require("../../../klineIndex/atr.js");
 const fs = require("fs");
-// let { kLineData } = require("./source/ethUSDT-15m.js");
-let { kLineData } = require("./source/opUSDT-15m.js");
+// let { kLineData } = require("../../../source/ethUSDT-15m.js");
+let { kLineData } = require("../../../source/opUSDT-15m.js");
 
-// eth: 15分钟 + 4倍candleH 12/3 80%
-// op: 15分钟 + 5倍candleH 11/4 73%
-// eos: 15分钟 + 5倍candleH 8/3 72.7%
-// xrp: 15分钟 + 5倍candleH 9/7 56%
-// avax: 15分钟 + 10倍candleH 11/3 78%
-// ada: 15分钟 + 10倍candleH 10/12 45.45%
-// trx: 15分钟 + 6倍candleH 9/6 60%
-// arb: 15分钟 + 5倍candleH 14/6 70%
-// stx: 15分钟 + 5倍candleH 14/6 70%
-// xlm 15分钟 + 5倍candleH 13/6 68.42%
-// strk 15分钟 + 5倍candleH 12/8 60%
-// chz 15分钟 + 5倍candleH 15/8 65.21%
-// loom 15分钟 + 5倍candleH 13/2 86.66%
-// bb 15分钟 + 5倍candleH 10/5 66.66% testMoney: 1591.4747022448744,
-// imx 15分钟 + 5倍candleH 16/6 72.72%
-// fil 15分钟 + 10倍candleH 11/7 61%
-// inj 15分钟 + 5倍candleH 13/6 68%
-
-let availableMoney = 100;
-let howManyCandleHeight = 2;
-const symbol = "op";
-
-const KDJ = [0, 100];
-
-const getQuantity = (currentPrice) => {
-    return Math.round(availableMoney / currentPrice);
-};
+let symbol = "op";
+let KDJ = [20, 80];
 
 let gridPoints = [];
 let trend = "";
@@ -49,17 +24,30 @@ let dateHistory = [];
 let testMoneyHistory = [];
 let readyTradingDirection = "hold";
 let hasOrder = false;
-let isReadyStopProfit = false; // true
+let isReadyStopProfit = false;
+let howManeyCandleForIndex = 100;
+let peoridForKdj = 25;
+let peoridForBBK = 20;
+let peoridForAtr = 14;
+let stopLossRate = 1;
+let profitRate = 3000;
+let howManyNumForAvarageCandleHight = 9;
+let howManyCandleHeight = 12;
+
 let candleHeight = 0;
+let availableMoney = 100;
+const getQuantity = (currentPrice) => {
+    return Math.round(availableMoney / currentPrice);
+};
 
 const setProfit = (orderPrice, currentPrice, closeTime) => {
     if (trend === "up") {
         testMoney =
-            testMoney + quantity * (currentPrice - orderPrice) - quantity * (orderPrice + currentPrice) * 0.00051;
+            testMoney + quantity * (currentPrice - orderPrice) - quantity * (orderPrice + currentPrice) * 0.0007;
     }
     if (trend === "down") {
         testMoney =
-            testMoney + quantity * (orderPrice - currentPrice) - quantity * (orderPrice + currentPrice) * 0.00051;
+            testMoney + quantity * (orderPrice - currentPrice) - quantity * (orderPrice + currentPrice) * 0.0007;
     }
     if (testMoney > maxMoney) maxMoney = testMoney;
     if (testMoney < minMoney) minMoney = testMoney;
@@ -70,10 +58,13 @@ const start = () => {
     // let index = kLineData.findIndex((v) => v.openTime === "2024-05-23_00-00-00");
     // kLineData = kLineData.slice(index);
     for (let idx = 100; idx < kLineData.length; idx++) {
-        const curKLines = kLineData.slice(idx - 100, idx);
-        const kdjs = calculateKDJs(curKLines, 25);
+        const curKLines = kLineData.slice(idx - howManeyCandleForIndex, idx);
+        const kdjs = calculateKDJs(curKLines, peoridForKdj);
         const kdj = kdjs[kdjs.length - 1];
-        const { B2basis, B2upper, B2lower, Kma, Kupper, Klower, squeeze } = calculateBBKeltnerSqueeze(curKLines, 20);
+        const { B2basis, B2upper, B2lower, Kma, Kupper, Klower, squeeze } = calculateBBKeltnerSqueeze(
+            curKLines,
+            peoridForBBK,
+        );
         const len = B2basis.length;
         const curB2basis = B2basis[len - 1];
         const curB2upper = B2upper[len - 1];
@@ -83,7 +74,7 @@ const start = () => {
         const curKlower = Klower[len - 1];
         const isSqueeze = squeeze[len - 1];
 
-        candleHeight = calculateCandleHeight(kLineData.slice(idx - 9, idx));
+        candleHeight = calculateCandleHeight(kLineData.slice(idx - howManyNumForAvarageCandleHight, idx));
         const curkLine = kLineData[idx];
         const { close, closeTime, low, high } = curkLine;
 
@@ -137,7 +128,7 @@ const start = () => {
                 }
             }
             // 第二次判断止盈：上面没有被止损，也没被止盈，那看下面是否能止盈，high 大于 point2 就止盈利，否则继续持有
-            if (howManyCandleHeight && trend) {
+            if (trend) {
                 if (trend && high >= point2) {
                     setProfit(orderPrice, point2, closeTime);
                     setFailAndWinNum(curkLine);
@@ -154,6 +145,9 @@ const start = () => {
             }
         }
     }
+    console.log(kLineData[0].closeTime, kLineData[kLineData.length - 1].closeTime);
+    // 处理最后一根k
+    hasOrder &&  setProfit(orderPrice, kLineData[kLineData.length - 1], kLineData[kLineData.length - 1].closeTime);
 };
 // 准备止盈
 const judgeReadyStopProfit = (kdj) => {
@@ -300,28 +294,36 @@ const judgeAndTrading = (curB2basis, curB2upper, curB2lower, curKma, curkLine, i
 };
 const calculateTradingSignal = (curB2basis, curB2upper, curB2lower, curKma, curkLine, isSqueeze, kdj, curKLines) => {
     const [kLine1, kLine2, kLine3] = getLastFromArr(curKLines, 3);
-    const max = Math.max(kLine1.high, kLine2.high, kLine3.high);
-    const min = Math.min(kLine1.low, kLine2.low, kLine3.low);
+    const max = Math.max(kLine1.close, kLine2.close, kLine3.close, kLine1.open, kLine2.open, kLine3.open);
+    const min = Math.min(kLine1.close, kLine2.close, kLine3.close, kLine1.open, kLine2.open, kLine3.open);
+
+    // const max = Math.max(kLine1.high, kLine2.high, kLine3.high);
+    // const min = Math.min(kLine1.low, kLine2.low, kLine3.low);
+    const curPrice = kLine3.close;
     // 当KDJ蓝色信号线大于20以上位阶, 并且K棒要收涨, 收盘价进场
     if (readyTradingDirection === "up" && kdj.j > KDJ[0] && kLine3.close > kLine3.open) {
         // 计算atr
-        const { atr } = calculateATR(curKLines, 14);
+        const { atr } = calculateATR(curKLines, peoridForAtr);
         // console.log("🚀 ~ file:", kLine3.closeTime, "up", min - atr, kLine3.close - kLine3.close * 0.01);
         return {
             trend: "up",
-            stopLoss: kLine3.low, // kLine3.close - kLine3.close * 0.01, // min - atr,
-            stopProfit: kLine3.close + (kLine3.close - atr), // 止盈大一点
+            stopLoss: min - atr * stopLossRate, // kLine3.low, // kLine3.close - kLine3.close * 0.01, // min - atr,
+            // stopProfit: curPrice + (curPrice - (min - atr)) * profitRate, // 止盈大一点
+            // stopLoss: kLine3.low, // kLine3.close - kLine3.close * 0.01, // min - atr,
+            stopProfit: kLine3.close + candleHeight * howManyCandleHeight, // 止盈大一点
         };
     }
     // 当KDJ蓝色信号线小于80以上位阶, 并且K棒要收跌, 收盘价进场
     if (readyTradingDirection === "down" && kdj.j < KDJ[1] && kLine3.close < kLine3.open) {
         // 计算atr
-        const { atr } = calculateATR(curKLines, 14);
+        const { atr } = calculateATR(curKLines, peoridForAtr);
         // console.log("🚀 ~ file:", kLine3.closeTime, "down", max + atr, kLine3.close + kLine3.close * 0.01);
         return {
             trend: "down",
-            stopLoss: kLine3.high, // kLine3.close + kLine3.close * 0.01, // max + atr,
-            stopProfit: kLine3.close - (kLine3.close - atr), // 止盈大一点
+            stopLoss: max + atr * stopLossRate, // kLine3.high, // kLine3.close + kLine3.close * 0.01, // max + atr,
+            // stopProfit: curPrice - (max + atr - curPrice) * profitRate, // 止盈大一点
+            // stopLoss: kLine3.high, // kLine3.close + kLine3.close * 0.01, // max + atr,
+            stopProfit: kLine3.close - candleHeight * howManyCandleHeight, // 止盈大一点
         };
     }
     return {
@@ -338,6 +340,9 @@ start();
 
 console.log("最终结果::", {
     availableMoney,
+    stopLossRate,
+    profitRate,
+    howManyNumForAvarageCandleHight,
     howManyCandleHeight,
     winNum,
     failNum,
@@ -349,7 +354,6 @@ console.log("最终结果::", {
 
 const result = {
     availableMoney,
-    howManyCandleHeight,
     winNum,
     failNum,
     testMoney,
@@ -397,4 +401,4 @@ const result = {
 };
 
 // https://echarts.apache.org/examples/zh/editor.html?c=line-simple
-writeInFile(`./tests/data/test-BBK-${symbol}.js`, result);
+// writeInFile(`./tests/data/test-BBK-${symbol}.js`, result);
