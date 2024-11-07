@@ -1,0 +1,55 @@
+{
+    "name": "trading-bot",
+    "version": "1.0.0",
+    "description": "一个基于 币安API 的交易机器人",
+    "main": "app.js",
+    "scripts": {
+        "1000pepe": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null app.js gridBot-mading 1000pepeUSDT",
+        "restart-all": "forever restartall",
+        "forever-list": "forever list",
+        "stop-all": "forever stopall",
+        "start": "node app.js",
+        "test": "jest"
+    },
+    "pkg": {
+        "assets": [
+            "botStrategies/**/*"
+        ],
+        "targets": [
+            "node16-linux-x64",
+            "node16-macos-x64",
+            "node16-win-x64"
+        ],
+        "outputPath": "build"
+    },
+    "keywords": [
+        "trading bot",
+        "quantitative trading",
+        "automated trading",
+        "crypto trading",
+        "trading strategy",
+        "web3",
+        "javascript",
+        "nodejs",
+        "Binance API"
+    ],
+    "author": "fulp511@gmail.com",
+    "license": "ISC",
+    "dependencies": {
+        "axios": "^1.6.5",
+        "crypto": "^1.0.1",
+        "dayjs": "^1.11.12",
+        "dotenv": "^16.4.0",
+        "https-proxy-agent": "^7.0.2",
+        "log4js": "^0.6.14",
+        "mongoose": "^8.8.0",
+        "nodemailer": "^6.9.13",
+        "socks-proxy-agent": "^8.0.2",
+        "winston": "^3.16.0",
+        "ws": "^8.16.0"
+    },
+    "devDependencies": {
+        "geneticalgorithm": "^1.0.2",
+        "jest": "^29.7.0"
+    }
+}
