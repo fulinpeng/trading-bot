@@ -9,7 +9,7 @@ README.*
 *.pem
 __upload
 source
-mading/**/temp
+paramsFactory/**/temp
 *.jsonl
 qualifiedSolutions
 yarn.lock
