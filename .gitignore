@@ -9,6 +9,7 @@ README.*
 *.pem
 __upload
 source
+mading/**/temp
 *.jsonl
 qualifiedSolutions
 yarn.lock
