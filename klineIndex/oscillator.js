@@ -1,4 +1,4 @@
-// 随机震荡指标 Function to calculate Stochastic Oscillator (%K and %D)
+// 随机震荡指标 (%K and %D)
 function calculateCurrentStochasticOscillator(data, period = 14, dPeriod = 3) {
     if (data.length < period) {
         throw new Error("数据长度不足以计算指定周期的随机震荡指标");

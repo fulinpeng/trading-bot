@@ -1,4 +1,7 @@
 function calculateFibonacciLevels(high, low, trend) {
+    if (trend !== "up" && trend !== "down") {
+        throw new Error("Invalid trend value. Use 'up' or 'down'.");
+    }
     let isUptrend = trend === "up";
     // 斐波那契回撤比率
     const fibRatios = isUptrend
@@ -10,9 +13,7 @@ function calculateFibonacciLevels(high, low, trend) {
 
     // 计算斐波那契价格点
     const fibonacciLevels = fibRatios.map((ratio) => {
-        return isUptrend
-            ? low + difference * ratio // 上升趋势：从低点开始计算
-            : high - difference * ratio; // 下降趋势：从高点开始计算
+        return low + difference * ratio
     });
 
     return fibonacciLevels;

@@ -84,20 +84,6 @@ function checkVandAPoint(slice, tolerance) {
     return { vPoint: null, aPoint: null };
 }
 
-// 示例K线数据
-// const klineData = [
-//     { openTime: 1622476800000, open: "100", high: "110", low: "90", close: "101", volume: "1000", closeTime: 1622480400000, quoteAssetVolume: "10000", numberOfTrades: 100, takerBuyBaseAssetVolume: "500", takerBuyQuoteAssetVolume: "5000" },
-//     // ... 其他K线数据
-//     { openTime: 1622576800000, open: "105", high: "115", low: "95", close: "106", volume: "1000", closeTime: 1622580400000, quoteAssetVolume: "10000", numberOfTrades: 100, takerBuyBaseAssetVolume: "500", takerBuyQuoteAssetVolume: "5000" }
-// ];
-
-// 调用函数找出最近100根K线中符合V形和A形态的最高点和最低点
-// const { vPoints, aPoints, vPointsMin, aPointsMax } = findVandAPoints(klineData);
-// console.log('V形态最低点:', vPoints);
-// console.log('A形态最高点:', aPoints);
-// console.log('V形态最低值:', vPointsMin);
-// console.log('A形态最高值:', aPointsMax);
-
 const findMaxAndMin = (recentKlines) => {
     // 获取最近180根K线中的最高价和最低价
     let maxK = recentKlines[0];
