@@ -28,7 +28,7 @@ const {
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
-const isTest = false; // 将此标志设置为 true 使用沙盒环境
+const isTest = false; // 将此标志设置为 true
 const api = isTest ? "https://testnet.binance.vision/api" : "https://api.binance.com/api";
 const fapi = isTest ? "https://testnet.binancefuture.com/fapi" : "https://fapi.binance.com/fapi";
 const apiKey = isTest ? process.env.TEST_BINANCE_API_KEY : process.env.BINANCE_API_KEY; // 获取API密钥

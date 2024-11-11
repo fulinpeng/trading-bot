@@ -1,5 +1,6 @@
 node_modules
 logs
+mongoDB/logs
 errors
 garbage
 README.*
@@ -14,3 +15,4 @@ paramsFactory/**/temp
 qualifiedSolutions
 yarn.lock
 package-lock.json
+build

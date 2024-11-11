@@ -39,7 +39,7 @@ const {
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
-const isTest = true; // 将此标志设置为  false/true 使用沙盒环境
+const isTest = true; // 将此标志设置为  false/true 
 const api = "https://api.binance.com/api";
 const fapi = "https://fapi.binance.com/fapi";
 const apiKey = process.env.BINANCE_API_KEY; // 获取API密钥

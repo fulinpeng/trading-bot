@@ -5,7 +5,7 @@ const madingSequenceMongo = async () => {
     await connectMongoDB();
 
     // 示例数据
-    const strategy = "mading-sequence"; // 策略名称
+    const strategy = "madingSequence"; // 策略名称
     const schema = {
         currentPrice: { type: Number, required: true },
         prePrice: { type: Number, required: true },
