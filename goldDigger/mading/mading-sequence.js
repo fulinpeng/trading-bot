@@ -12,16 +12,16 @@ const { calculateCandleHeight } = require("../../klineIndex/kLineTools.js");
 const config = require("../../params/mading-sequence.js");
 const { calculateBBKeltnerSqueeze } = require("../../klineIndex/BBKeltner.js");
 const { calculateSimpleMovingAverage } = require("../../klineIndex//ma.js");
-const {madingSequenceMongo, initDataBaceLogs} = require('./functions/madingSequenceMongo');
+const { madingSequenceMongo, initDataBaceLogs } = require("./functions/madingSequenceMongo");
 
-let setGlobalVariables = null
-let getGlobalVariables = null
+let setGlobalVariables = null;
+let getGlobalVariables = null;
 const initMogoDB = async (symbol) => {
-    initDataBaceLogs(symbol)
+    initDataBaceLogs(symbol);
     const bot = await madingSequenceMongo();
     setGlobalVariables = bot.saveTradingData.bind(bot, symbol);
     getGlobalVariables = bot.loadLatestTradingData.bind(bot, symbol);
-}
+};
 
 let testMoney = 0;
 let testMoneyArr = [];
@@ -61,7 +61,7 @@ let nextTimeBig = false; // nextBig 开启后生效，碰到 [1,0] 或者 [2,3] 
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
-const isTest = true; // 将此标志设置为  false/true 使用沙盒环境
+const isTest = true; // 将此标志设置为  false/true
 const showProfit = true;
 const api = "https://api.binance.com/api";
 const fapi = "https://fapi.binance.com/fapi";
@@ -787,7 +787,8 @@ const recordTradingDatas = async (index, trend, info) => {
  *         1. 反正不知道到底跑了多少个点，就按最大的来存 __historyEntryPoints 经过几次，就把几次存到  中，h也存起来，重新开单
  */
 const getHistoryData = async () => {
-    let historyDatas = await getGlobalVariables()
+    let historyDatas = await getGlobalVariables();
+    if (!historyDatas) return null;
     const {
         historyEntryPoints: __historyEntryPoints,
         currentPrice: __currentPrice, // 记录当前价格
@@ -1053,12 +1054,13 @@ const startTrading = async () => {
 
         await initMogoDB(SYMBOL); // 初始化mogoDB
 
+        const historyDatas = await getHistoryData();
+
         await getHistoryClosePrices(); // 初始化 historyClosePrices
 
         if (!invariableBalance) {
             await getContractBalance(); // 获取当前合约账户中的 USDT
         }
-        const historyDatas = await getHistoryData();
         // 测试
         if (isTest) {
             await getCurrentPrice();
@@ -1685,10 +1687,9 @@ process.on("uncaughtException", (err) => {
 
 // 保存全局变量到文件
 function saveGlobalVariables() {
-
     try {
         // 更新 Redis 中的全局参数
-         setGlobalVariables({
+        setGlobalVariables({
             historyEntryPoints,
             currentPrice, // 记录当前价格
             prePrice, // 记录当前价格的前一个
@@ -1711,8 +1712,7 @@ function saveGlobalVariables() {
             s_count,
             s_prePrice,
         });
-
     } catch (error) {
-        console.error('更新全局参数时出错:', error);
+        console.error("更新全局参数时出错:", error);
     }
 }

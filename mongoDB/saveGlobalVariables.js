@@ -3,12 +3,13 @@ const mongoose = require("mongoose");
 const winston = require("winston"); // 日志记录
 const { getDate } = require("../common/functions.js");
 
+const path = require("path");
 
 // 配置日志记录
 let logger = null;
-function initDataBaceLogs (symbol) {
+function initDataBaceLogs(symbol) {
     const logPath = path.join(__dirname, `logs/database/${symbol}-${getDate()}.js`);
-     logger = winston.createLogger({
+    logger = winston.createLogger({
         transports: [new winston.transports.Console(), new winston.transports.File({ filename: logPath })],
     });
 }
@@ -61,8 +62,8 @@ class TradingBot {
         try {
             await this.Model.findOneAndUpdate(
                 { symbol: symbol }, // 查询条件
-                { $set: {data} }, // 更新的数据内容
-                { upsert: true, new: true } // 有则更新，无则插入
+                { $set: { data } }, // 更新的数据内容
+                { upsert: true, new: true }, // 有则更新，无则插入
             );
             logger.info(`交易数据已保存到 ${this.strategy} 策略的 ${symbol} 交易对中`);
         } catch (error) {
@@ -73,7 +74,7 @@ class TradingBot {
     // 获取某个 symbol 的最新交易数据
     async loadLatestTradingData(symbol) {
         try {
-            const latestData = await this.Model.findOne({ symbol }).sort({ timestamp: -1 });
+            const latestData = await this.Model.findOne({ symbol }).sort({ timestamp: -1 }).lean();
 
             if (latestData) {
                 return latestData.data || null;
