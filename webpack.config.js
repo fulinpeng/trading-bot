@@ -4,10 +4,10 @@ const nodeExternals = require("webpack-node-externals");
 module.exports = {
     entry: {
         mading: "./goldDigger/mading/mading-sequence.js",
-        boll: "./goldDigger/boll/kline-signals.js",
-        grid: "./goldDigger/grid/keep-trend.js",
-        keltner: "./goldDigger/keltner/BBKeltner-KDJ.js",
-        rsiEma: "./goldDigger/rsiEma/rsi-macd.js",
+        // boll: "./goldDigger/boll/kline-signals.js",
+        // grid: "./goldDigger/grid/keep-trend.js",
+        // keltner: "./goldDigger/keltner/BBKeltner-KDJ.js",
+        // rsiEma: "./goldDigger/rsiEma/rsi-macd.js",
     },
     output: {
         path: path.resolve(__dirname, "build"),
@@ -36,4 +36,5 @@ module.exports = {
             minSize: 0,
         },
     },
+	mode: 'development' 
 };
