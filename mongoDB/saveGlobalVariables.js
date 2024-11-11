@@ -8,7 +8,7 @@ const path = require("path");
 // 配置日志记录
 let logger = null;
 function initDataBaceLogs(symbol) {
-    const logPath = path.join(__dirname, `logs/database/${symbol}-${getDate()}.js`);
+    const logPath = path.join(`logs/database/${symbol}-${getDate()}.js`);
     logger = winston.createLogger({
         transports: [new winston.transports.Console(), new winston.transports.File({ filename: logPath })],
     });
