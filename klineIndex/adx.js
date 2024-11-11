@@ -1,6 +1,20 @@
 const { calculateSimpleMovingAverage } = require("./ma.js");
+
+// 辅助函数，用于生成移动平均序列
+function calculateMovingAverageSeries(data, period) {
+    let result = [];
+    for (let i = 0; i <= data.length - period; i++) {
+        let slice = data.slice(i, i + period);
+        result.push(calculateSimpleMovingAverage(slice, period));
+    }
+    return result;
+}
+
 // 计算ADX
 function calculateADX(data, period = 14) {
+    if (data.length < period) {
+        throw new Error("Not enough data points for the specified period.");
+    }
     let tr = [],
         plusDM = [],
         minusDM = [],
@@ -9,6 +23,7 @@ function calculateADX(data, period = 14) {
         dx = [],
         adx = [];
 
+    // 计算 TR, +DM, -DM
     for (let i = 1; i < data.length; i++) {
         let highDiff = parseFloat(data[i].high) - parseFloat(data[i - 1].high);
         let lowDiff = parseFloat(data[i - 1].low) - parseFloat(data[i].low);
@@ -27,17 +42,20 @@ function calculateADX(data, period = 14) {
         tr.push(trueRange);
     }
 
-    let smaTR = calculateSimpleMovingAverage(tr, period);
-    let smaPlusDM = calculateSimpleMovingAverage(plusDM, period);
-    let smaMinusDM = calculateSimpleMovingAverage(minusDM, period);
+    // 生成移动平均序列
+    const smaTR = calculateMovingAverageSeries(tr, period);
+    const smaPlusDM = calculateMovingAverageSeries(plusDM, period);
+    const smaMinusDM = calculateMovingAverageSeries(minusDM, period);
 
+    // 计算 +DI, -DI, 和 DX
     for (let i = 0; i < smaTR.length; i++) {
         plusDI.push(100 * (smaPlusDM[i] / smaTR[i]));
         minusDI.push(100 * (smaMinusDM[i] / smaTR[i]));
         dx.push(100 * Math.abs((plusDI[i] - minusDI[i]) / (plusDI[i] + minusDI[i])));
     }
 
-    adx = calculateSimpleMovingAverage(dx, period);
+    // 计算ADX
+    adx = calculateMovingAverageSeries(dx, period);
     return adx;
 }
 

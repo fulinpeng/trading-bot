@@ -9,6 +9,16 @@ function calculateSimpleMovingAverage(prices, period) {
     return sum / period;
 }
 
+// 计算简单移动平均线 (SMA)
+function getSmaArr(values, period) {
+    return values.map((val, idx, arr) => {
+        // 如果当前索引小于长度，返回 null，因为还无法计算均值
+        if (idx < period - 1) return null;
+        // 计算指定长度窗口内的均值
+        return calculateSimpleMovingAverage(arr.slice(idx - period + 1, idx + 1), period);
+    });
+}
+
 // 计算指数移动平均 EMA = α × Price + (1−α) × EMA‘（EMA‘为上一次的EMA）
 // ​α 是平滑系数，通常是 2/(N - 1)，其中 N 是选定的时间周期
 // 斜率 Slope = (EMA[t] - EMA[t-n])/n ，其中 n 是计算斜率的时间跨度
@@ -17,6 +27,9 @@ function calculateSimpleMovingAverage(prices, period) {
 // 零线交叉： 当EMA斜率从负数变为正数时，可能标志着价格从下跌趋势切换到上升趋势，反之亦然。
 // 斜率的平滑性： 由于EMA本身是通过平滑计算得到的，其斜率相对于简单移动平均线的斜率更加平滑，对市场噪音有较好的过滤效果。
 const calculateEMA = (prices, period) => {
+    if (prices.length < period) {
+        throw new Error("Not enough data points for the specified period.");
+    }
     let sum = 0;
 
     // 计算前 N 个价格的平均值
@@ -38,4 +51,5 @@ const calculateEMA = (prices, period) => {
 module.exports = {
     calculateSimpleMovingAverage,
     calculateEMA,
+    getSmaArr,
 };
