@@ -58,16 +58,24 @@ class TradingBot {
     }
 
     // 保存交易数据到当前策略对应的集合中
-    async saveTradingData(symbol, data) {
+    async saveTradingData(symbol, data, session = null) {
         try {
+            // 如果 session 存在，则在事务中执行，否则正常执行
+            const options = session ? { upsert: true, new: true, session } : { upsert: true, new: true };
+
             await this.Model.findOneAndUpdate(
                 { symbol: symbol }, // 查询条件
                 { $set: { data } }, // 更新的数据内容
-                { upsert: true, new: true }, // 有则更新，无则插入
+                options, // 更新选项
             );
+
             logger.info(`交易数据已保存到 ${this.strategy} 策略的 ${symbol} 交易对中`);
         } catch (error) {
             logger.error(`保存交易数据失败 [${this.strategy}/${symbol}]:`, error);
+            // 如果有事务，直接抛出错误以便调用方回滚
+            if (session) {
+                throw error;
+            }
         }
     }
 

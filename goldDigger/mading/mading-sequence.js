@@ -13,7 +13,10 @@ const config = require("../../params/mading-sequence.js");
 const { calculateBBKeltnerSqueeze } = require("../../klineIndex/BBKeltner.js");
 const { calculateSimpleMovingAverage } = require("../../klineIndex//ma.js");
 const { madingSequenceMongo, initDataBaceLogs } = require("./functions/madingSequenceMongo");
+const { Transaction } = require("./functions/transaction")
 
+let transaction = new Transaction(); // mongonDB事务
+const PlaceClose = 'PlaceAndClose' // 开仓平仓
 let setGlobalVariables = null;
 let getGlobalVariables = null;
 const initMogoDB = async (symbol) => {
@@ -638,40 +641,19 @@ const placeOrder = async (side, quantity, resetTradingDatas) => {
                     orderTime: timestamp,
                 });
             }
-            saveGlobalVariables();
+            await saveGlobalVariables();
+
             console.log("placeOrder ~ 下单成功 currentPointIndex tradingDatas:", currentPointIndex, tradingDatas);
 
-            // {
-            //     orderId: 1044552751,
-            //     symbol: 'JOEUSDT',
-            //     status: 'NEW',
-            //     clientOrderId: 'x1T2kiflWgcl4rPDwPWYpi',
-            //     price: '0.0000000',
-            //     avgPrice: '0.00',
-            //     origQty: '13',
-            //     executedQty: '0',
-            //     cumQty: '0',
-            //     cumQuote: '0.0000000',
-            //     timeInForce: 'GTC',
-            //     type: 'MARKET',
-            //     reduceOnly: false,
-            //     closePosition: false,
-            //     side: 'SELL',
-            //     positionSide: 'BOTH',
-            //     stopPrice: '0.0000000',
-            //     workingType: 'CONTRACT_PRICE',
-            //     priceProtect: false,
-            //     origType: 'MARKET',
-            //     priceMatch: 'NONE',
-            //     selfTradePreventionMode: 'NONE',
-            //     goodTillDate: 0,
-            //     updateTime: 1706779095560
-            //   }
         } else {
+            // 回滚事务
+            await transaction.abortTransaction(PlaceClose);
             console.error("下单失败！！！！！");
         }
         loadingPlaceOrder = false;
     } catch (error) {
+        // 回滚事务
+        await transaction.abortTransaction(PlaceClose);
         console.error(
             "placeOrder header::",
             error && error.request ? error.request._header : null,
@@ -710,9 +692,11 @@ const closeOrder = async (side, quantity, cb) => {
 
         if (response && response.data && response.data.origQty) {
             cb && cb();
-            saveGlobalVariables();
+
             console.log("🚀 ~ 平仓：平", side === "BUY" ? "空" : "多", response.data.origQty);
         } else {
+            // 事务回滚
+            await transaction.abortTransaction(PlaceClose);
             console.log(
                 "🚀 ~ 平仓：平",
                 side === "BUY" ? "空" : "多",
@@ -721,6 +705,8 @@ const closeOrder = async (side, quantity, cb) => {
         }
         loadingCloseOrder = false;
     } catch (error) {
+        // 事务回滚
+        await transaction.abortTransaction(PlaceClose);
         console.error(
             "closeOrder header::",
             error && error.request ? error.request._header : null,
@@ -1022,10 +1008,12 @@ const setGridPointsToCurPriceCenter = (trend, _currentPrice) => {
     );
 };
 // 进入交易点的历史记录
-const setHistoryEntryPoints = (point) => {
+const setHistoryEntryPoints = async (point) => {
     historyEntryPoints.push(point);
 
-    saveGlobalVariables();
+    await transaction.startTransaction(PlaceClose); // 开启事务会话
+
+    saveGlobalVariables(transaction.getSessions(PlaceClose));
 
     console.log(`${isResting ? "休息中，" : ""}进入交易点的历史记录 historyEntryPoints:`, historyEntryPoints);
 };
@@ -1257,6 +1245,8 @@ const gridPointTrading2 = async () => {
                 isResting = false;
                 hasOrder = false;
                 onGridPoint = false;
+                // 提交事务
+                await transaction.commitTransaction(PlaceClose);
                 return;
             } else if (_currentPointIndex === 3) {
                 console.log(`休息中到达交易点3，交替穿过${allPoints}次交易点，退出休息模式继续开单`);
@@ -1264,6 +1254,8 @@ const gridPointTrading2 = async () => {
                 isResting = false;
                 hasOrder = false;
                 onGridPoint = false;
+                // 提交事务
+                await transaction.commitTransaction(PlaceClose);
                 return;
             }
         } else {
@@ -1314,6 +1306,8 @@ const gridPointTrading2 = async () => {
             } else {
                 nextTimeBig = false;
             }
+            // 提交事务
+            await transaction.commitTransaction(PlaceClose);
             return;
         } else if (_currentPointIndex === 3) {
             console.log(`交替穿过${allPoints}次交易点，是 2~3，重置仓位（盈利）！！！，并当前继续开多`);
@@ -1329,6 +1323,8 @@ const gridPointTrading2 = async () => {
             } else {
                 nextTimeBig = false;
             }
+            // 提交事务
+            await transaction.commitTransaction(PlaceClose);
             return;
         } else if (_currentPointIndex === 1) {
             // 不通过，就会停止并等下次机会
@@ -1338,6 +1334,8 @@ const gridPointTrading2 = async () => {
                 await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
                 onGridPoint = false;
                 isResting = true;
+                // 提交事务
+                await transaction.commitTransaction(PlaceClose);
                 return;
             }
             if (isResting) {
@@ -1361,6 +1359,8 @@ const gridPointTrading2 = async () => {
                 await closeOtherPointAllOrders(pointIndexHistory, _currentPointIndex);
                 onGridPoint = false;
                 isResting = true;
+                // 提交事务
+                await transaction.commitTransaction(PlaceClose);
                 return;
             }
             if (isResting) {
@@ -1387,6 +1387,8 @@ const gridPointTrading2 = async () => {
             tradingDataArr,
         );
     }
+    // 提交事务
+    await transaction.commitTransaction(PlaceClose);
 
     onGridPoint = false;
 };
@@ -1441,9 +1443,10 @@ const beforStartRunGrid = async (profit) => {
 
         saveGlobalVariables();
         return false;
+    } else {
+        saveGlobalVariables();
+        return true;
     }
-    saveGlobalVariables();
-    return true;
 };
 // 跑网格
 const startRunGrid = async (_prePrice, _currentPrice) => {
@@ -1686,10 +1689,10 @@ process.on("uncaughtException", (err) => {
 });
 
 // 保存全局变量到文件
-function saveGlobalVariables() {
+async function saveGlobalVariables(session) {
     try {
         // 更新 Redis 中的全局参数
-        setGlobalVariables({
+       await setGlobalVariables({
             historyEntryPoints,
             currentPrice, // 记录当前价格
             prePrice, // 记录当前价格的前一个
@@ -1711,7 +1714,7 @@ function saveGlobalVariables() {
             s_money,
             s_count,
             s_prePrice,
-        });
+        }, session);
     } catch (error) {
         console.error("更新全局参数时出错:", error);
     }
