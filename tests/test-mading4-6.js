@@ -29,9 +29,9 @@ const { calculateBBKeltnerSqueeze } = require("../utils/BBKeltner.js");
 // let { kLineData } = require("./source/zkUSDT-1m.js");
 // let { kLineData } = require("./source/dogeUSDT-1m.js");
 // let { kLineData } = require("./source/1000pepeUSDT-1m.js");
-let { kLineData } = require("./source/peopleUSDT-1m.js");
+// let { kLineData } = require("./source/peopleUSDT-1m.js");
 // let { kLineData } = require("./source/bigtimeUSDT-1m.js");
-// let { kLineData } = require("./source/beamxUSDT-1m.js");
+let { kLineData } = require("./source/beamxUSDT-1m.js");
 // let { kLineData } = require("./source/iotxUSDT-1m.js");
 // let { kLineData } = require("./source/zetaUSDT-1m.js");
 // let { kLineData } = require("./source/solUSDT-1m.js");
@@ -46,9 +46,12 @@ let { kLineData } = require("./source/peopleUSDT-1m.js");
 // let { kLineData } = require("./source/trxUSDT-1m.js");
 // let { kLineData } = require("./source/maticUSDT-1m.js");
 // let { kLineData } = require("./source/1000flokiUSDT-1m.js");
+// let { kLineData } = require("./source/turboUSDT-1m.js");
+// let { kLineData } = require("./source/ethUSDT-1m.js");
+// let { kLineData } = require("./source/neoUSDT-1m.js");
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
-const symbol = "peopleUSDT";
+const symbol = "beamxUSDT";
 const profitRate = 10000;
 let _kLineData = [...kLineData];
 const diff = 2; // 1053/1410
@@ -90,6 +93,7 @@ const getQuantity = (currentPrice) => {
     }
     // let q = Math.round((_availableMoney * times[historyEntryPoints.length - 1]) / currentPrice);
     let q = (_availableMoney * times[historyEntryPoints.length - 1]) / currentPrice;
+    // q = q * 1000 % 2 === 0 ? q : q + 0.002;
     return q;
 };
 
@@ -163,7 +167,11 @@ const getStop = () => {
 let s_count = -1;
 let s_prePrice = 0;
 let needContinue = true;
-const start = (params) => {
+/*
+withAllDatas 是否通过全部数据进行测试
+*/
+
+const resetInit = () => {
     // const symbol = s;
     gridPoints2 = [];
     maArr = [];
@@ -196,21 +204,25 @@ const start = (params) => {
     s_count = -1;
     s_prePrice = 0;
     needContinue = true;
+};
+const start = (params, withAllDatas) => {
+    // 每次需要初始化
+    resetInit();
     if (params) {
         timeDis = params.timeDis;
         profit = params.profit;
         howManyCandleHeight = params.howManyCandleHeight;
         howManyNumForAvarageCandleHight = params.howManyNumForAvarageCandleHight;
-
-        if (params.targetTimeNum) {
-            targetTimeNum = params.targetTimeNum;
-            targetTime = `2024-0${targetTimeNum}-01_14-14-00`;
-        }
     }
 
-    if (targetTime) {
-        let index = kLineData.findIndex((v) => v.openTime === targetTime);
-        _kLineData = [...kLineData].slice(index);
+    if (withAllDatas) {
+        targetTime = params.targetTime;
+        let start = kLineData.findIndex((v) => v.openTime === targetTime);
+        _kLineData = [...kLineData].slice(start - 100);
+    } else {
+        targetTime = params.targetTime;
+        let start = kLineData.findIndex((v) => v.openTime === targetTime);
+        _kLineData = [...kLineData].slice(start - 100, start - 100 + 1440 * 30);
     }
     for (let idx = 100; idx < _kLineData.length; idx++) {
         s_count++;
@@ -223,9 +235,8 @@ const start = (params) => {
         prices = curKLines.map((v) => v.close);
 
         maArr = [
-            calculateSimpleMovingAverage(prices.slice(0, prices.length - 10), maPeriod),
-            calculateSimpleMovingAverage(prices.slice(0, prices.length - 5), maPeriod),
-            calculateSimpleMovingAverage(prices.slice(0, prices.length - 0), maPeriod),
+            // calculateSimpleMovingAverage(prices.slice(0, prices.length), 9),
+            // calculateSimpleMovingAverage(prices.slice(0, prices.length), 26),
         ];
         curkLine = _kLineData[idx];
         if (judgeByBBK) {
@@ -260,7 +271,8 @@ const start = (params) => {
                         }
                     }
                 } else {
-                    readyTradingDirection = maArr[2] < maArr[3] ? "up" : "down";
+                    // readyTradingDirection = maArr[0] < maArr[1] ? "up" : "down";
+                    readyTradingDirection = "down";
                     // if (!closeOrderHistory.length) {
                     //     console.log("🚀 ~ readyTradingDirection:", readyTradingDirection, curkLine.openTime);
                     // }
@@ -293,18 +305,31 @@ const start = (params) => {
             }
         }
     }
+    // 把最后一次仓位也平掉
+    if (hasOrder) {
+        console.log("把最后一次仓位也平掉", testMoney);
+        closeTrend(orderPrice, curkLine.close);
+        console.log("把最后一次仓位也平掉", testMoney);
+        reset();
+    }
 
     testMoneyHistory.length && (testMoney = testMoneyHistory[testMoneyHistory.length - 1]);
     closeOrderHistory.push([...historyEntryPoints]);
 
-    // if (params && params.targetTimeNum) {
-    //     console.log(symbol, "🚀 ~ res & params::", {
-    //         testMoney,
-    //         maxMoney,
-    //         minMoney,
-    //     });
-    // }
+    const timeRange = `${_kLineData[0].openTime} ~ ${_kLineData[_kLineData.length - 1].closeTime}`;
+    if (params && params.targetTime) {
+        console.log(
+            "🚀 targetTime, testMoney, maxMoney, minMoney::",
+            symbol,
+            withAllDatas,
+            timeRange,
+            Math.round(testMoney * 100) / 100,
+            Math.round(maxMoney * 100) / 100,
+            Math.round(minMoney * 100) / 100,
+        );
+    }
     return {
+        timeRange,
         testMoney,
         maxMoney,
         minMoney,
@@ -550,13 +575,16 @@ const gridPointTrading2 = () => {
     date.push(curkLine.closeTime);
 };
 
-// start();
-// start({
-//     timeDis: 1, profit: 1.5,
-//     howManyCandleHeight: 5,
-//     howManyNumForAvarageCandleHight: 90,
-//     targetTimeNum: 9,
-// });
+// start(
+//     {
+//         timeDis: 8,
+//         profit: 2.9,
+//         howManyCandleHeight: 5,
+//         howManyNumForAvarageCandleHight: 12,
+//         // targetTime: "2024-02-03_23-40-00",
+//     },
+//     true,
+// );
 
 module.exports = {
     evaluateStrategy: start,

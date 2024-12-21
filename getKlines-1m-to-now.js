@@ -5,7 +5,7 @@ const { getDate } = require("./utils/functions.js");
 const fs = require("fs");
 const dayjs = require("dayjs");
 const fapi = "https://fapi.binance.com/fapi";
-// const { HttpsProxyAgent } = require("https-proxy-agent");
+const { HttpsProxyAgent } = require("https-proxy-agent");
 
 console.log("🚀process.argv:", process.argv);
 
@@ -19,14 +19,14 @@ if (!symbol) {
 const data1 = require(`./tests/source/${symbol}-1m.js`);
 
 // mac 小地球仪
-// let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
+let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
 // 创建公用的 Axios 实例
 const axiosInstance = axios.create({
     // headers: {
     //     "Content-Type": "application/json",
     //     "X-MBX-APIKEY": apiKey,
     // },
-    // httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
+    httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
 });
 const getKLineData = async (symbol, interval, limit, startTime) => {
     try {
@@ -79,11 +79,8 @@ const getDatas = async (symbol) => {
     let limit = 60 * 24; // 一天有 1m 级别k线 1440 根
     let oneDay = 24 * 60 * 60 * 1000; // ms
     let num = parseInt((Date.now() - startTime) / oneDay);
-    let restMinute = parseInt(((Date.now() - startTime) % oneDay) / 1000 / 60);
+    let rest = parseInt(((Date.now() - startTime) % oneDay) / 1000 / 60);
 
-    if (restMinute) {
-        console.log("🚀 ~ file: getKlines-1m-to-now.js:56 ~ symbol num, restMinute:", symbol, num, restMinute);
-    }
     let isErro = false;
     for (let i = 0; i < num; i++) {
         let _startTime = startTime + oneDay * i;
@@ -97,9 +94,9 @@ const getDatas = async (symbol) => {
             break;
         }
     }
-    if (restMinute && !isErro) {
+    if (rest && !isErro) {
         let _startTime = startTime + oneDay * num;
-        limit = restMinute;
+        limit = rest;
         let resItem = await getKLineData(symbol, `1m`, limit, _startTime);
         if (resItem) {
             result = result.concat(resItem);
