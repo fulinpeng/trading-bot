@@ -19,7 +19,16 @@ function debounce(func, delay, immediate) {
         }
     };
 }
-
+// 取出最后几根
+function getLastKlines(kLineData, num = 3) {
+    let res = [];
+    const len = kLineData.length;
+    while (num > 0) {
+        res.push(kLineData[len - num]);
+        num--;
+    }
+    return res;
+}
 function throttle(func, delay) {
     let lastInvokeTime = 0;
     let timeoutId;
@@ -255,4 +264,5 @@ module.exports = {
     calculateHighLow,
     getSequenceArr,
     getRatioArr,
+    getLastKlines,
 };

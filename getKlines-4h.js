@@ -1,4 +1,4 @@
-// https://fapi.binance.com/fapi/v1/klines?symbol=zkUSDT&interval=15m&limit=1440&startTime=1721836800000
+// https://fapi.binance.com/fapi/v1/klines?symbol=zkUSDT&interval=4h&limit=1440&startTime=1721836800000
 
 const axios = require("axios"); // HTTP请求库
 const { getDate } = require("./utils/functions.js");
@@ -23,8 +23,13 @@ if (!startTime) {
     console.error("请提供startTime");
     process.exit(1);
 }
-if (!num) {
-    console.error("请提供num");
+if (num) {
+    if (num < 8) {
+        console.error("month 必须大于8");
+        process.exit(1);
+    }
+} else {
+    console.error("请提供month");
     process.exit(1);
 }
 // mac 小地球仪
@@ -69,12 +74,12 @@ const getKLineData = async (symbol, interval, limit, startTime) => {
 
 // num是多少个月的意思
 const getDatas = async (symbol, startTime, num) => {
+    let limit = (24 / 4) * 30 * 8; // 8个月有 4h 级别k线 1440 根
     let result = [];
-    let limit = 24 * 4 * 15; // 半个月有 15m 级别k线 1440 根
-    let halfMonth = 24 * 15 * 60 * 60 * 1000; // ms
-    for (let i = 0; i <= parseInt(num / 2) + 1; i++) {
-        let _startTime = startTime + halfMonth * i;
-        let resItem = await getKLineData(symbol, `15m`, limit, _startTime);
+    let eightMonth = 30 * 8 * 24 * 60 * 60 * 1000; // ms
+    for (let i = 0; i <= parseInt(num / 8) + 1; i++) {
+        let _startTime = startTime + eightMonth * i;
+        let resItem = await getKLineData(symbol, `4h`, limit, _startTime);
         if (resItem) {
             result = result.concat(resItem);
         } else {
@@ -83,7 +88,7 @@ const getDatas = async (symbol, startTime, num) => {
             break;
         }
     }
-    writeInFile(`./tests/source/${symbol}-15m.js`, {
+    writeInFile(`./tests/source/${symbol}-4h.js`, {
         kLineData: result,
     });
 };

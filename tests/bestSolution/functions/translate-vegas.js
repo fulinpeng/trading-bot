@@ -2,11 +2,20 @@ const fs = require("fs");
 const path = require("path");
 
 // 动态参数范围对象
+// const paramRangesObj = {
+//     howManyCandle: { min: 1, max: 10, step: 1 },
+//     invalidNumber: { min: 5, max: 144, step: 1 },
+//     isProfitRun: { min: 0, max: 1, step: 1 },
+//     profitProtectRate: { min: 0.5, max: 1, step: 0.1 },
+//     howManyCandleForProfitRun: { min: 0.5, max: 5, step: 0.5 },
+// };
+
 const paramRangesObj = {
-    timeDis: { min: 1, max: 1, step: 1 },
-    profit: { min: 0.1, max: 10, step: 0.1 },
-    howManyCandleHeight: { min: 3, max: 10, step: 1 },
-    howManyNumForAvarageCandleHight: { min: 6, max: 120, step: 1 },
+    howManyCandle: { min: 1, max: 10, step: 1 },
+    invalidNumber: { min: 5, max: 150, step: 5 },
+    isProfitRun: { min: 0, max: 1, step: 1 },
+    profitProtectRate: { min: 0.5, max: 0.9, step: 0.1 },
+    howManyCandleForProfitRun: { min: 0.5, max: 5, step: 0.5 },
 };
 
 // 参数文件路径

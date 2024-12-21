@@ -3,30 +3,21 @@
 const axios = require("axios"); // HTTP请求库
 const { getDate } = require("./utils/functions.js");
 const fs = require("fs");
+const dayjs = require("dayjs");
 const fapi = "https://fapi.binance.com/fapi";
 const { HttpsProxyAgent } = require("https-proxy-agent");
-const { SocksProxyAgent } = require("socks-proxy-agent");
-// const symbol = "1000flokiUSDT";
 
 console.log("🚀process.argv:", process.argv);
 
 let symbol = process.argv[2];
-let startTime = Number(process.argv[3]);
-let num = Number(process.argv[4]);
 
 // 检查参数是否提供正确
 if (!symbol) {
     console.error("请提供symbol");
     process.exit(1);
 }
-if (!startTime) {
-    console.error("请提供startTime");
-    process.exit(1);
-}
-if (!num) {
-    console.error("请提供num");
-    process.exit(1);
-}
+const data1 = require(`./tests/source/${symbol}-15m.js`);
+
 // mac 小地球仪
 let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
 // 创建公用的 Axios 实例
@@ -67,12 +58,32 @@ const getKLineData = async (symbol, interval, limit, startTime) => {
     }
 };
 
-// num是多少个月的意思
-const getDatas = async (symbol, startTime, num) => {
+const getDatas = async (symbol) => {
     let result = [];
+    let startTime = 0;
+    if (data1.kLineData && data1.kLineData.length) {
+        result = data1.kLineData;
+        let lastKline = data1.kLineData[data1.kLineData.length - 1];
+        startTime =
+            dayjs(
+                lastKline.closeTime.replace(
+                    /^(\d{4}\-\d{2}-\d{2})\_(\d{2})\-(\d{2})\-(\d{2})$/,
+                    ($1, $2, $3, $4, $5) => {
+                        return `${$2} ${$3}:${$4}:${$5}`;
+                    },
+                ),
+            ).valueOf() + 1000;
+    } else {
+        throw new Error("还没有该文件，请创建");
+    }
     let limit = 24 * 4 * 15; // 半个月有 15m 级别k线 1440 根
     let halfMonth = 24 * 15 * 60 * 60 * 1000; // ms
-    for (let i = 0; i <= parseInt(num / 2) + 1; i++) {
+    let num = parseInt((Date.now() - startTime) / halfMonth); // 多少个halfMonth（请求多少次）
+    let rest = parseInt(((Date.now() - startTime) % halfMonth) / 1000 / 60 / 15);
+    console.log("🚀 ~ getDatas ~ rest:", rest);
+
+    let isErro = false;
+    for (let i = 0; i < num; i++) {
         let _startTime = startTime + halfMonth * i;
         let resItem = await getKLineData(symbol, `15m`, limit, _startTime);
         if (resItem) {
@@ -80,7 +91,19 @@ const getDatas = async (symbol, startTime, num) => {
         } else {
             console.log("🚀 ~ file: getKlines.js:46 ~ getDatas ~ resItem:", resItem);
             // getKLineData 返回没有数据，说明api次数被用完了
+            isErro = true;
             break;
+        }
+    }
+    if (rest && !isErro) {
+        let _startTime = startTime + halfMonth * num;
+        limit = rest;
+        let resItem = await getKLineData(symbol, `15m`, limit, _startTime);
+        if (resItem) {
+            result = result.concat(resItem);
+        } else {
+            console.log("🚀 ~ file: getKlines.js:46 ~ getDatas ~ resItem:", resItem);
+            // getKLineData 返回没有数据，说明api次数被用完了
         }
     }
     writeInFile(`./tests/source/${symbol}-15m.js`, {
@@ -94,8 +117,4 @@ function writeInFile(fileName, data) {
     });
 }
 // 顶上引入文件也要改
-// 2021-01-01: 1609430400000
-// 2024-01-01: 1704038400000
-// 2024-07-01: 1719763200000
-// 2024-01-16: 1705334400000
-getDatas(symbol, startTime, num);
+getDatas(symbol);

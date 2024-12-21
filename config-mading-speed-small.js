@@ -24,7 +24,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -58,7 +58,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -71,12 +71,12 @@ const config = {
     doge: {
         SYMBOL: "dogeUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        howManyCandleHeight: 2.5,
-        availableMoney: 7, // 可用的USDT数量
+        howManyCandleHeight: 5,
+        availableMoney: 10, // 可用的USDT数量
         diff: 2,
         profitRate: 10000,
-        overNumberToRest: 15, // 多少次对冲后去休息
-        howManyNumForAvarageCandleHight: 12, // 通过多少个k线来计算 candleHight
+        overNumberToRest: 12, // 多少次对冲后去休息
+        howManyNumForAvarageCandleHight: 31, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         nextBig: false, // 下一次开大仓
@@ -94,12 +94,12 @@ const config = {
         scaleHight: 3,
         modelType: 1,
         model1: {
-            timeDis: 180,
-            profit: 1,
+            timeDis: 1,
+            profit: 1.3,
         },
         model2: {
-            priceDis: 0.01,
-            profit: 2,
+            priceDis: 0.002,
+            profit: 0.5,
         },
     },
     fil: {
@@ -126,7 +126,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -160,7 +160,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -173,12 +173,12 @@ const config = {
     people: {
         SYMBOL: "peopleUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        howManyCandleHeight: 5,
+        howManyCandleHeight: 4,
         availableMoney: 10, // 可用的USDT数量
         diff: 2,
         profitRate: 10000,
         overNumberToRest: 12, // 多少次对冲后去休息
-        howManyNumForAvarageCandleHight: 90, // 通过多少个k线来计算 candleHight
+        howManyNumForAvarageCandleHight:7, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         nextBig: false, // 下一次开大仓
@@ -191,13 +191,13 @@ const config = {
         judgeByBBK: false, //  true false; 根据bbk指标来开单 ⭐️
         logsFolder: "logs", // 日志配置
         errorsFolder: "errors",
-        isScale: true,
+        isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
         modelType: 1,
         model1: {
             timeDis: 1,
-            profit: 2.1,
+            profit: 4.2,
         },
         model2: {
             priceDis: 0.002,
@@ -228,7 +228,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -262,7 +262,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -296,7 +296,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -330,7 +330,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -364,7 +364,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -398,7 +398,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -432,7 +432,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -466,7 +466,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -500,7 +500,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -534,7 +534,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -568,7 +568,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -602,7 +602,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -636,7 +636,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -670,7 +670,7 @@ const config = {
     isScale: false,
     scaleOverNum: 20,
     scaleHight: 3,
-    modelType: 1,
+    modelType: 2,
     model1: {
         timeDis: 180,
         profit: 1,
@@ -703,7 +703,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -716,12 +716,12 @@ const config = {
     "1000pepe": {
         SYMBOL: "1000pepeUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        howManyCandleHeight: 5,
+        howManyCandleHeight: 6,
         availableMoney: 10, // 可用的USDT数量
         diff: 2,
         profitRate: 10000,
-        overNumberToRest: 15, // 多少次对冲后去休息
-        howManyNumForAvarageCandleHight: 90, // 通过多少个k线来计算 candleHight
+        overNumberToRest: 20, // 多少次对冲后去休息
+        howManyNumForAvarageCandleHight: 6, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         nextBig: false, // 下一次开大仓
@@ -739,8 +739,8 @@ const config = {
         scaleHight: 3,
         modelType: 1,
         model1: {
-            timeDis: 1,
-            profit: 1.5,
+            timeDis: 6,
+            profit: 0.3,
         },
         model2: {
             priceDis: 0.001,
@@ -771,7 +771,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -805,7 +805,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -818,12 +818,12 @@ const config = {
     bigtime: {
         SYMBOL: "bigtimeUSDT".toLowerCase(), // 交易对
         base: "USDT",
-        howManyCandleHeight: 3,
-        availableMoney: 7, // 可用的USDT数量
+        howManyCandleHeight: 6,
+        availableMoney: 10, // 可用的USDT数量
         diff: 2,
         profitRate: 10000,
-        overNumberToRest: 16, // 多少次对冲后去休息
-        howManyNumForAvarageCandleHight: 20, // 通过多少个k线来计算 candleHight
+        overNumberToRest: 12, // 多少次对冲后去休息
+        howManyNumForAvarageCandleHight: 39, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         nextBig: false, // 下一次开大仓
@@ -841,12 +841,12 @@ const config = {
         scaleHight: 3,
         modelType: 1,
         model1: {
-            timeDis: 180,
-            profit: 1,
+            timeDis: 1,
+            profit: 0.2,
         },
         model2: {
-            priceDis: 0.01,
-            profit: 2,
+            priceDis: 0.002,
+            profit: 0.5,
         },
     },
     beamx: {
@@ -873,7 +873,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -907,7 +907,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -941,7 +941,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -975,7 +975,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -1009,7 +1009,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -1043,7 +1043,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -1077,7 +1077,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,
@@ -1110,7 +1110,7 @@ const config = {
         isScale: false,
         scaleOverNum: 20,
         scaleHight: 3,
-        modelType: 1,
+        modelType: 2,
         model1: {
             timeDis: 180,
             profit: 1,

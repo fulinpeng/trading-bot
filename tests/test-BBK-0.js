@@ -4,8 +4,8 @@ const { calculateBBKeltnerSqueeze } = require("../utils/BBKeltner");
 const { calculateCandleHeight, isBigAndYang, isBigAndYin } = require("../utils/kLineTools");
 const { calculateATR } = require("../utils/atr.js");
 const fs = require("fs");
-// let { kLineData } = require("./source/ethUSDT-15m.js");
-let { kLineData } = require("./source/opUSDT-15m.js");
+let { kLineData } = require("./source/ethUSDT-15m.js");
+// let { kLineData } = require("./source/opUSDT-15m.js");
 
 // eth: 15分钟 + 4倍candleH 12/3 80%
 // op: 15分钟 + 5倍candleH 11/4 73%
@@ -25,9 +25,8 @@ let { kLineData } = require("./source/opUSDT-15m.js");
 // fil 15分钟 + 10倍candleH 11/7 61%
 // inj 15分钟 + 5倍candleH 13/6 68%
 
-let availableMoney = 100;
-let howManyCandleHeight = 2;
-const symbol = "op";
+let availableMoney = 100000;
+const symbol = "eth";
 
 const KDJ = [0, 100];
 
@@ -55,11 +54,11 @@ let candleHeight = 0;
 const setProfit = (orderPrice, currentPrice, closeTime) => {
     if (trend === "up") {
         testMoney =
-            testMoney + quantity * (currentPrice - orderPrice) - quantity * (orderPrice + currentPrice) * 0.00051;
+            testMoney + quantity * (currentPrice - orderPrice) - quantity * (orderPrice + currentPrice) * 0.0007;
     }
     if (trend === "down") {
         testMoney =
-            testMoney + quantity * (orderPrice - currentPrice) - quantity * (orderPrice + currentPrice) * 0.00051;
+            testMoney + quantity * (orderPrice - currentPrice) - quantity * (orderPrice + currentPrice) * 0.0007;
     }
     if (testMoney > maxMoney) maxMoney = testMoney;
     if (testMoney < minMoney) minMoney = testMoney;
@@ -137,7 +136,7 @@ const start = () => {
                 }
             }
             // 第二次判断止盈：上面没有被止损，也没被止盈，那看下面是否能止盈，high 大于 point2 就止盈利，否则继续持有
-            if (howManyCandleHeight && trend) {
+            if (trend) {
                 if (trend && high >= point2) {
                     setProfit(orderPrice, point2, closeTime);
                     setFailAndWinNum(curkLine);
@@ -152,6 +151,45 @@ const start = () => {
                     continue;
                 }
             }
+        }
+    }
+    if (hasOrder) {
+        const len = kLineData.length;
+        const curkLine = kLineData[len - 1];
+        const { close, closeTime, low, high } = curkLine;
+        const [point1, point2] = gridPoints;
+        if (trend === "up") {
+            // low 小于 point1 就止损，否则继续持有
+            if (low <= point1) {
+                setProfit(orderPrice, point1, closeTime);
+                setFailAndWinNum(curkLine);
+                reset();
+                return;
+            }
+        }
+        if (trend === "down") {
+            // high 大于 point2 就止损，否则继续持有
+            if (high >= point2) {
+                setProfit(orderPrice, point2, closeTime);
+                setFailAndWinNum(curkLine);
+                reset();
+                return;
+            }
+        }
+        // 第二次判断止盈：上面没有被止损，也没被止盈，那看下面是否能止盈，high 大于 point2 就止盈利，否则继续持有
+
+        if (trend && high >= point2) {
+            setProfit(orderPrice, point2, closeTime);
+            setFailAndWinNum(curkLine);
+            reset();
+            return;
+        }
+        // 上面没有被止损，那看是否能止盈，low 小于 point1 就止盈利，否则继续持有
+        if (trend && low <= point1) {
+            setProfit(orderPrice, point1, closeTime);
+            setFailAndWinNum(curkLine);
+            reset();
+            return;
         }
     }
 };
@@ -305,23 +343,23 @@ const calculateTradingSignal = (curB2basis, curB2upper, curB2lower, curKma, curk
     // 当KDJ蓝色信号线大于20以上位阶, 并且K棒要收涨, 收盘价进场
     if (readyTradingDirection === "up" && kdj.j > KDJ[0] && kLine3.close > kLine3.open) {
         // 计算atr
-        const { atr } = calculateATR(curKLines, 14);
+        // const { atr } = calculateATR(curKLines, 14);
         // console.log("🚀 ~ file:", kLine3.closeTime, "up", min - atr, kLine3.close - kLine3.close * 0.01);
         return {
             trend: "up",
-            stopLoss: kLine3.low, // kLine3.close - kLine3.close * 0.01, // min - atr,
-            stopProfit: kLine3.close + (kLine3.close - atr), // 止盈大一点
+            stopLoss: kLine3.low - candleHeight, // kLine3.close - kLine3.close * 0.01, // min - atr,
+            stopProfit: kLine3.close + (kLine3.close - (kLine3.low - candleHeight)) * 2, // 止盈
         };
     }
     // 当KDJ蓝色信号线小于80以上位阶, 并且K棒要收跌, 收盘价进场
     if (readyTradingDirection === "down" && kdj.j < KDJ[1] && kLine3.close < kLine3.open) {
         // 计算atr
-        const { atr } = calculateATR(curKLines, 14);
+        // const { atr } = calculateATR(curKLines, 14);
         // console.log("🚀 ~ file:", kLine3.closeTime, "down", max + atr, kLine3.close + kLine3.close * 0.01);
         return {
             trend: "down",
-            stopLoss: kLine3.high, // kLine3.close + kLine3.close * 0.01, // max + atr,
-            stopProfit: kLine3.close - (kLine3.close - atr), // 止盈大一点
+            stopLoss: kLine3.high + candleHeight, // kLine3.close + kLine3.close * 0.01, // max + atr,
+            stopProfit: kLine3.close - ((kLine3.high + candleHeight) - kLine3.close) * 2, // 止盈
         };
     }
     return {
@@ -338,7 +376,6 @@ start();
 
 console.log("最终结果::", {
     availableMoney,
-    howManyCandleHeight,
     winNum,
     failNum,
     testMoney,
@@ -349,7 +386,6 @@ console.log("最终结果::", {
 
 const result = {
     availableMoney,
-    howManyCandleHeight,
     winNum,
     failNum,
     testMoney,
