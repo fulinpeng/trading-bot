@@ -12,15 +12,44 @@
 #### 技术栈
 - **编程语言**：JavaScript / Node.js
 - **API**：币安交易所API
-- **数据存储**：可选择使用数据库存储交易记录和策略参数
+- **数据存储**：mongoDB存储交易状态
 
 #### 开发目标
 本项目的目标是为用户提供一个可操作的交易工具，使其能够更有效地参与加密货币市场。同时，通过开源的方式，鼓励开发者贡献代码和策略，共同提升交易机器人的智能化和适应性。
 
-#### 核心策略代码
+#### 核心策略
 
-获取最佳参数：[index2-pipeline.js](https://github.com/fulinpeng/trading-bot/tree/main-deprecated/tests/bestSolution/index2-pipeline.js)
-策略：[gridBot-doge3-7-1-mading-speed-small.js](https://github.com/fulinpeng/trading-bot/tree/main-deprecated/gridBot-doge3-7-1-mading-speed-small.js)
+获取最佳参数：
+
+[获取mading-sequence策略参数](https://github.com/fulinpeng/trading-bot/tree/master/paramsFactory/mading/best-for-mading-sequence.js)
+
+
+[获取BBK策略参数](https://github.com/fulinpeng/trading-bot/tree/master/paramsFactory/keltner/strategies/BBK.js)
+
+获取boll策略参数：待开发
+
+获取emaMaCrossover策略参数：待优化
+
+获取highesthighLowestLow策略参数：待优化
+
+获取rsiEma策略参数：待开发
+
+策略机器人：
+
+[mading-sequence策略机器人](https://github.com/fulinpeng/trading-bot/tree/master/goldDigger/mading/mading-sequence.js)
+
+
+[BBK策略机器人](https://github.com/fulinpeng/trading-bot/tree/master/goldDigger/keltner/BBK-mading-sequence-rest.js)
+
+boll策略参数：待优化
+
+grid策略机器人：待优化
+
+emaMaCrossover策略机器人：待开发
+
+highesthighLowestLow策略机器人：待开发
+
+rsiEma策略机器人：待优化
 
 #### 获取币安API_KEY
 先获取币安API_KEY，新建`.env`文件
@@ -28,19 +57,23 @@
 BINANCE_API_KEY = Wxxxxxxxxxxxxxxxxxxxxxxxxxxxxcr;
 BINANCE_API_SECRET = DYxxxxxxxxxxx0Xz9qVAi9;
 
+MONGO_URI = "mongodb://localhost:27017/tradingBot" // mongoDB数据库地址
+
 // 不需要邮件通知可以省略，可能需要注释对应代码
 SEND_MAIL_ACOUNT = "xxxxx@qq.com"; // 发邮件，目前简单用QQ邮箱实现
 SEND_MAIL_CODE = "xxxx";
 RECIEVE_MAIL_ACOUNT = "xxx@qq.com"; // 邮件接收方
+
 ```
 
-`第一次尝试运行可以跳过获取最佳参数的步骤，1000pepeUSDT参数已经放在tests/bestSolution/qualifiedSolutions下，直接用选用即可`
+`第一次尝试运行可以跳过获取最佳参数的步骤，1000pepeUSDT参数已经放在/paramsFactory/mading/temp下，直接用选用即可`
 
 
 #### 如何运用真实历史k线数据验证策略
 
-1. 获取真实k线数据
+1. 获取真实k线数据(以mading-sequence策略机器人为例)
 ```sh
+cd tools/getKlines
 # 先获取 1000pepeUSDT 从 2024-01-01 开始和之后30天的k线数据
 node getKlines-1m.js 1000pepeUSDT 1704038400000 30
 # 接着获取剩下的所有K线数据
@@ -48,17 +81,16 @@ node getKlines-1m-to-now.js 1000pepeUSDT
 ```
 2. 生成所有可能的参数
 ```sh
-node tests/bestSolution/functions/translate.js
+node paramsFactory/mading/functions/setParamsGroup.js.js
 ```
 3. 通过历史k线数据找最优参数
 ```sh
-node tests/bestSolution/index2-pipeline.js
-node tests/bestSolution/qualifiedSolutions/paramsSort.js
+node paramsFactory/mading/best-for-mading-sequence.js
+node paramsFactory/mading/functions/paramsSort.js
 ```
-4. 将参数填入 `tests/test-mading4-3.js`
+4. 将参数填入goldDigger对应量化机器人
 ```sh
-node tests/bestSolution/index2-pipeline.js
-node tests/bestSolution/qualifiedSolutions/paramsSort.js
+node goldDigger/mading/mading-sequence.js
 ```
 5. 通过历史数据测试最佳参数盈利情况
 ```sh
@@ -91,7 +123,7 @@ node tests/test-mading4-3.js
 }
 ```
 
-* 更详细的测试情况在 `tests/data/mading-1000pepeUSDT.js`，复制其中的`option`对象，浏览器打开 [echarts-line-simple](https://echarts.apache.org/examples/zh/editor.html?c=line-simple) 粘贴即可查看盈利曲线
+* 会将更详细的测试情况输出到文件，复制其中的`option`对象，浏览器打开 [echarts-line-simple](https://echarts.apache.org/examples/zh/editor.html?c=line-simple) 粘贴即可查看盈利曲线
 
 #### 调用正式环境api
 进入`gridBot-doge3-7-1-mading-speed-small.js` 后，修改 `isTest`值为false即可

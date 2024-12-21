@@ -1,4 +1,4 @@
-// https://fapi.binance.com/fapi/v1/klines?symbol=zkUSDT&interval=15m&limit=1440&startTime=1721836800000
+// https://fapi.binance.com/fapi/v1/klines?symbol=zkUSDT&interval=5m&limit=1440&startTime=1721836800000
 
 const axios = require("axios"); // HTTP请求库
 const { getDate } = require("./utils/functions.js");
@@ -70,11 +70,11 @@ const getKLineData = async (symbol, interval, limit, startTime) => {
 // num是多少个月的意思
 const getDatas = async (symbol, startTime, num) => {
     let result = [];
-    let limit = 24 * 4 * 15; // 半个月有 15m 级别k线 1440 根
-    let halfMonth = 24 * 15 * 60 * 60 * 1000; // ms
+    let limit = 24 * 12 * 5; // 5天有 5m 级别k线 1440 根
+    let fiveDay = 24 * 5 * 60 * 60 * 1000; // ms
     for (let i = 0; i <= parseInt(num / 2) + 1; i++) {
-        let _startTime = startTime + halfMonth * i;
-        let resItem = await getKLineData(symbol, `15m`, limit, _startTime);
+        let _startTime = startTime + fiveDay * i;
+        let resItem = await getKLineData(symbol, `5m`, limit, _startTime);
         if (resItem) {
             result = result.concat(resItem);
         } else {
@@ -83,7 +83,7 @@ const getDatas = async (symbol, startTime, num) => {
             break;
         }
     }
-    writeInFile(`./tests/source/${symbol}-15m.js`, {
+    writeInFile(`./tests/source/${symbol}-5m.js`, {
         kLineData: result,
     });
 };

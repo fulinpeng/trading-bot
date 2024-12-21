@@ -14,10 +14,10 @@ const os = require("os");
 const readline = require("readline");
 const { pipeline } = require("stream");
 
-const symbol = "peopleUSDT";
+const symbol = "beamxUSDT";
 const qualifiedSolutionsPath = path.join(__dirname, `qualifiedSolutions/${symbol}.js`);
 
-const batchSize = parseInt(os.cpus().length - 1); // 每次处理cpus个参数组合
+const batchSize = parseInt(os.cpus().length); // 每次处理cpus个参数组合
 
 // 动态参数范围对象
 const paramRangesObj = {

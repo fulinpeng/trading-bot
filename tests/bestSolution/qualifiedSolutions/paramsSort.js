@@ -8,28 +8,35 @@ if (!symbol) {
     console.error("请提供symbol");
     process.exit(1);
 }
-const qualifiedSolutionsPath = path.join(__dirname, `${symbol}-last.js`);
+const qualifiedSolutionsPath = path.join(__dirname, `${symbol}.js`);
 const outputPath = path.join(__dirname, `output-${symbol}.js`);
 const { qualifiedSolutions } = require(qualifiedSolutionsPath);
 
 const newQualifiedSolutions = qualifiedSolutions.filter((item) => {
     let result = item.result || item.results || [];
-    let win = true;
-    if (result[0].testMoney <= 500) {
-        win = false;
-        return win;
-    }
-    for (let i = 0; i < result.length - 1; i++) {
-        if (result[i].testMoney <= result[i + 1].testMoney) {
-            win = false;
-            break;
+    let win = 0;
+    // if (result[0].testMoney <= 300) {
+    //     win = false;
+    //     return win;
+    // }
+    // 是否需要忽略了最后一个
+    for (let i = 0; i <= result.length - 1; i++) {
+        if (result[i].testMoney > 0) {
+            win++;
         }
-        if (Math.abs(result[i].minMoney) > result[i].testMoney) {
-            win = false;
-            break;
-        }
+        // if (result[i].testMoney > 250) {
+        //     win++;
+        // }
+        // if (Math.abs(result[i].minMoney) > Math.abs(result[i].maxMoney)) {
+        //     win = false;
+        //     break;
+        // }
+        // if (Math.abs(result[i].minMoney) > result[i].testMoney) {
+        //     win = false;
+        //     break;
+        // }
     }
-    return win;
+    return win >= (result.length / 10) * 7.8;
 });
 
 function saveQualifiedSolutions(newSolutions) {
@@ -47,12 +54,32 @@ function saveQualifiedSolutions(newSolutions) {
     let allSolutions = [...originSolutions, ...existingSolutions].sort((a, b) => {
         let resulta = a.result || a.results || [];
         let resultb = b.result || b.results || [];
-        let aRatial = resulta.reduce((sum, cur) => sum + Math.abs(cur.testMoney / cur.minMoney), 0) / resulta.length;
-        let bRatial = resultb.reduce((sum, cur) => sum + Math.abs(cur.testMoney / cur.minMoney), 0) / resultb.length;
+        // let aRatial = resulta.reduce((sum, cur) => sum + Math.abs(cur.testMoney / cur.minMoney), 0) / resulta.length;
+        // let bRatial = resultb.reduce((sum, cur) => sum + Math.abs(cur.testMoney / cur.minMoney), 0) / resultb.length;
+        // let aRatial = resulta.reduce((sum, cur) => sum + Math.abs(cur.maxMoney / cur.minMoney), 0) / resulta.length;
+        // let bRatial = resultb.reduce((sum, cur) => sum + Math.abs(cur.maxMoney / cur.minMoney), 0) / resultb.length;
+        // let aRatial = resulta.reduce((sum, cur) => sum + Math.abs(cur.maxMoney / cur.minMoney) + Math.abs(cur.testMoney / cur.minMoney), 0) / resulta.length;
+        // let bRatial = resultb.reduce((sum, cur) => sum + Math.abs(cur.maxMoney / cur.minMoney) + Math.abs(cur.testMoney / cur.minMoney), 0) / resultb.length;
         // let aRatial = resulta.reduce((sum, cur) => sum + cur.minMoney, 0) / resulta.length;
         // let bRatial = resultb.reduce((sum, cur) => sum + cur.minMoney, 0) / resultb.length;
         // let aRatial = resulta.reduce((sum, cur) => sum + cur.testMoney, 0) / resulta.length;
         // let bRatial = resultb.reduce((sum, cur) => sum + cur.testMoney, 0) / resultb.length;
+        let aRatial =
+            resulta.reduce(
+                (sum, cur) => sum + Math.abs(cur.maxMoney / cur.minMoney) * 3 + cur.testMoney, // +
+                // Math.abs(cur.testMoney - cur.maxMoney) * 2 +
+                // (cur.testMoney / cur.minMoney) * 5,
+                0,
+            ) / resulta.length;
+        let bRatial =
+            resultb.reduce(
+                (sum, cur) => sum + Math.abs(cur.maxMoney / cur.minMoney) * 3 + cur.testMoney, // +
+                // Math.abs(cur.testMoney - cur.maxMoney) * 2 +
+                // (cur.testMoney / cur.minMoney) * 5,
+                0,
+            ) / resultb.length;
+        // let cur = resultb[0]
+        // console.log(Math.abs(cur.maxMoney / cur.minMoney) * 3, Math.abs(cur.testMoney / cur.maxMoney) * 2, Math.abs(cur.testMoney / cur.minMoney) * 1);
         return bRatial - aRatial;
     });
     fs.writeFileSync(outputPath, `module.exports = { qualifiedSolutions: ${JSON.stringify(allSolutions, null, 2)} }`);

@@ -913,6 +913,8 @@ const recoverHistoryDataByPosition = async (historyDatas, { up, down }) => {
         if (__historyEntryPoints[__historyEntryPoints.length - 1] === 0) __historyEntryPoints.pop();
     }
     if (up && __currentPointIndex === 2 && currentPrice < gridPoints[1]) {
+        // >>>>>>> 有问题，这里为什么会跳过一个开空啊，程序开了大概一周吧，就挂起了，日志文件不在更新程序也没有停止，忘了看cpu和内存占用情况，这一天其他币socket都断过，有的币还断了好几次，就people一直卡住没动
+        // 猜想是因为logStream.write是一步操作，下单/平仓穿过交一点其实是间隔很短的时间内发生，导致文件被同时修改导致的，是否就是这个原因呢
         console.log(
             `有仓位up，但是错过一个 1 的开空 currentPointIndex historyEntryPoints tradingDatas:`,
             currentPointIndex,

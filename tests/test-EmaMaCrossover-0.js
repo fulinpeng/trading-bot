@@ -4,7 +4,7 @@ const { calculateATR } = require("../utils/atr.js");
 const fs = require("fs");
 const { calculateRSI } = require("../utils/rsi.js");
 const { emaMacrossover } = require("../utils/ema_ma_crossover.js");
-let { kLineData } = require("./source/opUSDT-15m.js");
+let { kLineData } = require("./source/ethUSDT-15m.js");
 
 // eth: 5分钟 howManyCandle 3
 // sol: 15分钟 howManyCandle 1.6
@@ -12,9 +12,9 @@ let { kLineData } = require("./source/opUSDT-15m.js");
 // uni: 60分钟 howManyCandle 1.5
 // xrp: 60分钟 howManyCandle 1.5
 // arb: 60分钟 howManyCandle 1.7
-let availableMoney = 10000;
-let howManyCandle = 1;
-const symbol = "op";
+let availableMoney = 100000;
+let howManyCandle = 1.5;
+const symbol = "eth";
 let flagKlineCount = 0;
 const RSI_PERIOD = 14; // RSI计算周期
 const PERIOD = 10; // RSI计算周期
@@ -129,6 +129,44 @@ const start = () => {
             }
         }
     }
+    if (hasOrder) {
+        const [point1, point2] = gridPoints;
+        // 有仓位就先判断是否止损
+        if (trend) {
+            if (trend === "up") {
+                // low 小于 point1 就止损，否则继续持有
+                if (low <= point1) {
+                    setProfit(orderPrice, point1, closeTime);
+                    failNum++;
+                    reset();
+                    return;
+                }
+            }
+            if (trend === "down") {
+                // high 大于 point2 就止损，否则继续持有
+                if (high >= point2) {
+                    setProfit(orderPrice, point2, closeTime);
+                    failNum++;
+                    reset();
+                    return;
+                }
+            }
+        }
+        // 第二次判断止盈：上面没有被止损，也没被止盈，那看下面是否能止盈，high 大于 point2 就止盈利，否则继续持有
+        if (trend && high >= point2) {
+            setProfit(orderPrice, point2, closeTime);
+            winNum++;
+            reset();
+            return;
+        }
+        // 上面没有被止损，那看是否能止盈，low 小于 point1 就止盈利，否则继续持有
+        if (trend && low <= point1) {
+            setProfit(orderPrice, point1, closeTime);
+            winNum++;
+            reset();
+            return;
+        }
+    }
 };
 const reset = () => {
     gridPoints = [];
@@ -144,14 +182,14 @@ const reset = () => {
 const judgeTradingDirection = ({ preEma, ema, preSma, sma, curkLine }) => {
     // 准备条件一：金叉 preSma <= preEma && sma > ema
     // 准备条件二：sma > ema && 阴k && 收盘在sma下
-    if ((preSma <= preEma && sma > ema) || (sma > ema && isBigAndYin(curkLine, 0.1) && curkLine.close < ema)) {
+    if ((preSma <= preEma && sma > ema) || (sma > ema && isBigAndYin(curkLine, 0.6) && curkLine.close < ema)) {
         // 有订单时候只设置 下一个订单方向 还不能开单
         readyTradingDirection = "up";
         return;
     }
     // 准备条件一：死叉 preSma >= preEma && sma < ema
     // 准备条件二：sma < ema && 阳k && 收盘在ema上
-    if ((preSma >= preEma && sma < ema) || (sma < ema && isBigAndYang(curkLine, 0.1) && curkLine.close > ema)) {
+    if ((preSma >= preEma && sma < ema) || (sma < ema && isBigAndYang(curkLine, 0.6) && curkLine.close > ema)) {
         // 有订单时候只设置 下一个订单方向 还不能开单
         readyTradingDirection = "down";
         return;
@@ -209,7 +247,7 @@ const calculateTradingSignal = ({ preEma, ema, preSma, sma, curkLine, rsi }) => 
         readyTradingDirection === "up" &&
         preSma > preEma &&
         sma > ema &&
-        isBigAndYang(curkLine, 0.5) &&
+        isBigAndYang(curkLine, 0.6) &&
         low > sma &&
         rsi > 50 &&
         rsi < 70
@@ -228,7 +266,7 @@ const calculateTradingSignal = ({ preEma, ema, preSma, sma, curkLine, rsi }) => 
         readyTradingDirection === "down" &&
         preSma < preEma &&
         sma < ema &&
-        isBigAndYin(curkLine, 0.5) &&
+        isBigAndYin(curkLine, 0.6) &&
         high < sma &&
         rsi > 30 &&
         rsi < 50

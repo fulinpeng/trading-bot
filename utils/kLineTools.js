@@ -29,19 +29,19 @@ function isBigLine({ open, close, high, low }, thresholdRatio = 0.6) {
     const fullRange = high - low;
 
     const res = bodyRange >= fullRange * thresholdRatio;
-    // console.log("🚀 ~ 是否 标准K ~ res:", res);
+    // // console.log("🚀 ~ 是否 标准K ~ res:", res);
     return res;
 }
 // 是否光头阳
 function isBigAndYang(kLine, ratio) {
     const res = kLine.close > kLine.open && isBigLine(kLine, ratio);
-    // console.log("🚀 ~ 是否光头阳 ~ res:", res);
+    // // console.log("🚀 ~ 是否光头阳 ~ res:", res);
     return res;
 }
 // 是否光头阴
 function isBigAndYin(kLine, ratio) {
     const res = kLine.close < kLine.open && isBigLine(kLine, ratio);
-    // console.log("🚀 ~ 是否光头阴 ~ res:", res);
+    // // console.log("🚀 ~ 是否光头阴 ~ res:", res);
     return res;
 }
 
@@ -55,7 +55,7 @@ function isBreakPreHigh(max) {
             break;
         }
     }
-    console.log("🚀 ~ file: 是否突破前高 res:", res);
+    // console.log("🚀 ~ file: 是否突破前高 res:", res);
     return res;
 }
 // 突破前低
@@ -68,7 +68,7 @@ function isBreakPreLow(min) {
             break;
         }
     }
-    console.log("🚀 ~ file: 是否突破前低 res:", res);
+    // console.log("🚀 ~ file: 是否突破前低 res:", res);
     return res;
 }
 // 是否十字星
@@ -83,13 +83,13 @@ function isCross({ open, close, high, low }, thresholdRatio = 0.35) {
 
     // 判断是否为“十字星”
     const res = bodyRange <= fullRange * thresholdRatio;
-    console.log("🚀 ~ 是否十字星 ~ res:", res);
+    // console.log("🚀 ~ 是否十字星 ~ res:", res);
     return res;
 }
 // 是否上垂线
-function isUpCross(kLine) {
+function isUpCross(kLine, ratio) {
     let res = false;
-    if (isCross(kLine)) {
+    if (isCross(kLine, ratio)) {
         const { open, close, high, low } = kLine;
         // 上引线
         let upTail = high - Math.max(open, close);
@@ -99,7 +99,7 @@ function isUpCross(kLine) {
     } else {
         res = false;
     }
-    console.log("🚀 ~ 是否上垂线 ~ res:", res);
+    // console.log("🚀 ~ 是否上垂线 ~ res:", res);
     return res;
 }
 // 是否下垂线
@@ -115,7 +115,7 @@ function isDownCross(kLine, ratio) {
     } else {
         res = false;
     }
-    console.log("🚀 ~ 是否下垂线 ~ res:", res);
+    // console.log("🚀 ~ 是否下垂线 ~ res:", res);
     return res;
 }
 
@@ -143,7 +143,7 @@ function isTopFractal(first, middle, last) {
         isMiddleLowLowest &&
         first.open + firstBody / 2 > last.close;
 
-    console.log("🚀 ~ 是否顶分 ~ res:", res);
+    // console.log("🚀 ~ 是否顶分 ~ res:", res);
     return res;
 }
 // 是否底分
@@ -170,7 +170,7 @@ function isBottomFractal(first, middle, last) {
         isMiddleLowLowest &&
         first.close + firstBody / 2 < last.close;
 
-    console.log("🚀 ~ 是否 底分形态 ~ res:", res);
+    // console.log("🚀 ~ 是否 底分形态 ~ res:", res);
     return res;
 }
 // 两个k线合并看作下垂线
@@ -185,7 +185,7 @@ function isDownLinesGroup2(kLine2, kLine3) {
         high: Math.max(kLine2.high, kLine3.high),
         low: Math.min(kLine2.low, kLine3.low),
     });
-    console.log("🚀 ~ 是否 两个k线合并看作下垂线 ~ res:", res);
+    // console.log("🚀 ~ 是否 两个k线合并看作下垂线 ~ res:", res);
     return res;
 }
 // 两个k线合并看作上垂线
@@ -200,7 +200,7 @@ function isUpLinesGroup2(kLine2, kLine3) {
         high: Math.max(kLine2.high, kLine3.high),
         low: Math.min(kLine2.low, kLine3.low),
     });
-    console.log("🚀 ~ 是否 两个k线合并看作上垂线 ~ res:", res);
+    // console.log("🚀 ~ 是否 两个k线合并看作上垂线 ~ res:", res);
     return res;
 }
 // 三个k线合并看作下垂线
@@ -213,7 +213,7 @@ function isDownLinesGroup3(kLine1, kLine2, kLine3) {
             high: Math.max(kLine1.high, kLine2.high, kLine3.high),
             low: Math.min(kLine1.low, kLine2.low, kLine3.low),
         }) && kLine3.close < Math.max(kLine1.close, kLine1.open) - Math.abs(kLine1.close - kLine1.open) / 2;
-    console.log("🚀 ~ 是否 三个k线合并看作下垂线 ~ res:", res);
+    // console.log("🚀 ~ 是否 三个k线合并看作下垂线 ~ res:", res);
     return res;
 }
 // 三根k线合并为上垂线
@@ -226,7 +226,7 @@ function isUpLinesGroup3(kLine1, kLine2, kLine3) {
             high: Math.max(kLine1.high, kLine2.high, kLine3.high),
             low: Math.min(kLine1.low, kLine2.low, kLine3.low),
         }) && kLine3.close > Math.min(kLine1.close, kLine1.open) + Math.abs(kLine1.close - kLine1.open) / 2;
-    console.log("🚀 ~ 是否 三根k线合并为上垂线 ~ res:", res);
+    // console.log("🚀 ~ 是否 三根k线合并为上垂线 ~ res:", res);
     return res;
 }
 // 看跌吞没
@@ -236,7 +236,7 @@ function isDownSwallow(kLine2, kLine3) {
         (kLine3.open - kLine3.close) / (kLine3.high - kLine3.low) > 0.52 && // 实体占比大于0.55
         kLine2.low > kLine3.low &&
         kLine2.high < kLine3.high;
-    console.log("🚀 ~ 是否 看跌吞没 ~ res:", res);
+    // console.log("🚀 ~ 是否 看跌吞没 ~ res:", res);
     return res;
 }
 // 看涨吞没
@@ -246,7 +246,7 @@ function isUpSwallow(kLine2, kLine3) {
         (kLine3.close - kLine3.open) / (kLine3.high - kLine3.low) > 0.52 && // 实体占比大于0.55
         kLine2.low > kLine3.low &&
         kLine2.high < kLine3.high;
-    console.log("🚀 ~ 是否 看涨吞没 ~ res:", res);
+    // console.log("🚀 ~ 是否 看涨吞没 ~ res:", res);
     return res;
 }
 // k3 跌破k1/k2，k3是光k
@@ -254,7 +254,7 @@ function isBreakDown(kLine1, kLine2, kLine3) {
     const kLine3Mid = (kLine3.open - kLine3.close) / 2;
     const res =
         kLine3.close < kLine3.open && kLine3Mid < kLine1.low && kLine3Mid < kLine2.low && isBigLine(kLine3, 0.6);
-    console.log("🚀 ~ 是否 k3 跌破k1/k2，k3是光k ~ res:", res);
+    // console.log("🚀 ~ 是否 k3 跌破k1/k2，k3是光k ~ res:", res);
     return res;
 }
 // k3 上破k1/k2，k3是光k
@@ -262,7 +262,7 @@ function isBreakUp(kLine1, kLine2, kLine3) {
     const kLine3Mid = (kLine3.close - kLine3.open) / 2;
     const res =
         kLine3.close > kLine3.open && kLine3Mid > kLine1.high && kLine3Mid > kLine2.high && isBigLine(kLine3, 0.6);
-    console.log("🚀 ~ 是否 k3 上破k1/k2，k3是光k ~ res:", res);
+    // console.log("🚀 ~ 是否 k3 上破k1/k2，k3是光k ~ res:", res);
     return res;
 }
 // 黄昏星
@@ -278,7 +278,7 @@ function isDownStar(kLine1, kLine2, kLine3) {
         kLine1.open + k1Body / 2 > kLine3.low &&
         kLine2.low > kLine3.low &&
         (isDownSwallow(kLine1, kLine3) || isBigAndYin(kLine3, 0.8) || isDownCross(kLine1, kLine3));
-    console.log("🚀 ~ 是否 黄昏星 ~ res:", res);
+    // console.log("🚀 ~ 是否 黄昏星 ~ res:", res);
     return res;
 }
 // 启明星
@@ -294,21 +294,21 @@ function isUpStar(kLine1, kLine2, kLine3) {
         kLine1.close + k1Body / 2 < kLine3.high &&
         kLine2.high < kLine3.high &&
         (isUpSwallow(kLine1, kLine3) || isBigAndYang(kLine3, 0.8) || isUpCross(kLine1, kLine3));
-    console.log("🚀 ~ 是否 启明星 ~ res:", res);
+    // console.log("🚀 ~ 是否 启明星 ~ res:", res);
     return res;
 }
 // 顶顶高
 function isHigherHigh(kLine1, kLine2, kLine3) {
     const res =
         kLine1.low < kLine2.low && kLine2.low < kLine3.low && kLine1.high < kLine2.high && kLine2.high < kLine3.high;
-    console.log("🚀 ~ 是否 顶顶高 ~ res:", res);
+    // console.log("🚀 ~ 是否 顶顶高 ~ res:", res);
     return res;
 }
 // 底底低
 function isLowerLow(kLine1, kLine2, kLine3) {
     const res =
         kLine1.low > kLine2.low && kLine2.low > kLine3.low && kLine1.high > kLine2.high && kLine2.high > kLine3.high;
-    console.log("🚀 ~ 是否 底底低 ~ res:", res);
+    // console.log("🚀 ~ 是否 底底低 ~ res:", res);
     return res;
 }
 // 相互吞没
@@ -332,7 +332,7 @@ function isK1Swallow(kLine1, kLine2, kLine3) {
     //     0;
 
     const res = k1Swallow && k1BodySwallow; //|| k1TooBig || k2TooBig;
-    console.log("🚀 ~ 是否 相互吞没 ~ res:", res);
+    // console.log("🚀 ~ 是否 相互吞没 ~ res:", res);
     return res;
 }
 // 四k上
@@ -348,7 +348,7 @@ function isFourUp([one, two, three, four]) {
     ) {
         res = true;
     }
-    console.log("🚀 ~ file: 四k上 ~ res:", res);
+    // console.log("🚀 ~ file: 四k上 ~ res:", res);
     return res;
 }
 // 四k下
@@ -364,7 +364,7 @@ function isFourDown([one, two, three, four]) {
     ) {
         res = true;
     }
-    console.log("🚀 ~ file: 四k下 ~ res:", res);
+    // console.log("🚀 ~ file: 四k下 ~ res:", res);
     return res;
 }
 // k1大阴k的+k2实体最小 + 大阴k+k3实体一半小于前方实体最低值
@@ -380,7 +380,7 @@ const downPao = (one, two, three) => {
     ) {
         res = true;
     }
-    console.log("🚀 ~ file: 空方炮 res:", res);
+    // console.log("🚀 ~ file: 空方炮 res:", res);
     return res;
 };
 const upPao = (one, two, three) => {
@@ -395,7 +395,7 @@ const upPao = (one, two, three) => {
     ) {
         res = true;
     }
-    console.log("🚀 ~ file: 多方炮 res:", res);
+    // console.log("🚀 ~ file: 多方炮 res:", res);
     return res;
 };
 // 是否在50均线之下
@@ -407,7 +407,7 @@ const isDownMa = (kLine1, kLine2, kLine3, ma) => {
     if (Math.max(k1Center, k2Center, k3Center) <= ma) {
         res = true;
     }
-    console.log("🚀 ~ file: 是否在50均线之下 ~ res:", res);
+    // console.log("🚀 ~ file: 是否在50均线之下 ~ res:", res);
     return res;
 };
 // 是否在50均线之上
@@ -419,7 +419,7 @@ const isUpMa = (kLine1, kLine2, kLine3, ma) => {
     if (Math.min(k1Center, k2Center, k3Center) >= ma) {
         res = true;
     }
-    console.log("🚀 ~ file: 是否在50均线之上 ~ res:", res);
+    // console.log("🚀 ~ file: 是否在50均线之上 ~ res:", res);
     return res;
 };
 // macd 指标向上
@@ -433,7 +433,7 @@ const isUpMacd = (macdArr) => {
     } else {
         res = macd3 - macd2 > 0;
     }
-    console.log("🚀 ~ file: macd 指标向上:", res, macd2, macd3);
+    // console.log("🚀 ~ file: macd 指标向上:", res, macd2, macd3);
     return res;
 };
 // macd 指标向下
@@ -446,7 +446,7 @@ const isDownMacd = (macdArr) => {
     } else {
         res = macd3 - macd2 < 0;
     }
-    console.log("🚀 ~ file: macd 指标向下:", res, macd2, macd3);
+    // console.log("🚀 ~ file: macd 指标向下:", res, macd2, macd3);
     return res;
 };
 
@@ -457,7 +457,7 @@ function isAllDownTail(kLine1, kLine2, kLine3) {
         !isCross(kLine1) &&
         (Math.min(kLine1.open, kLine1.close) - kLine1.low) / Math.abs(kLine1.open - kLine1.close) > 0.5
     ) {
-        console.log("🚀 ~ k3长上引线 ~ 不能开单");
+        // console.log("🚀 ~ k3长上引线 ~ 不能开单");
         return true;
     }
     if (
@@ -478,7 +478,7 @@ function isAllDownTail(kLine1, kLine2, kLine3) {
     ) {
         num++;
     }
-    console.log("🚀 ~ k1 k2 k3长下引线 ~ res:", num >= 2);
+    // console.log("🚀 ~ k1 k2 k3长下引线 ~ res:", num >= 2);
     return num >= 2;
 }
 // 长上引线
@@ -488,7 +488,7 @@ function isAllUpTail(kLine1, kLine2, kLine3) {
         !isCross(kLine3) &&
         (kLine3.high - Math.max(kLine3.open, kLine3.close)) / Math.abs(kLine3.open - kLine3.close) > 0.5
     ) {
-        console.log("🚀 ~ k3长上引线 ~ 不能开单");
+        // console.log("🚀 ~ k3长上引线 ~ 不能开单");
         return true;
     }
     if (
@@ -509,7 +509,7 @@ function isAllUpTail(kLine1, kLine2, kLine3) {
     ) {
         num++;
     }
-    console.log("🚀 ~ k1 k2 k3长上引线 ~ res:", num >= 2);
+    // console.log("🚀 ~ k1 k2 k3长上引线 ~ res:", num >= 2);
     return num >= 2;
 }
 module.exports = {

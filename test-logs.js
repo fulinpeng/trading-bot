@@ -9,7 +9,7 @@ const createLogs = () => {
     originalConsoleLog = console.log;
     // 重定向 console.log 到文件
     if (!logStream) {
-        logStream = fs.createWriteStream(`logs/fs-.log`, {
+        logStream = fs.createWriteStream(`test-zzzz-fs.log`, {
             flags: "a",
             // autoClose: true,
             // encoding: "utf8",
@@ -49,19 +49,24 @@ const createLogs = () => {
 
 createLogs();
 num = 0;
-const setLog = async () => {
+const setLog = async (num) => {
     await new Promise((resolve) => {
         setTimeout(() => {
-            resolve();
-        }, 100);
-    }).then(() => {
-        console.log(getDate(undefined, true) + "--test shi da yin ...");
+            resolve(num);
+        });
+    }).then((num) => {
+        console.log(getDate(undefined, true) + " ---- test da yin ...", num);
+        if (num===20000) console.log(getDate(undefined, true))
     });
 };
 
 async function run() {
-    while (num < 1000000) {
-        await setLog();
+    while (num < 2000000) {
+        if (num < 150000) {
+             setLog(num);
+        } else {
+            setLog(num);
+        }
         num++;
         // if (num == 50) {
         //     // process.exit();
