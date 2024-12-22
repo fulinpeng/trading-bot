@@ -40,14 +40,14 @@ const { calculateEMA } = require("../utils/ma.js");
 const fs = require("fs");
 let { kLineData } = require("./source/solUSDT-4h.js");
 
+let _kLineData = [...kLineData];
 const symbol = "solUSDT";
 let availableMoney = 10000;
-let howManyCandle = 2;
-const isProfitRun = 1;
-const profitProtectRate = 0.9;
-const howManyCandleForProfitRun = 0.5;
-const fastPeriod = 12;
-const ema144Range = 0.0025; // mea144区域范围
+let howManyCandle = 1;
+let isProfitRun = 0;
+let profitProtectRate = 0.6;
+let howManyCandleForProfitRun = 0.5;
+let fastPeriod = 12;
 
 const getQuantity = (currentPrice) => {
     return Math.round(availableMoney / currentPrice);
@@ -113,20 +113,61 @@ const setEmaArr = (historyClosePrices) => {
     ema169.push(calculateEMA(historyClosePrices, EMA_PERIOD[2]));
 };
 
-const start = () => {
-    const preKLines = kLineData.slice(0, 500);
+const resetInit = () => {
+    howManyCandle = 1;
+    isProfitRun = 0;
+    profitProtectRate = 0.6;
+    howManyCandleForProfitRun = 0.5;
+    fastPeriod = 12;
+    gridPoints = [];
+    trend = "";
+    winNum = 0;
+    failNum = 0;
+    testMoney = 0;
+    quantity = 0;
+    orderPrice = 0;
+    maxMoney = 0;
+    minMoney = 0;
+    openHistory = [];
+    closeHistory = [];
+    trendHistory = [];
+    testMoneyHistory = [];
+    readyTradingDirection = "hold";
+    hasOrder = false;
+    candleHeight = 0;
+    emaFast = [];
+    ema144 = [];
+    ema169 = [];
+    targetTime = null;
+};
+const start = (params) => {
+    // 每次需要初始化
+    resetInit();
+    if (params) {
+        howManyCandle = params.howManyCandle;
+        isProfitRun = params.isProfitRun;
+        profitProtectRate = params.profitProtectRate;
+        howManyCandleForProfitRun = params.howManyCandleForProfitRun;
+        targetTime = params.targetTime;
+    }
+    if (targetTime) {
+        targetTime = params.targetTime;
+        let start = kLineData.findIndex((v) => v.openTime === targetTime);
+        _kLineData = [...kLineData].slice(start);
+    }
+    const preKLines = _kLineData.slice(0, 500);
     const prePrices = preKLines.map((v) => v.close);
     initEveryIndex(prePrices);
-    for (let idx = 501; idx < kLineData.length; idx++) {
-        const curKLines = kLineData.slice(idx - 500, idx);
+    for (let idx = 501; idx < _kLineData.length; idx++) {
+        const curKLines = _kLineData.slice(idx - 500, idx);
         const historyClosePrices = curKLines.map((v) => v.close);
 
-        candleHeight = calculateCandleHeight(kLineData.slice(idx - 12, idx));
+        candleHeight = calculateCandleHeight(_kLineData.slice(idx - 12, idx));
 
         // 设置各种指标
         setEveryIndex([...historyClosePrices]);
 
-        const curkLine = kLineData[idx];
+        const curkLine = _kLineData[idx];
         const { close, closeTime, low, high } = curkLine;
 
         if (!hasOrder) {
@@ -204,8 +245,8 @@ const start = () => {
 
     // 平仓最后一次
     if (hasOrder) {
-        const len = kLineData.length;
-        const curkLine = kLineData[len - 1];
+        const len = _kLineData.length;
+        const curkLine = _kLineData[len - 1];
         const { close, closeTime, low, high } = curkLine;
         const [point1, point2] = gridPoints;
         if (hasOrder) {
@@ -290,7 +331,8 @@ const judgeTradingDirection = (kLines) => {
     //     readyTradingDirection = "hold";
     // }
 
-    if (upTerm1 && upTerm2) {
+    const upTerm5 = false; // kLine3.low <= ema144_5 && kLine3.close >= emaFast5;
+    if ((upTerm1 && upTerm2) || upTerm5) {
         readyTradingDirection = "up";
         return;
     }
@@ -319,7 +361,8 @@ const judgeTradingDirection = (kLines) => {
     // if (downTerm2 && downTerm4) {
     //     readyTradingDirection = "hold";
     // }
-    if (downTerm1 && downTerm2) {
+    const downTerm5 = false; //kLine3.high >= ema144_5 && kLine3.close >= emaFast5;
+    if ((downTerm1 && downTerm2) || downTerm5) {
         readyTradingDirection = "down";
         return;
     }
@@ -373,19 +416,16 @@ const judgeAndTrading = (kLines) => {
     }
 };
 const calculateTradingSignal = (kLines) => {
-    const [kLine1, kLine2, kLine3, kLine4, kLine5] = kLines;
-    const { open, close, closeTime, low, high } = kLine5;
-    let [preEma12, curEma12] = getLastKlines(emaFast, 2);
-    let [preEma144, curEma144] = getLastKlines(ema144, 2);
-    let [preEma169, curEma169] = getLastKlines(ema169, 2);
+    const [kLine1, kLine2, kLine3] = kLines;
+    const { open, close, openTime, closeTime, low, high } = kLine3;
+    let [ema12_0, preEma12, curEma12] = getLastKlines(emaFast, 3);
+    let [ema144_0, preEma144, curEma144] = getLastKlines(ema144, 3);
+    let [ema169_0, preEma169, curEma169] = getLastKlines(ema169, 3);
 
-    const max = Math.max(kLine1.high, kLine2.high, kLine3.high, kLine4.high, kLine5.high);
-    const min = Math.min(kLine1.low, kLine2.low, kLine3.low, kLine4.high, kLine5.high);
-    if (
-        readyTradingDirection === "up" &&
-        close > open &&
-        curEma12 > curEma144 &&
-        curEma144 > curEma169 &&
+    const max = Math.max(kLine1.high, kLine2.high, kLine3.high);
+    const min = Math.min(kLine1.low, kLine2.low, kLine3.low);
+
+    const signalTerm1 =
         (isBottomFractal(kLine1, kLine2, kLine3) || // 是否底分形态
             isBigAndYang(kLine3, 0.85) ||
             (isUpLinesGroup2(kLine2, kLine3) && (isUpCross(kLine1) || isBigAndYang(kLine1, 0.6))) || // 是否两个k形成垂线
@@ -398,23 +438,28 @@ const calculateTradingSignal = (kLines) => {
             upPao(kLine1, kLine2, kLine3)) &&
         curEma12 > preEma12 &&
         close > curEma12 &&
-        curEma144 * (1 + ema144Range) >= min &&
-        min > curEma169
+        min > curEma169;
+
+    const signalUpTerm2 =
+        kLine1.low <= ema169_0 && kLine1.close >= ema12_0 && kLine2.close > preEma12 && kLine3.close > curEma12;
+    if (
+        readyTradingDirection === "up" &&
+        close > open &&
+        curEma12 > curEma144 &&
+        curEma144 > curEma169 &&
+        (signalTerm1 || signalUpTerm2)
     ) {
         // 计算atr
         // const { atr } = calculateATR(curKLines, 14);
         return {
             trend: "up",
-            stopLoss: min, // 止损
-            // stopProfit: close + candleHeight * howManyCandle, // 止盈
-            stopProfit: close + (close - min) * howManyCandle, // 止盈
+            stopLoss: low - candleHeight * 0.5, // 止损
+            stopProfit: close + candleHeight * howManyCandle, // 止盈
+            // stopProfit: close + (close - min) * howManyCandle, // 止盈
         };
     }
-    if (
-        readyTradingDirection === "down" &&
-        close < open &&
-        curEma12 < curEma144 &&
-        curEma144 < curEma169 &&
+
+    const signalDownTerm1 =
         ((isLowerLow(kLine1, kLine2, kLine3) && isBigLine(kLine3, 0.6)) || // 顶顶高 k3是光k / 三小连阳
             isBigAndYin(kLine3, 0.85) ||
             isTopFractal(kLine1, kLine2, kLine3) || // 是否顶分形态
@@ -428,16 +473,23 @@ const calculateTradingSignal = (kLines) => {
             downPao(kLine1, kLine2, kLine3)) &&
         curEma12 < preEma12 &&
         close < curEma12 &&
-        curEma144 * (1 - ema144Range) <= max &&
-        max < curEma169
+        max < curEma169;
+    const signalDownTerm2 =
+        kLine1.high >= ema169_0 && kLine1.close <= ema12_0 && kLine2.close < preEma12 && kLine3.close < curEma12;
+    if (
+        readyTradingDirection === "down" &&
+        close < open &&
+        curEma12 < curEma144 &&
+        curEma144 < curEma169 &&
+        (signalDownTerm1 || signalDownTerm2)
     ) {
         // 计算atr
         // const { atr } = calculateATR(curKLines, 14);
         return {
             trend: "down",
-            stopLoss: max, // 止损
-            // stopProfit: close - candleHeight * howManyCandle, // 止盈
-            stopProfit: close - (curEma144 - max) * howManyCandle, // 止盈
+            stopLoss: high + candleHeight * 0.5, // 止损
+            stopProfit: close - candleHeight * howManyCandle, // 止盈
+            // stopProfit: close - (max - close) * howManyCandle, // 止盈
         };
     }
     return {
@@ -450,8 +502,8 @@ function writeInFile(fileName, str) {
     });
 }
 
-function run() {
-    start();
+function run(params) {
+    start(params);
     const result = {
         availableMoney,
         winNum,
@@ -511,7 +563,12 @@ var option = {
     `,
     );
 }
-run();
+run({
+    howManyCandle: 1,
+    isProfitRun: 1,
+    profitProtectRate: 0.6,
+    howManyCandleForProfitRun: 1,
+});
 module.exports = {
     evaluateStrategy: start,
 };
