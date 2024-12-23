@@ -520,11 +520,11 @@ var option = {
 }
 
 run({
-    "howManyCandle": 1,
-    "invalidNumber": 90,
-    "isProfitRun": 1,
-    "profitProtectRate": 0.8,
-    "howManyCandleForProfitRun": 0.5,
+    howManyCandle: 1,
+    invalidNumber: 90,
+    isProfitRun: 1,
+    profitProtectRate: 0.8,
+    howManyCandleForProfitRun: 0.5,
     targetTime: "2021-01-01_00-00-00",
     // targetTime: "2024-08-24_00-00-00",
 });

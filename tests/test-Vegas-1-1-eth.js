@@ -38,11 +38,11 @@ const {
 const { calculateATR } = require("../utils/atr.js");
 const { calculateEMA } = require("../utils/ma.js");
 const fs = require("fs");
-let { kLineData } = require("./source/solUSDT-4h.js");
+let { kLineData } = require("./source/ethUSDT-15m.js");
 
 let _kLineData = [...kLineData];
-const symbol = "solUSDT";
-let availableMoney = 10000;
+const symbol = "ethUSDT";
+let availableMoney = 100000;
 let howManyCandle = 1;
 let isProfitRun = 0;
 let profitProtectRate = 0.6;
@@ -172,7 +172,7 @@ const start = (params) => {
 
         if (!hasOrder) {
             // 准备开仓：判断 开单方向 / 判断 上一次的开单方向是否失效
-            judgeTradingDirection(getLastKlines(curKLines, 3));
+            judgeTradingDirection(getLastKlines(curKLines, 5));
             // 开仓：没有仓位就根据 readyTradingDirection 开单
             // 开单完成后会重置 readyTradingDirection
             if (readyTradingDirection !== "hold") {
@@ -299,7 +299,7 @@ const reset = () => {
 };
 // 指标判断方向 / 交易
 const judgeTradingDirection = (kLines) => {
-    let [kLine1, kLine2, kLine3] = kLines;
+    let [, , kLine1, kLine2, kLine3] = kLines;
     let [emaFast1, emaFast2, emaFast3, emaFast4, emaFast5] = getLastKlines(emaFast, 5);
     let [ema144_1, ema144_2, ema144_3, ema144_4, ema144_5] = getLastKlines(ema144, 5);
     let [ema169_1, ema169_2, ema169_3, ema169_4, ema169_5] = getLastKlines(ema169, 5);
@@ -309,14 +309,13 @@ const judgeTradingDirection = (kLines) => {
     // 多头行情
     // 准备条件一: 前三根k线不符合多
     // 准备条件二: 后三根k线符合多投
-    const upTerm1 = !(
+    const upTerm1 =
         emaFast1 > ema144_1 &&
         emaFast2 > ema144_2 &&
         emaFast3 > ema144_3 &&
         ema144_1 > ema169_1 &&
         ema144_2 > ema169_2 &&
-        ema144_3 > ema169_3
-    );
+        ema144_3 > ema169_3;
     const upTerm2 =
         emaFast3 > ema144_3 &&
         emaFast4 > ema144_4 &&
@@ -331,8 +330,9 @@ const judgeTradingDirection = (kLines) => {
     //     readyTradingDirection = "hold";
     // }
 
-    const upTerm5 = false; // kLine3.low <= ema144_5 && kLine3.close >= emaFast5;
-    if ((upTerm1 && upTerm2) || upTerm5) {
+    const upTerm5 = kLine3.low <= ema144_5 && kLine3.close >= emaFast5;
+    const upTerm6 = "";
+    if (!upTerm1 && upTerm2) {
         readyTradingDirection = "up";
         return;
     }
@@ -340,14 +340,13 @@ const judgeTradingDirection = (kLines) => {
     // 准备条件一: 连续5根 ema12 < ema144 且 ema144 < ema169
     // 准备条件二: 5根k线 avg5(ema12) - avg5(ema144) >= mea12 * 0.03
     // 准备条件三: k线最低价格 来到  ema169 >= high >= ema144 * (1- 0.025) 范围，看空
-    const downTerm1 = !(
+    const downTerm1 =
         emaFast1 < ema144_1 &&
         emaFast2 < ema144_2 &&
         emaFast3 < ema144_3 &&
         ema144_1 < ema169_1 &&
         ema144_2 < ema169_2 &&
-        ema144_3 < ema169_3
-    );
+        ema144_3 < ema169_3;
 
     const downTerm2 =
         emaFast3 < ema144_3 &&
@@ -361,8 +360,9 @@ const judgeTradingDirection = (kLines) => {
     // if (downTerm2 && downTerm4) {
     //     readyTradingDirection = "hold";
     // }
-    const downTerm5 = false; //kLine3.high >= ema144_5 && kLine3.close >= emaFast5;
-    if ((downTerm1 && downTerm2) || downTerm5) {
+    const downTerm5 = kLine3.high >= ema144_5 && kLine3.close >= emaFast5;
+    const downTerm6 = "";
+    if (!downTerm1 && downTerm2) {
         readyTradingDirection = "down";
         return;
     }
@@ -389,7 +389,7 @@ const setGridPoints = (trend, stopLoss, stopProfit, _currentPrice) => {
 // 判断+交易
 const judgeAndTrading = (kLines) => {
     // 根据指标判断是否可以开单
-    const [, , curkLine] = kLines;
+    const [, , , , curkLine] = kLines;
     const trendInfo = calculateTradingSignal(kLines);
     const { stopLoss, stopProfit } = trendInfo;
 
@@ -416,16 +416,18 @@ const judgeAndTrading = (kLines) => {
     }
 };
 const calculateTradingSignal = (kLines) => {
-    const [kLine1, kLine2, kLine3] = kLines;
+    const [kLine_fu1, kLine_0, kLine1, kLine2, kLine3] = kLines;
     const { open, close, openTime, closeTime, low, high } = kLine3;
     let [ema12_0, preEma12, curEma12] = getLastKlines(emaFast, 3);
     let [ema144_0, preEma144, curEma144] = getLastKlines(ema144, 3);
     let [ema169_0, preEma169, curEma169] = getLastKlines(ema169, 3);
 
-    const max = Math.max(kLine1.high, kLine2.high, kLine3.high);
-    const min = Math.min(kLine1.low, kLine2.low, kLine3.low);
+    let max = Math.max(kLine1.high, kLine2.high, kLine3.high);
+    let min = Math.min(kLine1.low, kLine2.low, kLine3.low);
+    let maxBody = Math.max(kLine1.open, kLine1.close, kLine2.open, kLine2.close, kLine3.open, kLine3.close);
+    let minBody = Math.min(kLine1.open, kLine1.close, kLine2.open, kLine2.close, kLine3.open, kLine3.close);
 
-    const signalTerm1 =
+    const signalUpTerm1 =
         (isBottomFractal(kLine1, kLine2, kLine3) || // 是否底分形态
             isBigAndYang(kLine3, 0.85) ||
             (isUpLinesGroup2(kLine2, kLine3) && (isUpCross(kLine1) || isBigAndYang(kLine1, 0.6))) || // 是否两个k形成垂线
@@ -437,25 +439,27 @@ const calculateTradingSignal = (kLines) => {
             isBreakUp(kLine1, kLine2, kLine3) || // k3 突破k1/k2，k3是光k
             upPao(kLine1, kLine2, kLine3)) &&
         curEma12 > preEma12 &&
-        close > curEma12 &&
-        min > curEma169;
+        close > curEma12;
 
     const signalUpTerm2 =
         kLine1.low <= ema169_0 && kLine1.close >= ema12_0 && kLine2.close > preEma12 && kLine3.close > curEma12;
+    // 引线穿过ema169，实体未穿过，当前收盘价高于ema12
+    const signalUpTerm3 = min <= ema169_0 && minBody >= ema169_0 && close > curEma12;
     if (
         readyTradingDirection === "up" &&
         close > open &&
         curEma12 > curEma144 &&
         curEma144 > curEma169 &&
-        (signalTerm1 || signalUpTerm2)
+        signalUpTerm1 &&
+        signalUpTerm3
     ) {
-        // 计算atr
-        // const { atr } = calculateATR(curKLines, 14);
+        min = min < curEma169 ? curEma169 : min;
         return {
             trend: "up",
-            stopLoss: low - candleHeight * 0.5, // 止损
-            stopProfit: close + candleHeight * howManyCandle, // 止盈
-            // stopProfit: close + (close - min) * howManyCandle, // 止盈
+            stopLoss: min, // 止损
+            // stopLoss: curEma144, // 止损
+            // stopProfit: close + candleHeight * howManyCandle, // 止盈
+            stopProfit: close + (close - min) * howManyCandle, // 止盈
         };
     }
 
@@ -472,24 +476,26 @@ const calculateTradingSignal = (kLines) => {
             isBreakDown(kLine1, kLine2, kLine3) || // k3 突破k1/k2，k3是光k
             downPao(kLine1, kLine2, kLine3)) &&
         curEma12 < preEma12 &&
-        close < curEma12 &&
-        max < curEma169;
+        close < curEma12;
     const signalDownTerm2 =
         kLine1.high >= ema169_0 && kLine1.close <= ema12_0 && kLine2.close < preEma12 && kLine3.close < curEma12;
+    // 引线穿过ema169，实体未穿过，当前收盘价低于ema12
+    const signalDownTerm3 = max >= ema169_0 && maxBody <= ema169_0 && close < curEma12;
     if (
         readyTradingDirection === "down" &&
         close < open &&
         curEma12 < curEma144 &&
         curEma144 < curEma169 &&
-        (signalDownTerm1 || signalDownTerm2)
+        signalDownTerm1 &&
+        signalDownTerm3
     ) {
-        // 计算atr
-        // const { atr } = calculateATR(curKLines, 14);
+        max = max > curEma169 ? curEma169 : max;
         return {
             trend: "down",
-            stopLoss: high + candleHeight * 0.5, // 止损
-            stopProfit: close - candleHeight * howManyCandle, // 止盈
-            // stopProfit: close - (max - close) * howManyCandle, // 止盈
+            stopLoss: max, // 止损
+            // stopLoss: curEma144, // 止损
+            // stopProfit: close - candleHeight * howManyCandle, // 止盈
+            stopProfit: close - (max - close) * howManyCandle, // 止盈
         };
     }
     return {
@@ -519,55 +525,55 @@ function run(params) {
     writeInFile(
         `./tests/data/${symbol}-test-vegas.js`,
         `
-var openHistory = ${JSON.stringify(openHistory, null, 2)}
-var closeHistory = ${JSON.stringify(closeHistory, null, 2)}
-var trendHistory = ${JSON.stringify(trendHistory, null, 2)}
-var valueFormatter = (value, index) => '[openTime:' + openHistory[index] + ']' + '\\n\\r' + '[closeTime:' + closeHistory[index] + ']' + '\\n\\r' + '[trend:' + trendHistory[index] + ']' + '\\n\\r' +'[testMoney:' + value + ']'
+        var openHistory = ${JSON.stringify(openHistory, null, 2)}
+        var closeHistory = ${JSON.stringify(closeHistory, null, 2)}
+        var trendHistory = ${JSON.stringify(trendHistory, null, 2)}
+        var valueFormatter = (value, index) => '[openTime:' + openHistory[index] + ']' + '\\n\\r' + '[closeTime:' + closeHistory[index] + ']' + '\\n\\r' + '[trend:' + trendHistory[index] + ']' + '\\n\\r' +'[testMoney:' + value + ']'
 
-var option = {
-    xAxis: {
-        type: "category",
-        data: ${JSON.stringify(closeHistory, null, 2)},
-    },
-    tooltip: {
-        trigger: "axis",
-        axisPointer: {
-            type: "cross",
-        },
-        valueFormatter,
-        extraCssText: 'width:300px; white-space:pre-wrap' // 保留空格并支持换行
-    },
-    yAxis: {
-        type: "value",
-    },
-    series: [
-        {
-            name: "当前盈利",
-            data: ${JSON.stringify(testMoneyHistory, null, 2)},
-            type: "line",
-            markPoint: {
-                data: [
-                    {
-                        type: "max",
-                        name: "Max",
-                    },
-                    {
-                        type: "min",
-                        name: "Min",
-                    },
-                ],
+        var option = {
+            xAxis: {
+                type: "category",
+                data: ${JSON.stringify(closeHistory, null, 2)},
             },
-        },
-    ],
-}
+            tooltip: {
+                trigger: "axis",
+                axisPointer: {
+                    type: "cross",
+                },
+                valueFormatter,
+                extraCssText: 'width:300px; white-space:pre-wrap' // 保留空格并支持换行
+            },
+            yAxis: {
+                type: "value",
+            },
+            series: [
+                {
+                    name: "当前盈利",
+                    data: ${JSON.stringify(testMoneyHistory, null, 2)},
+                    type: "line",
+                    markPoint: {
+                        data: [
+                            {
+                                type: "max",
+                                name: "Max",
+                            },
+                            {
+                                type: "min",
+                                name: "Min",
+                            },
+                        ],
+                    },
+                },
+            ],
+        }
     `,
     );
 }
 run({
-    howManyCandle: 1,
+    howManyCandle: 3,
     isProfitRun: 1,
-    profitProtectRate: 0.6,
-    howManyCandleForProfitRun: 1,
+    profitProtectRate: 0.9,
+    howManyCandleForProfitRun: 0.5,
 });
 module.exports = {
     evaluateStrategy: start,
