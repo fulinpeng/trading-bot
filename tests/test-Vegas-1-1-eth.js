@@ -38,13 +38,14 @@ const {
 const { calculateATR } = require("../utils/atr.js");
 const { calculateEMA } = require("../utils/ma.js");
 const fs = require("fs");
-let { kLineData } = require("./source/ethUSDT-15m.js");
+let { kLineData } = require("./source/ethUSDT-4h.js");
 
 let _kLineData = [...kLineData];
 const symbol = "ethUSDT";
 let availableMoney = 100000;
 let howManyCandle = 1;
 let isProfitRun = 0;
+let firstProtectProfitRate = 0;
 let profitProtectRate = 0.6;
 let howManyCandleForProfitRun = 0.5;
 let fastPeriod = 12;
@@ -116,6 +117,7 @@ const setEmaArr = (historyClosePrices) => {
 const resetInit = () => {
     howManyCandle = 1;
     isProfitRun = 0;
+    firstProtectProfitRate = 0;
     profitProtectRate = 0.6;
     howManyCandleForProfitRun = 0.5;
     fastPeriod = 12;
@@ -146,6 +148,7 @@ const start = (params) => {
     if (params) {
         howManyCandle = params.howManyCandle;
         isProfitRun = params.isProfitRun;
+        firstProtectProfitRate = params.firstProtectProfitRate;
         profitProtectRate = params.profitProtectRate;
         howManyCandleForProfitRun = params.howManyCandleForProfitRun;
         targetTime = params.targetTime;
@@ -168,11 +171,21 @@ const start = (params) => {
         setEveryIndex([...historyClosePrices]);
 
         const curkLine = _kLineData[idx];
-        const { close, closeTime, low, high } = curkLine;
+        const { open, close, closeTime, low, high } = curkLine;
 
-        if (!hasOrder) {
-            // 准备开仓：判断 开单方向 / 判断 上一次的开单方向是否失效
+        let [emaFast1, emaFast2, emaFast3, emaFast4, emaFast5] = getLastKlines(emaFast, 5);
+        let [ema144_1, ema144_2, ema144_3, ema144_4, ema144_5] = getLastKlines(ema144, 5);
+        let [ema169_1, ema169_2, ema169_3, ema169_4, ema169_5] = getLastKlines(ema169, 5);
+
+        // 准备开仓
+        if (readyTradingDirection === "hold") {
+            // 判断趋势
             judgeTradingDirection(getLastKlines(curKLines, 5));
+        } else {
+            // 趋势是否被破坏
+            judgeBreakTradingDirection(getLastKlines(curKLines, 5));
+        }
+        if (!hasOrder) {
             // 开仓：没有仓位就根据 readyTradingDirection 开单
             // 开单完成后会重置 readyTradingDirection
             if (readyTradingDirection !== "hold") {
@@ -183,6 +196,7 @@ const start = (params) => {
         // 有仓位就准备平仓
         else {
             const [point1, point2] = gridPoints;
+            // 先判断止损
             if (trend) {
                 // 判断止损
                 if (trend === "up") {
@@ -193,6 +207,18 @@ const start = (params) => {
                         reset();
                         continue;
                     }
+
+                    if (firstProtectProfitRate) {
+                        // 未达到初始止盈点时，根据ema12指标盈动止损，避免亏损过大
+                        if (close < emaFast5 && close < open) {
+                            gridPoints[0] = orderPrice + Math.abs(orderPrice - emaFast5) * firstProtectProfitRate;
+                            // gridPoints = [
+                            //     orderPrice + Math.abs(emaFast5 - orderPrice) * profitProtectRate,
+                            //     emaFast5 + candleHeight * howManyCandleForProfitRun,
+                            // ];
+                            continue;
+                        }
+                    }
                 }
                 if (trend === "down") {
                     // high 大于 point2 就止损，否则继续持有
@@ -202,8 +228,20 @@ const start = (params) => {
                         reset();
                         continue;
                     }
+                    if (firstProtectProfitRate) {
+                        // 未达到初始止盈点时，根据ema12指标盈动止损，避免亏损过大
+                        if (close > emaFast5 && close > open) {
+                            gridPoints[1] = orderPrice - Math.abs(orderPrice - emaFast5) * firstProtectProfitRate;
+                            // gridPoints = [
+                            //     emaFast5 - candleHeight * howManyCandleForProfitRun,
+                            //     orderPrice - Math.abs(orderPrice - emaFast5) * profitProtectRate,
+                            // ];
+                            continue;
+                        }
+                    }
                 }
             }
+            // 判断止盈
             if (trend) {
                 if (isProfitRun) {
                     // 移动止盈
@@ -367,6 +405,40 @@ const judgeTradingDirection = (kLines) => {
         return;
     }
 };
+const judgeBreakTradingDirection = (kLines) => {
+    let [, , kLine1, kLine2, kLine3] = kLines;
+    let [emaFast1, emaFast2, emaFast3, emaFast4, emaFast5] = getLastKlines(emaFast, 5);
+    let [ema144_1, ema144_2, ema144_3, ema144_4, ema144_5] = getLastKlines(ema144, 5);
+    let [ema169_1, ema169_2, ema169_3, ema169_4, ema169_5] = getLastKlines(ema169, 5);
+
+    let { high, low, close } = kLine3;
+
+    // 多头被破坏
+    const upTerm2 =
+        emaFast3 > ema144_3 &&
+        emaFast4 > ema144_4 &&
+        emaFast5 > ema144_5 &&
+        ema144_3 > ema169_3 &&
+        ema144_4 > ema169_4 &&
+        ema144_5 > ema169_5;
+    if (readyTradingDirection === "up" && !upTerm2) {
+        readyTradingDirection = "hold";
+        return;
+    }
+    // 空头被破坏
+    const downTerm2 =
+        emaFast3 < ema144_3 &&
+        emaFast4 < ema144_4 &&
+        emaFast5 < ema144_5 &&
+        ema144_3 < ema169_3 &&
+        ema144_4 < ema169_4 &&
+        ema144_5 < ema169_5;
+
+    if (readyTradingDirection === "down" && !downTerm2) {
+        readyTradingDirection = "hold";
+        return;
+    }
+};
 
 // 设置网格
 const setGridPoints = (trend, stopLoss, stopProfit, _currentPrice) => {
@@ -398,7 +470,7 @@ const judgeAndTrading = (kLines) => {
         case "up":
             trend = "up";
             setGridPoints("up", stopLoss, stopProfit, curkLine.close);
-            readyTradingDirection = "hold";
+            // readyTradingDirection = "hold";
             isReadyStopProfit = false;
             hasOrder = true;
             openHistory.push(curkLine.openTime); // 其实开单时间是：curkLine.closeTime，binance的时间显示的是open Time，方便调试这里记录openTime
@@ -406,7 +478,7 @@ const judgeAndTrading = (kLines) => {
         case "down":
             trend = "down";
             setGridPoints("down", stopLoss, stopProfit, curkLine.close);
-            readyTradingDirection = "hold";
+            // readyTradingDirection = "hold";
             isReadyStopProfit = false;
             hasOrder = true;
             openHistory.push(curkLine.openTime); // 其实开单时间是：curkLine.closeTime，binance的时间显示的是open Time，方便调试这里记录openTime
@@ -441,8 +513,8 @@ const calculateTradingSignal = (kLines) => {
         curEma12 > preEma12 &&
         close > curEma12;
 
-    const signalUpTerm2 =
-        kLine1.low <= ema169_0 && kLine1.close >= ema12_0 && kLine2.close > preEma12 && kLine3.close > curEma12;
+    // 最近三根k线在ema144和ema169附近，实体突破ema12
+    const signalUpTerm2 = min <= ema169_0 && kLine3.close > ema12_0;
     // 引线穿过ema169，实体未穿过，当前收盘价高于ema12
     const signalUpTerm3 = min <= ema169_0 && minBody >= ema169_0 && close > curEma12;
     if (
@@ -451,7 +523,7 @@ const calculateTradingSignal = (kLines) => {
         curEma12 > curEma144 &&
         curEma144 > curEma169 &&
         signalUpTerm1 &&
-        signalUpTerm3
+        (signalUpTerm2 || signalUpTerm3)
     ) {
         min = min < curEma169 ? curEma169 : min;
         return {
@@ -477,8 +549,8 @@ const calculateTradingSignal = (kLines) => {
             downPao(kLine1, kLine2, kLine3)) &&
         curEma12 < preEma12 &&
         close < curEma12;
-    const signalDownTerm2 =
-        kLine1.high >= ema169_0 && kLine1.close <= ema12_0 && kLine2.close < preEma12 && kLine3.close < curEma12;
+    // 最近三根k线在ema144和ema169附近，实体突破ema12
+    const signalDownTerm2 = max >= ema169_0 && kLine3.close < ema12_0;
     // 引线穿过ema169，实体未穿过，当前收盘价低于ema12
     const signalDownTerm3 = max >= ema169_0 && maxBody <= ema169_0 && close < curEma12;
     if (
@@ -570,8 +642,9 @@ function run(params) {
     );
 }
 run({
-    howManyCandle: 3,
+    howManyCandle: 2,
     isProfitRun: 1,
+    firstProtectProfitRate: 0.5,
     profitProtectRate: 0.9,
     howManyCandleForProfitRun: 0.5,
 });
