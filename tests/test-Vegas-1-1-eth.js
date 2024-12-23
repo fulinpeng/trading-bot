@@ -559,7 +559,7 @@ const calculateTradingSignal = (kLines) => {
         curEma12 < curEma144 &&
         curEma144 < curEma169 &&
         signalDownTerm1 &&
-        signalDownTerm3
+        (signalUpTerm2 || signalUpTerm3)
     ) {
         max = max > curEma169 ? curEma169 : max;
         return {
@@ -644,7 +644,7 @@ function run(params) {
 run({
     howManyCandle: 2,
     isProfitRun: 1,
-    firstProtectProfitRate: 0.5,
+    firstProtectProfitRate: 0.1,
     profitProtectRate: 0.9,
     howManyCandleForProfitRun: 0.5,
 });
