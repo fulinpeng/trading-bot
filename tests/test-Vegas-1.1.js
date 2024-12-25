@@ -78,6 +78,7 @@ let ema169 = [];
 
 const EMA_PERIOD = [fastPeriod, 144, 169];
 
+let maxStopLossMoney = 0;
 const setProfit = (orderPrice, currentPrice, closeTime) => {
     if (trend === "up") {
         testMoney =
@@ -92,6 +93,16 @@ const setProfit = (orderPrice, currentPrice, closeTime) => {
     testMoneyHistory.push(testMoney);
     closeHistory.push(closeTime);
     trendHistory.push(trend);
+};
+const setMinMoney = (orderPrice, currentPrice, closeTime) => {
+    const _testMoney = 0;
+    if (trend === "up") {
+        _testMoney = quantity * (currentPrice - orderPrice) - quantity * (orderPrice + currentPrice) * 0.0007;
+    }
+    if (trend === "down") {
+        _testMoney = quantity * (orderPrice - currentPrice) - quantity * (orderPrice + currentPrice) * 0.0007;
+    }
+    if (_testMoney < maxStopLossMoney) maxStopLossMoney = _testMoney;
 };
 
 const initEveryIndex = (historyClosePrices) => {
@@ -195,6 +206,8 @@ const start = (params) => {
         }
         // 有仓位就准备平仓
         else {
+            // 最大亏损值
+            setMinMoney(orderPrice, close);
             const [point1, point2] = gridPoints;
             // 先判断止损
             if (trend) {
@@ -286,6 +299,8 @@ const start = (params) => {
         const len = _kLineData.length;
         const curkLine = _kLineData[len - 1];
         const { close, closeTime, low, high } = curkLine;
+        // 最大亏损值
+        setMinMoney(orderPrice, close);
         const [point1, point2] = gridPoints;
         if (hasOrder) {
             // 判断止损
@@ -589,6 +604,7 @@ function run(params) {
         testMoney,
         maxMoney,
         minMoney,
+        maxStopLossMoney,
         winRate: ((winNum / (winNum + failNum)) * 100).toFixed(3) + "%",
     };
     console.log("最终结果::", result);
