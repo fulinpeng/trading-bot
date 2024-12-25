@@ -143,7 +143,7 @@ const resetInit = () => {
     targetTime = null;
 };
 const start = (params) => {
-    // 每次需要初始化
+    // 每次需要初始化 ???? 检查初始化是否覆盖所有全局变量
     resetInit();
     if (params) {
         howManyCandle = params.howManyCandle;
@@ -514,7 +514,7 @@ const calculateTradingSignal = (kLines) => {
         close > curEma12;
 
     // 最近三根k线在ema144和ema169附近，实体突破ema12
-    const signalUpTerm2 = min <= ema169_0 && kLine3.close > ema12_0;
+    const signalUpTerm2 = ""; // min <= ema169_0 && kLine3.close > ema12_0;
     // 引线穿过ema169，实体未穿过，当前收盘价高于ema12
     const signalUpTerm3 = min <= ema169_0 && minBody >= ema169_0 && close > curEma12;
     if (
@@ -550,7 +550,7 @@ const calculateTradingSignal = (kLines) => {
         curEma12 < preEma12 &&
         close < curEma12;
     // 最近三根k线在ema144和ema169附近，实体突破ema12
-    const signalDownTerm2 = max >= ema169_0 && kLine3.close < ema12_0;
+    const signalDownTerm2 = ""; //max >= ema169_0 && kLine3.close < ema12_0;
     // 引线穿过ema169，实体未穿过，当前收盘价低于ema12
     const signalDownTerm3 = max >= ema169_0 && maxBody <= ema169_0 && close < curEma12;
     if (
@@ -559,7 +559,7 @@ const calculateTradingSignal = (kLines) => {
         curEma12 < curEma144 &&
         curEma144 < curEma169 &&
         signalDownTerm1 &&
-        (signalUpTerm2 || signalUpTerm3)
+        (signalDownTerm2 || signalDownTerm3)
     ) {
         max = max > curEma169 ? curEma169 : max;
         return {
@@ -644,9 +644,10 @@ function run(params) {
 run({
     howManyCandle: 2,
     isProfitRun: 1,
-    firstProtectProfitRate: 0.1,
+    firstProtectProfitRate: 0.5,
     profitProtectRate: 0.9,
     howManyCandleForProfitRun: 0.5,
+    // targetTime: "2024-12-01_00-00-00",
 });
 module.exports = {
     evaluateStrategy: start,
