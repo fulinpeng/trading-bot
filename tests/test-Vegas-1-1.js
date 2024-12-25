@@ -38,7 +38,7 @@ const {
 const { calculateATR } = require("../utils/atr.js");
 const { calculateEMA } = require("../utils/ma.js");
 const fs = require("fs");
-let { kLineData } = require("./source/ethUSDT-15m.js");
+let { kLineData } = require("./source/ethUSDT-4h.js");
 
 let _kLineData = [...kLineData];
 const symbol = "ethUSDT";
@@ -143,7 +143,7 @@ const resetInit = () => {
     targetTime = null;
 };
 const start = (params) => {
-    // 每次需要初始化
+    // 每次需要初始化 ???? 检查初始化是否覆盖所有全局变量
     resetInit();
     if (params) {
         howManyCandle = params.howManyCandle;
@@ -647,7 +647,7 @@ run({
     firstProtectProfitRate: 0.5,
     profitProtectRate: 0.9,
     howManyCandleForProfitRun: 0.5,
-    targetTime: "2024-12-01_00-00-00",
+    // targetTime: "2024-12-01_00-00-00",
 });
 module.exports = {
     evaluateStrategy: start,
