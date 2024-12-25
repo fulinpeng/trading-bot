@@ -575,16 +575,16 @@ const gridPointTrading2 = () => {
     date.push(curkLine.closeTime);
 };
 
-// start(
-//     {
-//         timeDis: 8,
-//         profit: 2.9,
-//         howManyCandleHeight: 5,
-//         howManyNumForAvarageCandleHight: 12,
-//         // targetTime: "2024-02-03_23-40-00",
-//     },
-//     true,
-// );
+start(
+    {
+        timeDis: 8,
+        profit: 2.9,
+        howManyCandleHeight: 5,
+        howManyNumForAvarageCandleHight: 12,
+        // targetTime: "2024-02-03_23-40-00",
+    },
+    true,
+);
 
 module.exports = {
     evaluateStrategy: start,

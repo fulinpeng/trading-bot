@@ -69,6 +69,8 @@ let minMoney = 0;
 let openHistory = [];
 let closeHistory = [];
 let trendHistory = [];
+let openPriceHistory = [];
+let closePriceHistory = [];
 let testMoneyHistory = [];
 let readyTradingDirection = "hold";
 let hasOrder = false;
@@ -94,6 +96,7 @@ const setProfit = (orderPrice, currentPrice, closeTime) => {
     if (testMoney < minMoney) minMoney = testMoney;
     testMoneyHistory.push(testMoney);
     closeHistory.push(closeTime);
+    closePriceHistory.push(currentPrice);
     trendHistory.push(trend);
 };
 const setMinMoney = (orderPrice, currentPrice, closeTime) => {
@@ -499,6 +502,7 @@ const judgeAndTrading = (kLines) => {
             isReadyStopProfit = false;
             hasOrder = true;
             openHistory.push(curkLine.openTime); // 其实开单时间是：curkLine.closeTime，binance的时间显示的是open Time，方便调试这里记录openTime
+            openPriceHistory.push(curkLine.close);
             break;
         case "down":
             trend = "down";
@@ -507,6 +511,7 @@ const judgeAndTrading = (kLines) => {
             isReadyStopProfit = false;
             hasOrder = true;
             openHistory.push(curkLine.openTime); // 其实开单时间是：curkLine.closeTime，binance的时间显示的是open Time，方便调试这里记录openTime
+            openPriceHistory.push(curkLine.close);
             break;
         default:
             break;
@@ -638,7 +643,15 @@ function run(params) {
         var openHistory = ${JSON.stringify(openHistory, null, 2)}
         var closeHistory = ${JSON.stringify(closeHistory, null, 2)}
         var trendHistory = ${JSON.stringify(trendHistory, null, 2)}
-        var valueFormatter = (value, index) => '[openTime:' + openHistory[index] + ']' + '\\n\\r' + '[closeTime:' + closeHistory[index] + ']' + '\\n\\r' + '[trend:' + trendHistory[index] + ']' + '\\n\\r' +'[testMoney:' + value + ']'
+        var openPriceHistory = ${JSON.stringify(openPriceHistory, null, 2)}
+        var closePriceHistory = ${JSON.stringify(closePriceHistory, null, 2)}
+        var valueFormatter = (value, index) => '[openTime:' + openHistory[index] + ']' + '\\n\\r' + 
+        '[closeTime:' + closeHistory[index] + ']' + '\\n\\r' + 
+        '[trend:' + trendHistory[index] + ']' + '\\n\\r' +
+        '[openPrice:' + openPriceHistory[index] + ']' + '\\n\\r' +
+        '[closePriceHistory:' + closePriceHistory[index] + ']' + '\\n\\r' +
+        '[testMoney:' + value + ']' + '\\n\\r';
+
 
         var option = {
             xAxis: {
