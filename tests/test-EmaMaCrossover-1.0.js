@@ -514,7 +514,7 @@ function run(params) {
     console.log("length::", openHistory.length, closeHistory.length, trendHistory.length);
     // https://echarts.apache.org/examples/zh/editor.html?c=line-simple
     writeInFile(
-        `./tests/data/${symbol}-test-vegas.js`,
+        `./tests/data/${symbol}-test-EmaMaCrossover.js`,
         `
         var openHistory = ${JSON.stringify(openHistory, null, 2)}
         var closeHistory = ${JSON.stringify(closeHistory, null, 2)}
