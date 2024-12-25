@@ -82,17 +82,6 @@ function calculateBBKeltnerSqueeze(prices, length = 20, B2mult = 2.0, Kmult = 1.
     };
 }
 
-// 计算 BB-Keltner Squeeze
-// const result = calculateBBKeltnerSqueeze(prices);
-
-// console.log("B2basis:", result.B2basis);
-// console.log("B2upper:", result.B2upper);
-// console.log("B2lower:", result.B2lower);
-// console.log("Kma:", result.Kma);
-// console.log("Kupper:", result.Kupper);
-// console.log("Klower:", result.Klower);
-// console.log("Squeeze:", result.squeeze);
-
 // 反向开仓的挤压状态
 function getFanSqueeze(prices, length = 20, B2mult = 2.0, Kmult = 1.5) {
     const closePrices = prices.map((price) => price.close); // 获取所有的收盘价
