@@ -48,6 +48,8 @@ let howManyCandle = 1;
 let isProfitRun = 0;
 let firstProtectProfitRate = 0;
 let profitProtectRate = 0.6;
+let maxStopLossRate = 0.01;
+let invalidSigleStopRate = 0.02;
 let howManyCandleForProfitRun = 0.5;
 let emaPeriod = 10;
 let smaPeriod = 10;
@@ -128,6 +130,8 @@ const resetInit = () => {
     isProfitRun = 0;
     firstProtectProfitRate = 0;
     profitProtectRate = 0.6;
+    maxStopLossRate = 0.01;
+    invalidSigleStopRate = 0.02;
     howManyCandleForProfitRun = 0.5;
     fastPeriod = 12;
     gridPoints = [];
@@ -160,6 +164,8 @@ const start = (params) => {
         firstProtectProfitRate = params.firstProtectProfitRate;
         profitProtectRate = params.profitProtectRate;
         howManyCandleForProfitRun = params.howManyCandleForProfitRun;
+        maxStopLossRate = params.maxStopLossRate;
+        invalidSigleStopRate = params.invalidSigleStopRate;
         targetTime = params.targetTime;
     }
     if (targetTime) {
@@ -203,8 +209,6 @@ const start = (params) => {
         }
         // 有仓位就准备平仓
         else {
-            // 最大亏损值
-            setMinMoney(orderPrice, close);
             const [point1, point2] = gridPoints;
             // 先判断止损
             if (trend) {
@@ -288,6 +292,10 @@ const start = (params) => {
                     }
                 }
             }
+            if (hasOrder) {
+                // 最大亏损值
+                setMinMoney(orderPrice, close);
+            }
         }
     }
 
@@ -296,8 +304,6 @@ const start = (params) => {
         const len = _kLineData.length;
         const curkLine = _kLineData[len - 1];
         const { close, closeTime, low, high } = curkLine;
-        // 最大亏损值
-        setMinMoney(orderPrice, close);
         const [point1, point2] = gridPoints;
         if (hasOrder) {
             // 判断止损
@@ -335,6 +341,10 @@ const start = (params) => {
                 reset();
                 return;
             }
+        }
+        if (hasOrder) {
+            // 最大亏损值
+            setMinMoney(orderPrice, close);
         }
     }
 };
@@ -469,6 +479,12 @@ const calculateTradingSignal = (kLines) => {
     const signalUpTerm4 = rsi4 < rsi5 && rsi5 > 50 && rsi5 < 70;
     if (readyTradingDirection === "up" && signalUpTerm1 && signalUpTerm2 && signalUpTerm3 && signalUpTerm4) {
         min = min < emaMa5.sma ? emaMa5.sma : min;
+        if (min < close * (1 - invalidSigleStopRate)) {
+            return {
+                trend: "hold",
+            };
+        }
+        if (min < close * (1 - maxStopLossRate)) min = close * (1 - maxStopLossRate);
         return {
             trend: "up",
             stopLoss: min, // 止损
@@ -495,6 +511,12 @@ const calculateTradingSignal = (kLines) => {
     const signalDownTerm4 = rsi4 > rsi5 && rsi5 > 30 && rsi5 < 50;
     if (readyTradingDirection === "down" && signalDownTerm1 && signalDownTerm2 && signalDownTerm3 && signalDownTerm4) {
         max = max > emaMa5.sma ? emaMa5.sma : max;
+        if (max > close * (1 + invalidSigleStopRate)) {
+            return {
+                trend: "hold",
+            };
+        }
+        if (max > close * (1 + maxStopLossRate)) max = close * (1 + maxStopLossRate);
         return {
             trend: "down",
             stopLoss: max, // 止损
@@ -581,6 +603,8 @@ run({
     firstProtectProfitRate: 0.5,
     profitProtectRate: 0.9,
     howManyCandleForProfitRun: 0.5,
+    maxStopLossRate: 0.01,
+    invalidSigleStopRate: 0.05,
     // targetTime: "2024-12-01_00-00-00",
 });
 module.exports = {

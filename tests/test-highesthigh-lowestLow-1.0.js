@@ -38,7 +38,7 @@ const {
 const { calculateSimpleMovingAverage } = require("../utils/ma.js");
 const fs = require("fs");
 const symbol = "ethUSDT";
-let { kLineData } = require(`./source/${symbol}-4h.js`);
+let { kLineData } = require(`./source/${symbol}-1h.js`);
 
 let _kLineData = [...kLineData];
 let availableMoney = 100000;
@@ -46,11 +46,13 @@ let howManyCandle = 1;
 let isProfitRun = 0;
 let firstProtectProfitRate = 0;
 let profitProtectRate = 0.6;
-let howManyCandleForProfitRun = 0.5;
+let howManyCandleForProfitRun = 0.01;
+let maxStopLossRate = 0.01;
+let invalidSigleStopRate = 0.5;
 let emaPeriod = 60;
 let basePeriod = 25;
-const stopLossRatio = 6; // 止损 basePeriod * stopLossRatio
-const stopProfitRatio = 10; // 止盈 basePeriod * stopProfitRatio
+let stopLossRatio = 6; // 止损 basePeriod * stopLossRatio
+let stopProfitRatio = 10; // 止盈 basePeriod * stopProfitRatio
 
 const getQuantity = (currentPrice) => {
     return Math.round(availableMoney / currentPrice);
@@ -127,7 +129,8 @@ const resetInit = () => {
     firstProtectProfitRate = 0;
     profitProtectRate = 0.6;
     howManyCandleForProfitRun = 0.5;
-    fastPeriod = 12;
+    maxStopLossRate = 0.01;
+    invalidSigleStopRate = 0.02;
     gridPoints = [];
     trend = "";
     winNum = 0;
@@ -159,6 +162,12 @@ const start = (params) => {
         firstProtectProfitRate = params.firstProtectProfitRate;
         profitProtectRate = params.profitProtectRate;
         howManyCandleForProfitRun = params.howManyCandleForProfitRun;
+        maxStopLossRate = params.maxStopLossRate;
+        invalidSigleStopRate = params.invalidSigleStopRate;
+        emaPeriod = params.emaPeriod;
+        basePeriod = params.basePeriod;
+        stopLossRatio = params.stopLossRatio;
+        stopProfitRatio = params.stopProfitRatio;
         targetTime = params.targetTime;
     }
     if (targetTime) {
@@ -201,8 +210,6 @@ const start = (params) => {
         }
         // 有仓位就准备平仓
         else {
-            // 最大亏损值
-            setMinMoney(orderPrice, close);
             const [point1, point2] = gridPoints;
             // 先判断止损
             if (trend) {
@@ -286,6 +293,10 @@ const start = (params) => {
                     }
                 }
             }
+            if (hasOrder) {
+                // 最大亏损值
+                setMinMoney(orderPrice, close);
+            }
         }
     }
 
@@ -294,8 +305,6 @@ const start = (params) => {
         const len = _kLineData.length;
         const curkLine = _kLineData[len - 1];
         const { close, closeTime, low, high } = curkLine;
-        // 最大亏损值
-        setMinMoney(orderPrice, close);
         const [point1, point2] = gridPoints;
         if (hasOrder) {
             // 判断止损
@@ -333,6 +342,10 @@ const start = (params) => {
                 reset();
                 return;
             }
+        }
+        if (hasOrder) {
+            // 最大亏损值
+            setMinMoney(orderPrice, close);
         }
     }
 };
@@ -450,9 +463,16 @@ const calculateTradingSignal = (kLines) => {
     if (readyTradingDirection === "up" && signalUpTerm1 && signalUpTerm2) {
         const highLowStopLoss = calculateHighLow(kLines, basePeriod * stopLossRatio);
         const highLowStopProfit = calculateHighLow(kLines, basePeriod * stopProfitRatio);
+        let min = highLowStopLoss.minLow;
+        if (min < close * (1 - invalidSigleStopRate)) {
+            return {
+                trend: "hold",
+            };
+        }
+        if (min < close * (1 - maxStopLossRate)) min = close * (1 - maxStopLossRate);
         return {
             trend: "up",
-            stopLoss: highLowStopLoss.minLow, // 止损
+            stopLoss: min, // 止损
             stopProfit: highLowStopProfit.maxHigh, // 止盈
             // stopProfit: close + (close - highLowStopLoss.minLow) * howManyCandle, // 止盈
         };
@@ -463,10 +483,17 @@ const calculateTradingSignal = (kLines) => {
     if (readyTradingDirection === "down" && signalDownTerm1 && signalDownTerm2) {
         const highLowStopLoss = calculateHighLow(kLines, basePeriod * stopLossRatio);
         const highLowStopProfit = calculateHighLow(kLines, basePeriod * stopProfitRatio);
+        let max = highLowStopLoss.maxHigh;
+        if (max > close * (1 + invalidSigleStopRate)) {
+            return {
+                trend: "hold",
+            };
+        }
+        if (max > close * (1 + maxStopLossRate)) max = close * (1 + maxStopLossRate);
         return {
             trend: "down",
-            stopLoss: highLowStopLoss.minLow, // 止损
-            stopProfit: highLowStopProfit.maxHigh, // 止盈
+            stopLoss: highLowStopLoss.maxHigh, // 止损
+            stopProfit: highLowStopProfit.minLow, // 止盈
             // stopProfit: close - (max - close) * howManyCandle, // 止盈
         };
     }
@@ -496,7 +523,7 @@ function run(params) {
     console.log("length::", openHistory.length, closeHistory.length, trendHistory.length);
     // https://echarts.apache.org/examples/zh/editor.html?c=line-simple
     writeInFile(
-        `./tests/data/${symbol}-test-EmaMaCrossover.js`,
+        `./tests/data/${symbol}-test-highesthigh-lowestLow.js`,
         `
         var openHistory = ${JSON.stringify(openHistory, null, 2)}
         var closeHistory = ${JSON.stringify(closeHistory, null, 2)}
@@ -544,10 +571,16 @@ function run(params) {
 }
 run({
     howManyCandle: 1,
-    isProfitRun: 0,
-    firstProtectProfitRate: 0,
+    isProfitRun: 1,
+    firstProtectProfitRate: 0.5,
     profitProtectRate: 0.9,
     howManyCandleForProfitRun: 0.5,
+    maxStopLossRate: 0.05,
+    invalidSigleStopRate: 0.1,
+    emaPeriod: 60,
+    basePeriod: 25,
+    stopLossRatio: 6, // 6
+    stopProfitRatio: 10, // 10
     // targetTime: "2024-12-01_00-00-00",
 });
 module.exports = {

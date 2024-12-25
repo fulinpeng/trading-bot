@@ -49,6 +49,8 @@ let isProfitRun = 0;
 let firstProtectProfitRate = 0;
 let profitProtectRate = 0.6;
 let howManyCandleForProfitRun = 0.5;
+let maxStopLossRate = 0.01;
+let invalidSigleStopRate = 0.05;
 let fastPeriod = 12;
 
 const getQuantity = (currentPrice) => {
@@ -142,6 +144,9 @@ const resetInit = () => {
     firstProtectProfitRate = 0;
     profitProtectRate = 0.6;
     howManyCandleForProfitRun = 0.5;
+    maxStopLossRate = 0.01;
+    invalidSigleStopRate = 0.02;
+    invalidSigleStopRate = 0.02;
     fastPeriod = 12;
     gridPoints = [];
     trend = "";
@@ -174,6 +179,8 @@ const start = (params) => {
         firstProtectProfitRate = params.firstProtectProfitRate;
         profitProtectRate = params.profitProtectRate;
         howManyCandleForProfitRun = params.howManyCandleForProfitRun;
+        maxStopLossRate = params.maxStopLossRate;
+        invalidSigleStopRate = params.invalidSigleStopRate;
         targetTime = params.targetTime;
     }
     if (targetTime) {
@@ -220,8 +227,6 @@ const start = (params) => {
         }
         // 有仓位就准备平仓
         else {
-            // 最大亏损值
-            setMinMoney(orderPrice, close);
             const [point1, point2] = gridPoints;
             // 先判断止损
             if (trend) {
@@ -305,6 +310,10 @@ const start = (params) => {
                     }
                 }
             }
+            if (hasOrder) {
+                // 最大亏损值
+                setMinMoney(orderPrice, close);
+            }
         }
     }
 
@@ -313,8 +322,6 @@ const start = (params) => {
         const len = _kLineData.length;
         const curkLine = _kLineData[len - 1];
         const { close, closeTime, low, high } = curkLine;
-        // 最大亏损值
-        setMinMoney(orderPrice, close);
         const [point1, point2] = gridPoints;
         if (hasOrder) {
             // 判断止损
@@ -353,6 +360,10 @@ const start = (params) => {
                 return;
             }
         }
+        if (hasOrder) {
+            // 最大亏损值
+            setMinMoney(orderPrice, close);
+        }
     }
 };
 const reset = () => {
@@ -372,9 +383,6 @@ const judgeTradingDirection = (kLines) => {
     let [marsi1, marsi2, marsi3, marsi4, marsi5] = getLastKlines(rsiArr, 5);
 
     let { openTime, high, low, close } = kLine3;
-    if (openTime === "2024-12-19_20-00-00") {
-        console.log("!!!!!!!!!!!!!!!!!!!!!", nmacd5, marsi5);
-    }
 
     // 多头行情
     // 准备条件一: nmacd金叉
@@ -401,9 +409,6 @@ const judgeTradingDirection2 = (kLines) => {
     let [marsi1, marsi2, marsi3, marsi4, marsi5] = getLastKlines(rsiArr, 5);
 
     let { openTime, high, low, close } = kLine3;
-    if (openTime === "2024-12-19_20-00-00") {
-        console.log("!!!!!!!!!!!!!!!!!!!!!", nmacd5, marsi5);
-    }
 
     // 多头行情
     // 准备条件一: marsi金叉
@@ -535,6 +540,12 @@ const calculateTradingSignal = (kLines) => {
     // marsi 大于 rsi
     const signalUpTerm3 = marsi5.rsi > marsi5.smoothedRsi;
     if (signalUpTerm0 && signalUpTerm1 && signalUpTerm2 && signalUpTerm3) {
+        if (min < close * (1 - invalidSigleStopRate)) {
+            return {
+                trend: "hold",
+            };
+        }
+        if (min < close * (1 - maxStopLossRate)) min = close * (1 - maxStopLossRate);
         return {
             trend: "up",
             stopLoss: min, // 止损
@@ -564,6 +575,12 @@ const calculateTradingSignal = (kLines) => {
     // marsi 小于 rsi
     const signalDownTerm3 = marsi5.rsi < marsi5.smoothedRsi;
     if (signalDownTerm0 && signalDownTerm1 && signalDownTerm2 && signalDownTerm3) {
+        if (max > close * (1 + invalidSigleStopRate)) {
+            return {
+                trend: "hold",
+            };
+        }
+        if (max > close * (1 + maxStopLossRate)) max = close * (1 + maxStopLossRate);
         return {
             trend: "down",
             stopLoss: max, // 止损
@@ -646,10 +663,12 @@ function run(params) {
 }
 run({
     howManyCandle: 1,
-    isProfitRun: 1,
+    isProfitRun: 0,
     firstProtectProfitRate: 0.5,
     profitProtectRate: 0.9,
     howManyCandleForProfitRun: 0.5,
+    maxStopLossRate: 0.05,
+    invalidSigleStopRate: 0.1,
     // targetTime: "2024-12-01_00-00-00",
 });
 module.exports = {

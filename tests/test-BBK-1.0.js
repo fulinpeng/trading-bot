@@ -681,8 +681,8 @@ function run(params) {
 }
 run({
     howManyCandle: 2,
-    isProfitRun: 1,
-    firstProtectProfitRate: 0.5,
+    isProfitRun: 0,
+    firstProtectProfitRate: 0,
     profitProtectRate: 0.9,
     howManyCandleForProfitRun: 0.5,
     maxStopLossRate: 0.05,
