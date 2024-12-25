@@ -99,7 +99,7 @@ const setProfit = (orderPrice, currentPrice, closeTime) => {
     trendHistory.push(trend);
 };
 const setMinMoney = (orderPrice, currentPrice, closeTime) => {
-    const _testMoney = 0;
+    let _testMoney = 0;
     if (trend === "up") {
         _testMoney = quantity * (currentPrice - orderPrice) - quantity * (orderPrice + currentPrice) * 0.0007;
     }
