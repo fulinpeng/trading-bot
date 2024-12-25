@@ -120,7 +120,7 @@ const getDate = (date, showMillise) => {
 // 计算数组平均值的函数
 function calculateAverage(values, period) {
     if (period) {
-        const sum = values.slice(0, period).reduce((acc, val) => acc + val, 0);
+        const sum = values.slice(-period).reduce((acc, val) => acc + val, 0);
         return sum / period;
     } else {
         const sum = values.reduce((acc, val) => acc + val, 0);
@@ -211,25 +211,25 @@ function calculateHighLow(klineData, period = 25) {
     const recentData = klineData.slice(-period);
 
     // 初始化最高价和最低价
-    let highestHigh = Number.MIN_VALUE;
-    let lowestLow = Number.MAX_VALUE;
+    let maxHigh = Number.MIN_VALUE;
+    let minLow = Number.MAX_VALUE;
 
     // 遍历最近25根K线数据，找出最高价和最低价
     recentData.forEach((kline) => {
         const high = parseFloat(kline.high);
         const low = parseFloat(kline.low);
 
-        if (high > highestHigh) {
-            highestHigh = high;
+        if (high > maxHigh) {
+            maxHigh = high;
         }
-        if (low < lowestLow) {
-            lowestLow = low;
+        if (low < minLow) {
+            minLow = low;
         }
     });
 
     return {
-        highestHigh,
-        lowestLow,
+        maxHigh,
+        minLow,
     };
 }
 function getSequenceArr(diff, num) {

@@ -39,10 +39,10 @@ const calculateNormalizedMACD = require("../utils/nmacd");
 const calculateRSI = require("../utils/rsi_marsi");
 const { calculateSimpleMovingAverage } = require("../utils/ma.js");
 const fs = require("fs");
-let { kLineData } = require("./source/solUSDT-4h.js");
+const symbol = "ethUSDT";
+let { kLineData } = require(`./source/${symbol}-4h.js`);
 
 let _kLineData = [...kLineData];
-const symbol = "solUSDT";
 let availableMoney = 100000;
 let howManyCandle = 1;
 let isProfitRun = 0;
@@ -101,12 +101,7 @@ const setProfit = (orderPrice, currentPrice, closeTime) => {
 const initEveryIndex = (historyClosePrices) => {
     const len = historyClosePrices.length;
     for (let i = len - 20; i < len; i++) {
-        // 计算 nmacd
-        setNmacdArr(historyClosePrices.slice(0, i));
-        // 计算 ma_rsi
-        setRsiArr(historyClosePrices.slice(0, i));
-        // 计算 ema
-        setEmaArr(historyClosePrices.slice(0, i));
+        setEveryIndex(historyClosePrices.slice(0, i));
     }
 };
 const setEveryIndex = (historyClosePrices) => {

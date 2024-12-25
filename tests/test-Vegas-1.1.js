@@ -38,10 +38,10 @@ const {
 const { calculateATR } = require("../utils/atr.js");
 const { calculateEMA } = require("../utils/ma.js");
 const fs = require("fs");
-let { kLineData } = require("./source/ethUSDT-4h.js");
+const symbol = "ethUSDT";
+let { kLineData } = require(`./source/${symbol}-4h.js`);
 
 let _kLineData = [...kLineData];
-const symbol = "ethUSDT";
 let availableMoney = 100000;
 let howManyCandle = 1;
 let isProfitRun = 0;
@@ -97,7 +97,7 @@ const setProfit = (orderPrice, currentPrice, closeTime) => {
 const initEveryIndex = (historyClosePrices) => {
     const len = historyClosePrices.length;
     for (let i = len - 20; i < len; i++) {
-        setEmaArr(historyClosePrices.slice(0, i));
+        setEveryIndex(historyClosePrices.slice(0, i));
     }
 };
 const setEveryIndex = (historyClosePrices) => {
