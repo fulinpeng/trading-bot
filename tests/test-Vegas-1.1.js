@@ -83,7 +83,7 @@ let ema169 = [];
 const EMA_PERIOD = [fastPeriod, 144, 169];
 
 let maxStopLossMoney = 0;
-const setProfit = (orderPrice, currentPrice, closeTime) => {
+const setProfit = (orderPrice, currentPrice, time) => {
     if (trend === "up") {
         testMoney =
             testMoney + quantity * (currentPrice - orderPrice) - quantity * (orderPrice + currentPrice) * 0.0007;
@@ -95,7 +95,7 @@ const setProfit = (orderPrice, currentPrice, closeTime) => {
     if (testMoney > maxMoney) maxMoney = testMoney;
     if (testMoney < minMoney) minMoney = testMoney;
     testMoneyHistory.push(testMoney);
-    closeHistory.push(closeTime);
+    closeHistory.push(time);
     closePriceHistory.push(currentPrice);
     trendHistory.push(trend);
 };
@@ -191,7 +191,7 @@ const start = (params) => {
         setEveryIndex([...historyClosePrices]);
 
         const curkLine = _kLineData[idx];
-        const { open, close, closeTime, low, high } = curkLine;
+        const { open, close, openTime, closeTime, low, high } = curkLine;
 
         let [emaFast1, emaFast2, emaFast3, emaFast4, emaFast5] = getLastKlines(emaFast, 5);
         let [ema144_1, ema144_2, ema144_3, ema144_4, ema144_5] = getLastKlines(ema144, 5);
@@ -222,7 +222,7 @@ const start = (params) => {
                 if (trend === "up") {
                     // low 小于 point1 就止损，否则继续持有
                     if (low <= point1) {
-                        setProfit(orderPrice, point1, closeTime);
+                        setProfit(orderPrice, point1, openTime);
                         failNum++;
                         reset();
                         continue;
@@ -243,7 +243,7 @@ const start = (params) => {
                 if (trend === "down") {
                     // high 大于 point2 就止损，否则继续持有
                     if (high >= point2) {
-                        setProfit(orderPrice, point2, closeTime);
+                        setProfit(orderPrice, point2, openTime);
                         failNum++;
                         reset();
                         continue;
@@ -284,14 +284,14 @@ const start = (params) => {
                 } else {
                     // 判断止盈：上面没有被止损，也没被止盈，那看下面是否能止盈，high 大于 point2 就止盈利，否则继续持有
                     if (trend === "up" && high >= point2) {
-                        setProfit(orderPrice, point2, closeTime);
+                        setProfit(orderPrice, point2, openTime);
                         winNum++;
                         reset();
                         continue;
                     }
                     // 上面没有被止损，那看是否能止盈，low 小于 point1 就止盈利，否则继续持有
                     if (hasOrder && trend === "down" && low <= point1) {
-                        setProfit(orderPrice, point1, closeTime);
+                        setProfit(orderPrice, point1, openTime);
                         winNum++;
                         reset();
                         continue;
@@ -316,7 +316,7 @@ const start = (params) => {
             if (trend === "up") {
                 // low 小于 point1 就止损，否则继续持有
                 if (low <= point1) {
-                    setProfit(orderPrice, point1, closeTime);
+                    setProfit(orderPrice, point1, openTime);
                     failNum++;
                     reset();
                     return;
@@ -325,7 +325,7 @@ const start = (params) => {
             if (hasOrder && trend === "down") {
                 // high 大于 point2 就止损，否则继续持有
                 if (high >= point2) {
-                    setProfit(orderPrice, point2, closeTime);
+                    setProfit(orderPrice, point2, openTime);
                     failNum++;
                     reset();
                     return;
@@ -335,14 +335,14 @@ const start = (params) => {
         if (hasOrder) {
             // 判断止盈：上面没有被止损，也没被止盈，那看下面是否能止盈，high 大于 point2 就止盈利，否则继续持有
             if (trend === "up" && high >= point2) {
-                setProfit(orderPrice, point2, closeTime);
+                setProfit(orderPrice, point2, openTime);
                 winNum++;
                 reset();
                 return;
             }
             // 上面没有被止损，那看是否能止盈，low 小于 point1 就止盈利，否则继续持有
             if (hasOrder && trend === "down" && low <= point1) {
-                setProfit(orderPrice, point1, closeTime);
+                setProfit(orderPrice, point1, openTime);
                 winNum++;
                 reset();
                 return;

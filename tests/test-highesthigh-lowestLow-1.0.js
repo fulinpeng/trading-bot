@@ -38,7 +38,7 @@ const {
 const { calculateSimpleMovingAverage } = require("../utils/ma.js");
 const fs = require("fs");
 const symbol = "ethUSDT";
-let { kLineData } = require(`./source/${symbol}-1h.js`);
+let { kLineData } = require(`./source/${symbol}-4h.js`);
 
 let _kLineData = [...kLineData];
 let availableMoney = 100000;
@@ -70,6 +70,8 @@ let minMoney = 0;
 let openHistory = [];
 let closeHistory = [];
 let trendHistory = [];
+let openPriceHistory = [];
+let closePriceHistory = [];
 let testMoneyHistory = [];
 let readyTradingDirection = "hold";
 let hasOrder = false;
@@ -79,7 +81,7 @@ let highLowBase = undefined;
 let rsiArr = [];
 
 let maxStopLossMoney = 0;
-const setProfit = (orderPrice, currentPrice, closeTime) => {
+const setProfit = (orderPrice, currentPrice, time) => {
     if (trend === "up") {
         testMoney =
             testMoney + quantity * (currentPrice - orderPrice) - quantity * (orderPrice + currentPrice) * 0.0007;
@@ -91,7 +93,8 @@ const setProfit = (orderPrice, currentPrice, closeTime) => {
     if (testMoney > maxMoney) maxMoney = testMoney;
     if (testMoney < minMoney) minMoney = testMoney;
     testMoneyHistory.push(testMoney);
-    closeHistory.push(closeTime);
+    closeHistory.push(time);
+    closePriceHistory.push(currentPrice);
     trendHistory.push(trend);
 };
 const setMinMoney = (orderPrice, currentPrice, closeTime) => {
@@ -188,7 +191,7 @@ const start = (params) => {
         setEveryIndex([...historyClosePrices], curKLines);
 
         const curkLine = _kLineData[idx];
-        const { open, close, closeTime, low, high } = curkLine;
+        const { open, close, openTime, closeTime, low, high } = curkLine;
 
         let [ema1, ema2, ema3, ema4, ema5] = getLastKlines(emaArr, 5);
 
@@ -217,7 +220,7 @@ const start = (params) => {
                 if (trend === "up") {
                     // low 小于 point1 就止损，否则继续持有
                     if (low <= point1) {
-                        setProfit(orderPrice, point1, closeTime);
+                        setProfit(orderPrice, point1, openTime);
                         failNum++;
                         reset();
                         continue;
@@ -238,7 +241,7 @@ const start = (params) => {
                 if (trend === "down") {
                     // high 大于 point2 就止损，否则继续持有
                     if (high >= point2) {
-                        setProfit(orderPrice, point2, closeTime);
+                        setProfit(orderPrice, point2, openTime);
                         failNum++;
                         reset();
                         continue;
@@ -279,14 +282,14 @@ const start = (params) => {
                 } else {
                     // 判断止盈：上面没有被止损，也没被止盈，那看下面是否能止盈，high 大于 point2 就止盈利，否则继续持有
                     if (trend === "up" && high >= point2) {
-                        setProfit(orderPrice, point2, closeTime);
+                        setProfit(orderPrice, point2, openTime);
                         winNum++;
                         reset();
                         continue;
                     }
                     // 上面没有被止损，那看是否能止盈，low 小于 point1 就止盈利，否则继续持有
                     if (hasOrder && trend === "down" && low <= point1) {
-                        setProfit(orderPrice, point1, closeTime);
+                        setProfit(orderPrice, point1, openTime);
                         winNum++;
                         reset();
                         continue;
@@ -311,7 +314,7 @@ const start = (params) => {
             if (trend === "up") {
                 // low 小于 point1 就止损，否则继续持有
                 if (low <= point1) {
-                    setProfit(orderPrice, point1, closeTime);
+                    setProfit(orderPrice, point1, openTime);
                     failNum++;
                     reset();
                     return;
@@ -320,7 +323,7 @@ const start = (params) => {
             if (hasOrder && trend === "down") {
                 // high 大于 point2 就止损，否则继续持有
                 if (high >= point2) {
-                    setProfit(orderPrice, point2, closeTime);
+                    setProfit(orderPrice, point2, openTime);
                     failNum++;
                     reset();
                     return;
@@ -330,14 +333,14 @@ const start = (params) => {
         if (hasOrder) {
             // 判断止盈：上面没有被止损，也没被止盈，那看下面是否能止盈，high 大于 point2 就止盈利，否则继续持有
             if (trend === "up" && high >= point2) {
-                setProfit(orderPrice, point2, closeTime);
+                setProfit(orderPrice, point2, openTime);
                 winNum++;
                 reset();
                 return;
             }
             // 上面没有被止损，那看是否能止盈，low 小于 point1 就止盈利，否则继续持有
             if (hasOrder && trend === "down" && low <= point1) {
-                setProfit(orderPrice, point1, closeTime);
+                setProfit(orderPrice, point1, openTime);
                 winNum++;
                 reset();
                 return;
@@ -434,6 +437,7 @@ const judgeAndTrading = (kLines) => {
             isReadyStopProfit = false;
             hasOrder = true;
             openHistory.push(curkLine.openTime); // 其实开单时间是：curkLine.closeTime，binance的时间显示的是open Time，方便调试这里记录openTime
+            openPriceHistory.push(curkLine.close);
             break;
         case "down":
             trend = "down";
@@ -442,6 +446,7 @@ const judgeAndTrading = (kLines) => {
             isReadyStopProfit = false;
             hasOrder = true;
             openHistory.push(curkLine.openTime); // 其实开单时间是：curkLine.closeTime，binance的时间显示的是open Time，方便调试这里记录openTime
+            openPriceHistory.push(curkLine.close);
             break;
         default:
             break;
@@ -528,7 +533,15 @@ function run(params) {
         var openHistory = ${JSON.stringify(openHistory, null, 2)}
         var closeHistory = ${JSON.stringify(closeHistory, null, 2)}
         var trendHistory = ${JSON.stringify(trendHistory, null, 2)}
-        var valueFormatter = (value, index) => '[openTime:' + openHistory[index] + ']' + '\\n\\r' + '[closeTime:' + closeHistory[index] + ']' + '\\n\\r' + '[trend:' + trendHistory[index] + ']' + '\\n\\r' +'[testMoney:' + value + ']'
+        var openPriceHistory = ${JSON.stringify(openPriceHistory, null, 2)}
+        var closePriceHistory = ${JSON.stringify(closePriceHistory, null, 2)}
+        var valueFormatter = (value, index) => '[openTime:' + openHistory[index] + ']' + '\\n\\r' + 
+        '[closeTime:' + closeHistory[index] + ']' + '\\n\\r' + 
+        '[trend:' + trendHistory[index] + ']' + '\\n\\r' +
+        '[openPrice:' + openPriceHistory[index] + ']' + '\\n\\r' +
+        '[closePriceHistory:' + closePriceHistory[index] + ']' + '\\n\\r' +
+        '[testMoney:' + value + ']' + '\\n\\r';
+
 
         var option = {
             xAxis: {
