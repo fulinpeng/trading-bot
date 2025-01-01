@@ -1,18 +1,18 @@
 // https://fapi.binance.com/fapi/v1/klines?symbol=zkUSDT&interval=1m&limit=1440&startTime=1721836800000
 
-const axios = require("axios"); // HTTP请求库
-const { getDate } = require("./utils/functions.js");
-const fs = require("fs");
-const fapi = "https://fapi.binance.com/fapi";
-const { HttpsProxyAgent } = require("https-proxy-agent");
-const { SocksProxyAgent } = require("socks-proxy-agent");
+const axios=require("axios"); // HTTP请求库
+const {getDate}=require("./utils/functions.js");
+const fs=require("fs");
+const fapi="https://fapi.binance.com/fapi";
+const {HttpsProxyAgent}=require("https-proxy-agent");
+const {SocksProxyAgent}=require("socks-proxy-agent");
 // const symbol = "1000flokiUSDT";
 
 console.log("🚀process.argv:", process.argv);
 
-let symbol = process.argv[2];
-let startTime = Number(process.argv[3]);
-let num = Number(process.argv[4]);
+let symbol=process.argv[2];
+let startTime=Number(process.argv[3]);
+let num=Number(process.argv[4]);
 
 // 检查参数是否提供正确
 if (!symbol) {
@@ -28,18 +28,18 @@ if (!num) {
     process.exit(1);
 }
 // mac 小地球仪
-let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
+let httpProxyAgent=new HttpsProxyAgent("http://127.0.0.1:31550");
 // 创建公用的 Axios 实例
-const axiosInstance = axios.create({
+const axiosInstance=axios.create({
     // headers: {
     //     "Content-Type": "application/json",
     //     "X-MBX-APIKEY": apiKey,
     // },
-    httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
+    // httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
 });
-const getKLineData = async (symbol, interval, limit, startTime) => {
+const getKLineData=async (symbol, interval, limit, startTime) => {
     try {
-        const response = await axiosInstance.get(`${fapi}/v1/klines`, {
+        const response=await axiosInstance.get(`${fapi}/v1/klines`, {
             params: {
                 symbol,
                 interval,
@@ -67,15 +67,15 @@ const getKLineData = async (symbol, interval, limit, startTime) => {
     }
 };
 
-const getDatas = async (symbol, startTime, num) => {
-    let limit = 60 * 24; // 一天有 1m 级别k线 1440 根
-    let result = [];
-    let oneDay = 24 * 60 * 60 * 1000; // ms
-    for (let i = 0; i < num; i++) {
-        let _startTime = startTime + oneDay * i;
-        let resItem = await getKLineData(symbol, `1m`, limit, _startTime);
+const getDatas=async (symbol, startTime, num) => {
+    let limit=60*24; // 一天有 1m 级别k线 1440 根
+    let result=[];
+    let oneDay=24*60*60*1000; // ms
+    for (let i=0;i<num;i++) {
+        let _startTime=startTime+oneDay*i;
+        let resItem=await getKLineData(symbol, `1m`, limit, _startTime);
         if (resItem) {
-            result = result.concat(resItem);
+            result=result.concat(resItem);
         } else {
             console.log("🚀 ~ file: getKlines.js:46 ~ getDatas ~ resItem:", resItem);
             // getKLineData 返回没有数据，说明api次数被用完了

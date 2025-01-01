@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>{{title}}回测</title>
+	<script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+	<style>
+		#chart {
+			width: 100%;
+			height: 600px;
+		}
+
+		#chart2 {
+			margin-top: 50px;
+			width: 100%;
+			height: 600px;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="chart"></div>
+	<div id="chart2"></div>
+	<script>
+		const chart=echarts.init(document.getElementById('chart'));
+		const chart2=echarts.init(document.getElementById('chart2'));
+
+		const upColor="#98f0b0";
+		const upBorderColor="#98f0b0";
+		const downColor="#f19f9f";
+		const downBorderColor="#f19f9f";
+
+		const symbol="{{symbol}}"
+		const timeLevel="{{timeLevel}}"
+		const kLineData={{kLineData}}
+		const option={{option}}
+		option.tooltip.valueFormatter=eval(option.tooltip.valueFormatter)
+		const openHistory={{openHistory}}
+		const closeHistory={{closeHistory}}
+		const openPriceHistory={{openPriceHistory}}
+		const closePriceHistory={{closePriceHistory}}
+		const trendHistory={{trendHistory}}
+		const curTestMoneyHistory={{curTestMoneyHistory}}
+
+		// Each item: open，close，lowest，highest
+		function splitData(rawData) {
+			const categoryData=[];
+			const values=[];
+			for (var i=0;i<rawData.length;i++) {
+				categoryData.push(rawData[i].splice(0, 1)[0]);
+				values.push(rawData[i]);
+			}
+			return {
+				categoryData: categoryData,
+				values: values,
+			};
+		}
+		function calculateMA(dayCount) {
+			var result=[];
+			for (var i=0, len=data0.values.length;i<len;i++) {
+				if (i<dayCount) {
+					result.push("-");
+					continue;
+				}
+				var sum=0;
+				for (var j=0;j<dayCount;j++) {
+					sum+=+data0.values[i-j][1];
+				}
+				result.push(sum/dayCount);
+			}
+			return result;
+		}
+		let data0=splitData(kLineData.map(v => [v.openTime, v.open, v.close, v.low, v.high, v.closeTime]))
+
+		const markArea=openHistory.map((t, i) => {
+			if (i===1) {
+				let value=trendHistory[i]==='up'? (closePriceHistory[i]-openPriceHistory[i]).toFixed(8):(openPriceHistory[i]-closePriceHistory[i]).toFixed(8)
+			}
+			return [
+				{
+					coord: [t, openPriceHistory[i]],
+					itemStyle: {
+						color: trendHistory[i]==='up'? 'green':"red",
+						opacity: 0.8,
+					},
+				},
+				{
+					coord: [closeHistory[i], closePriceHistory[i]],
+				},
+			]
+		})
+
+		const markPointData=openHistory.map((t, i) => {
+			let value=trendHistory[i]==='up'? (closePriceHistory[i]-openPriceHistory[i]).toFixed(8):(openPriceHistory[i]-closePriceHistory[i]).toFixed(8)
+			let protectByOrderPrice=closePriceHistory[i]-openPriceHistory[i]===0; // 保本损
+			return {
+				name: "Mark",
+				coord: [t, openPriceHistory[i]],
+				value: curTestMoneyHistory[i],
+				itemStyle: {
+					color: protectByOrderPrice? "blue":(trendHistory[i]==='up'? 'greenyellow':"orangered"),
+				},
+				symbol: value>0? 'pin':'triangle',
+				symbolRotate: value>0? 90:-90,
+				symbolOffset: value>0? [0, 0]:['-50%', 0],
+			}
+		})
+		const markLineData=openHistory.map((t, i) => {
+			let protectByOrderPrice=closePriceHistory[i]-openPriceHistory[i]===0; // 保本损
+			return protectByOrderPrice? [
+				{
+					coord: [t, openPriceHistory[i]],
+					itemStyle: {
+						color: "blue",
+					},
+				},
+				{
+					coord: [closeHistory[i], closePriceHistory[i]],
+					symbol: 'none' // circle
+				},
+			]:null
+		}).filter((t) => {
+			return !!t
+		})
+		var optionK={
+			title: {
+				text: `${symbol}${timeLevel}`,
+				left: 0,
+			},
+			tooltip: {
+				trigger: "axis",
+				axisPointer: {
+					type: "cross",
+				},
+			},
+			legend: {
+				data: [timeLevel, "MA144", "MA169"],
+			},
+			grid: {
+				left: "10%",
+				right: "10%",
+				bottom: "15%",
+			},
+			xAxis: {
+				type: "category",
+				data: data0.categoryData,
+				boundaryGap: false,
+				axisLine: {onZero: false},
+				splitLine: {show: false},
+				min: "dataMin",
+				max: "dataMax",
+			},
+			yAxis: {
+				scale: true,
+				splitArea: {
+					show: true,
+				},
+			},
+			dataZoom: [
+				{
+					type: "inside",
+					start: 50,
+					end: 100,
+				},
+				{
+					show: true,
+					type: "slider",
+					top: "90%",
+					start: 50,
+					end: 100,
+				},
+			],
+			series: [
+				{
+					name: timeLevel,
+					type: "candlestick",
+					data: data0.values,
+					itemStyle: {
+						color: upColor,
+						color0: downColor,
+						borderColor: upBorderColor,
+						borderColor0: downBorderColor,
+					},
+					markPoint: {
+						label: {
+							formatter: function (param) {
+								return param!=null? Math.round(param.value)+"":"";
+							},
+						},
+						// data: [
+						//     {
+						//         name: "Mark",
+						//         coord: ["2013/5/31", 2300],
+						//         value: 2300,
+						//         itemStyle: {
+						//             color: "rgb(41,60,85)",
+						//         },
+						//     },
+						// ],
+						tooltip: {
+							formatter: function (param) {
+								return param.name+"<br>"+(param.data.coord||"");
+							},
+						},
+					},
+					markArea: {
+						data: [
+							...markArea,
+						],
+						label: {
+							show: false,
+						},
+					},
+					markPoint: {
+						// label: {
+						//     formatter: function (param) {
+						//         return param != null ? Math.round(param.value) + "" : "";
+						//     },
+						// },
+						data: markPointData,
+						// tooltip: {
+						//     formatter: function (param) {
+						//         return param.name + "<br>" + (param.data.coord || "");
+						//     },
+						// },
+					},
+					markLine: {
+						// label: {
+						//     formatter: function (param) {
+						//         return param != null ? Math.round(param.value) + "" : "";
+						//     },
+						// },
+						data: markLineData,
+						// tooltip: {
+						//     formatter: function (param) {
+						//         return param.name + "<br>" + (param.data.coord || "");
+						//     },
+						// },
+					},
+				},
+				{
+					name: "MA144",
+					type: "line",
+					data: calculateMA(144),
+					smooth: true,
+					symbol: 'none',
+					lineStyle: {
+						opacity: 0.5,
+					},
+				},
+				{
+					name: "MA169",
+					type: "line",
+					symbol: 'none',
+					data: calculateMA(169),
+					smooth: true,
+					lineStyle: {
+						opacity: 0.5,
+					},
+				},
+			],
+		};
+
+		chart.setOption(optionK);
+		chart2.setOption(option);
+	</script>
+</body>
+
+</html>

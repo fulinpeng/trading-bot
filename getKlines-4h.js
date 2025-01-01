@@ -1,18 +1,18 @@
 // https://fapi.binance.com/fapi/v1/klines?symbol=zkUSDT&interval=4h&limit=1440&startTime=1721836800000
 
-const axios = require("axios"); // HTTP请求库
-const { getDate } = require("./utils/functions.js");
-const fs = require("fs");
-const fapi = "https://fapi.binance.com/fapi";
-const { HttpsProxyAgent } = require("https-proxy-agent");
-const { SocksProxyAgent } = require("socks-proxy-agent");
+const axios=require("axios"); // HTTP请求库
+const {getDate}=require("./utils/functions.js");
+const fs=require("fs");
+const fapi="https://fapi.binance.com/fapi";
+const {HttpsProxyAgent}=require("https-proxy-agent");
+const {SocksProxyAgent}=require("socks-proxy-agent");
 // const symbol = "1000flokiUSDT";
 
 console.log("🚀process.argv:", process.argv);
 
-let symbol = process.argv[2];
-let startTime = Number(process.argv[3]);
-let num = Number(process.argv[4]);
+let symbol=process.argv[2];
+let startTime=Number(process.argv[3]);
+let num=Number(process.argv[4]);
 
 // 检查参数是否提供正确
 if (!symbol) {
@@ -24,7 +24,7 @@ if (!startTime) {
     process.exit(1);
 }
 if (num) {
-    if (num < 8) {
+    if (num<8) {
         console.error("month 必须大于8");
         process.exit(1);
     }
@@ -33,18 +33,18 @@ if (num) {
     process.exit(1);
 }
 // mac 小地球仪
-let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
+let httpProxyAgent=new HttpsProxyAgent("http://127.0.0.1:31550");
 // 创建公用的 Axios 实例
-const axiosInstance = axios.create({
+const axiosInstance=axios.create({
     // headers: {
     //     "Content-Type": "application/json",
     //     "X-MBX-APIKEY": apiKey,
     // },
-    httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
+    // httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
 });
-const getKLineData = async (symbol, interval, limit, startTime) => {
+const getKLineData=async (symbol, interval, limit, startTime) => {
     try {
-        const response = await axiosInstance.get(`${fapi}/v1/klines`, {
+        const response=await axiosInstance.get(`${fapi}/v1/klines`, {
             params: {
                 symbol,
                 interval,
@@ -73,15 +73,15 @@ const getKLineData = async (symbol, interval, limit, startTime) => {
 };
 
 // num是多少个月的意思
-const getDatas = async (symbol, startTime, num) => {
-    let limit = (24 / 4) * 30 * 8; // 8个月有 4h 级别k线 1440 根
-    let result = [];
-    let eightMonth = 30 * 8 * 24 * 60 * 60 * 1000; // ms
-    for (let i = 0; i <= parseInt(num / 8) + 1; i++) {
-        let _startTime = startTime + eightMonth * i;
-        let resItem = await getKLineData(symbol, `4h`, limit, _startTime);
+const getDatas=async (symbol, startTime, num) => {
+    let limit=(24/4)*30*8; // 8个月有 4h 级别k线 1440 根
+    let result=[];
+    let eightMonth=30*8*24*60*60*1000; // ms
+    for (let i=0;i<=parseInt(num/8)+1;i++) {
+        let _startTime=startTime+eightMonth*i;
+        let resItem=await getKLineData(symbol, `4h`, limit, _startTime);
         if (resItem) {
-            result = result.concat(resItem);
+            result=result.concat(resItem);
         } else {
             console.log("🚀 ~ file: getKlines.js:46 ~ getDatas ~ resItem:", resItem);
             // getKLineData 返回没有数据，说明api次数被用完了
