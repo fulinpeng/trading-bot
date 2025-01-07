@@ -38,10 +38,16 @@ const {
 const {calculateSimpleMovingAverage}=require("../utils/ma.js");
 const fs=require("fs");
 const symbol="dogeUSDT";
-let {kLineData}=require(`./source/${symbol}-1h.js`);
+let {kLineData}=require(`./source/${symbol}-2h.js`);
 
+const DefaultAvailableMoney=100
+let maxAvailableMoney=0;
 let _kLineData=[...kLineData];
-let availableMoney=100;
+let numForAverage=12;
+let double=0;
+let lossCount=0
+let maxLossCount=2
+let availableMoney=DefaultAvailableMoney*(1+lossCount)
 let howManyCandle=1;
 let isProfitRun=0;
 let firstProtectProfitRate=0;
@@ -55,6 +61,7 @@ let stopLossRatio=6; // 止损 basePeriod * stopLossRatio
 let stopProfitRatio=10; // 止盈 basePeriod * stopProfitRatio
 
 const getQuantity=(currentPrice) => {
+	availableMoney=DefaultAvailableMoney*(1+lossCount)
 	return Math.round(availableMoney/currentPrice);
 };
 
@@ -92,6 +99,13 @@ const setProfit=(orderPrice, currentPrice, time) => {
 		curTestMoney=quantity*(orderPrice-currentPrice)-quantity*(orderPrice+currentPrice)*0.0007;
 	}
 	testMoney+=curTestMoney
+	if (double) {
+		if (curTestMoney<=0) {
+			lossCount=lossCount+1>maxLossCount? maxLossCount:lossCount+1
+		} else {
+			lossCount=0
+		}
+	}
 	if (testMoney>maxMoney) maxMoney=testMoney;
 	if (testMoney<minMoney) minMoney=testMoney;
 	curTestMoneyHistory.push(curTestMoney);
@@ -99,6 +113,8 @@ const setProfit=(orderPrice, currentPrice, time) => {
 	closeHistory.push(time);
 	closePriceHistory.push(currentPrice);
 	trendHistory.push(trend);
+	// 最大亏损值
+	setMinMoney(orderPrice, currentPrice);
 };
 const setMinMoney=(orderPrice, currentPrice, closeTime) => {
 	let _testMoney=0;
@@ -130,9 +146,14 @@ const setHighLowBase=(curKLines) => {
 };
 
 const resetInit=() => {
+	_kLineData=[...kLineData];
 	howManyCandle=1;
 	isProfitRun=0;
+	double=0;
+	lossCount=0
+	maxLossCount=2
 	firstProtectProfitRate=0;
+	firstStopLossRate=0;
 	profitProtectRate=0.6;
 	howManyCandleForProfitRun=0.5;
 	maxStopLossRate=0.01;
@@ -156,6 +177,7 @@ const resetInit=() => {
 	emaArr=[];
 	highLowBase=undefined;
 	rsiArr=[];
+	numForAverage=12;
 
 	targetTime=null;
 };
@@ -163,17 +185,22 @@ const start=(params) => {
 	// 每次需要初始化 ???? 检查初始化是否覆盖所有全局变量
 	resetInit();
 	if (params) {
-		howManyCandle=params.howManyCandle;
-		isProfitRun=params.isProfitRun;
-		firstProtectProfitRate=params.firstProtectProfitRate;
-		profitProtectRate=params.profitProtectRate;
-		howManyCandleForProfitRun=params.howManyCandleForProfitRun;
-		maxStopLossRate=params.maxStopLossRate;
-		invalidSigleStopRate=params.invalidSigleStopRate;
 		emaPeriod=params.emaPeriod;
 		basePeriod=params.basePeriod;
 		stopLossRatio=params.stopLossRatio;
 		stopProfitRatio=params.stopProfitRatio;
+
+		numForAverage=params.numForAverage;
+		howManyCandle=params.howManyCandle;
+		isProfitRun=params.isProfitRun;
+		firstProtectProfitRate=params.firstProtectProfitRate;
+		firstStopLossRate=params.firstStopLossRate;
+		profitProtectRate=params.profitProtectRate;
+		howManyCandleForProfitRun=params.howManyCandleForProfitRun;
+		maxStopLossRate=params.maxStopLossRate;
+		invalidSigleStopRate=params.invalidSigleStopRate;
+		double=params.double;
+		maxLossCount=params.maxLossCount;
 		targetTime=params.targetTime;
 	}
 	if (targetTime) {
@@ -188,7 +215,7 @@ const start=(params) => {
 		const curKLines=_kLineData.slice(idx-500, idx);
 		const historyClosePrices=curKLines.map((v) => v.close);
 
-		candleHeight=calculateCandleHeight(_kLineData.slice(idx-12, idx));
+		candleHeight=calculateCandleHeight(_kLineData.slice(idx-numForAverage, idx));
 
 		// 设置各种指标
 		setEveryIndex([...historyClosePrices], curKLines);
@@ -210,7 +237,7 @@ const start=(params) => {
 			// 开仓：没有仓位就根据 readyTradingDirection 开单
 			// 开单完成后会重置 readyTradingDirection
 			if (readyTradingDirection!=="hold") {
-				judgeAndTrading(_kLineData.slice(idx-500, idx));
+				judgeAndTrading(_kLineData.slice(idx-500, idx), params);
 			}
 			continue;
 		}
@@ -230,14 +257,28 @@ const start=(params) => {
 					}
 
 					if (firstProtectProfitRate) {
-						// 未达到初始止盈点时，根据ema12指标盈动止损，避免亏损过大
-						if (close<ema5&&close<open) {
-							gridPoints[0]=orderPrice+Math.abs(orderPrice-ema5)*firstProtectProfitRate;
-							// gridPoints = [
-							//     orderPrice + Math.abs(ema5 - orderPrice) * profitProtectRate,
-							//     ema5 + candleHeight * howManyCandleForProfitRun,
-							// ];
-							continue;
+						// const firstProfitPrice=orderPrice+Math.abs(orderPrice-point1)*firstProtectProfitRate
+						const firstProfitPrice=orderPrice+candleHeight*firstProtectProfitRate
+						if (close>firstProfitPrice) {
+							// 到初始止盈点时，并且该k线是阴线，移动止损到开仓价，避免盈利回撤
+							if (close<open) {
+								// 减少止损
+								gridPoints[0]=orderPrice//+Math.abs(orderPrice-firstProfitPrice)/2;
+								firstProtectProfitRate=0
+								continue;
+							}
+						}
+					}
+					if (firstStopLossRate) {
+						const firstStopPrice=orderPrice-Math.abs(orderPrice-point1)*firstStopLossRate
+						if (close<firstStopPrice) {
+							// 到初始止损点时，并且该k线是阳线，移动止盈到开仓价，避免亏损太多
+							if (close<open) {
+								// 减少止盈利接近开盘价
+								gridPoints[1]=orderPrice//+Math.abs(orderPrice-firstStopPrice)/25;
+								firstStopLossRate=0
+								continue;
+							}
 						}
 					}
 				}
@@ -250,14 +291,28 @@ const start=(params) => {
 						continue;
 					}
 					if (firstProtectProfitRate) {
-						// 未达到初始止盈点时，根据ema12指标盈动止损，避免亏损过大
-						if (close>ema5&&close>open) {
-							gridPoints[1]=orderPrice-Math.abs(orderPrice-ema5)*firstProtectProfitRate;
-							// gridPoints = [
-							//     ema5 - candleHeight * howManyCandleForProfitRun,
-							//     orderPrice - Math.abs(orderPrice - ema5) * profitProtectRate,
-							// ];
-							continue;
+						// const firstProfitPrice=orderPrice-Math.abs(orderPrice-point2)*firstProtectProfitRate
+						const firstProfitPrice=orderPrice-candleHeight*firstProtectProfitRate
+						if (close<firstProfitPrice) {
+							// 到初始止盈点时，并且该k线是阳线，移动止损到开仓价，避免盈利回撤
+							if (close>open) {
+								// 减少止损
+								gridPoints[1]=orderPrice//-Math.abs(orderPrice-firstProfitPrice)/25;
+								firstProtectProfitRate=0
+								continue;
+							}
+						}
+					}
+					if (firstStopLossRate) {
+						const firstStopPrice=orderPrice+Math.abs(orderPrice-point2)*firstStopLossRate
+						if (close>firstStopPrice) {
+							// 到初始止损点时，并且该k线是阴线，移动止盈到开仓价，避免亏损太多
+							if (close>open) {
+								// 减少止盈利接近开盘价
+								gridPoints[0]=orderPrice//+Math.abs(orderPrice-firstStopPrice)/25;
+								firstStopLossRate=0
+								continue;
+							}
 						}
 					}
 				}
@@ -298,10 +353,6 @@ const start=(params) => {
 						continue;
 					}
 				}
-			}
-			if (hasOrder) {
-				// 最大亏损值
-				setMinMoney(orderPrice, close);
 			}
 		}
 	}
@@ -348,10 +399,6 @@ const start=(params) => {
 				reset();
 				return;
 			}
-		}
-		if (hasOrder) {
-			// 最大亏损值
-			setMinMoney(orderPrice, close);
 		}
 	}
 };
@@ -425,7 +472,7 @@ const setGridPoints=(trend, stopLoss, stopProfit, _currentPrice) => {
 	}
 };
 // 判断+交易
-const judgeAndTrading=(kLines) => {
+const judgeAndTrading=(kLines, params) => {
 	// 根据指标判断是否可以开单
 	const curkLine=kLines[kLines.length-1];
 	const trendInfo=calculateTradingSignal(kLines);
@@ -441,6 +488,8 @@ const judgeAndTrading=(kLines) => {
 			hasOrder=true;
 			openHistory.push(curkLine.openTime); // 其实开单时间是：curkLine.closeTime，binance的时间显示的是open Time，方便调试这里记录openTime
 			openPriceHistory.push(curkLine.close);
+			firstProtectProfitRate=params.firstProtectProfitRate
+			firstStopLossRate=params.firstStopLossRate
 			break;
 		case "down":
 			trend="down";
@@ -450,6 +499,8 @@ const judgeAndTrading=(kLines) => {
 			hasOrder=true;
 			openHistory.push(curkLine.openTime); // 其实开单时间是：curkLine.closeTime，binance的时间显示的是open Time，方便调试这里记录openTime
 			openPriceHistory.push(curkLine.close);
+			firstProtectProfitRate=params.firstProtectProfitRate
+			firstStopLossRate=params.firstStopLossRate
 			break;
 		default:
 			break;
@@ -597,18 +648,21 @@ function run(params) {
 	);
 }
 run({
-	howManyCandle: 1,
-	isProfitRun: 1,
-	firstProtectProfitRate: 0.5,
-	profitProtectRate: 0.9,
-	howManyCandleForProfitRun: 0.5,
-	maxStopLossRate: 0.05,
-	invalidSigleStopRate: 0.1,
 	emaPeriod: 60,
 	basePeriod: 15,
 	stopLossRatio: 6, // 6
-	stopProfitRatio: 10, // 10
+	stopProfitRatio: 12, // 10
 	targetTime: "2024-09-01_00-00-00",
+	// howManyCandle: 5, // 止盈，盈亏比(该策略不用此参数)
+	isProfitRun: 1, // 是否开启移动止盈
+	firstProtectProfitRate: 2, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
+	firstStopLossRate: 0.6, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
+	profitProtectRate: 0.7, // 移动止盈，保留盈利比例
+	howManyCandleForProfitRun: 0.5,
+	maxStopLossRate: 0.05, // 止损小于10%的情况，最大止损5%
+	invalidSigleStopRate: 0.1, // 止损在10%，不开单
+	double: 1, // 是否损失后加倍开仓
+	maxLossCount: 20, // 损失后加倍开仓，最大倍数
 });
 module.exports={
 	evaluateStrategy: start,

@@ -11,7 +11,7 @@ const {getDate, hasUpDownVal, getLastFromArr}=require("./utils/functions.js");
 const calculateNormalizedMACD=require("./utils/nmacd");
 const calculateRSI=require("./utils/rsi_marsi");
 const {calculateSimpleMovingAverage}=require("./utils/ma.js");
-const config=require("./config-nmacd_marsi-1.0.js");
+const config=require("./config-nmacd_marsi.js");
 const {
 	calculateCandleHeight,
 	isBigLine,
@@ -57,7 +57,7 @@ const {
 	strategyType,
 	SYMBOL,
 	base,
-	availableMoney,
+	availableMoney: DefaultAvailableMoney,
 	invariableBalance,
 	klineStage,
 	logsFolder,
@@ -65,19 +65,21 @@ const {
 	numForAverage, // 多少根k线求取candleHeight
 	howManyCandle, // 初始止盈，盈亏比
 	isProfitRun, // 是否开启移动止盈
-	firstProtectProfitRate: DefaultFirstProtectProfitRate, // 是否开启初始止盈（到初始止盈点时，移动止损到开仓价）
-	firstStopLossRate: DefaultFirstStopLossRate, // 是否开启初始止损（到初始止损点时，移动动止盈到开仓价）
+	firstProtectProfitRate: DefaultFirstProtectProfitRate, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
+	firstStopLossRate: DefaultFirstStopLossRate, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
 	profitProtectRate, // 移动止盈，保留盈利比例
 	howManyCandleForProfitRun,
 	maxStopLossRate, // 止损小于10%的情况，最大止损5%
 	invalidSigleStopRate, // 止损在10%，不开单
 	double, // 是否损失后加倍开仓
 	maxLossCount, // 损失后加倍开仓，最大倍数
-}=config["sol"];
+}=config["doge"];
 
 
+let availableMoney=DefaultAvailableMoney
 let firstProtectProfitRate=DefaultFirstProtectProfitRate
 let firstStopLossRate=DefaultFirstStopLossRate
+let lossCount=0
 
 // 环境变量
 const B_SYMBOL=SYMBOL.toUpperCase();
@@ -355,15 +357,6 @@ const refreshKLineAndIndex=(curKLine) => {
 	if (isTest) {
 		console.log("🚀 ~ : curKLine:", curKLine);
 	}
-};
-
-const reset=() => {
-	gridPoints=[];
-	readyTradingDirection="hold";
-
-	resetTradingDatas();
-
-	hasOrder=false;
 };
 
 const kaiDanDaJi=async () => {
@@ -1037,6 +1030,11 @@ const recoverHistoryData=async (historyDatas) => {
 		readyTradingDirection: __readyTradingDirection, // 是否准备开单
 		readyTradingDirectionFlag: __readyTradingDirectionFlag,
 		hasOrder: __hasOrder,
+
+		availableMoney: __availableMoney,
+		firstProtectProfitRate: __firstProtectProfitRate,
+		firstStopLossRate: __firstStopLossRate,
+		lossCount: __lossCount,
 	}=historyDatas;
 
 	prePrice=__prePrice; // 记录当前价格的前一个
@@ -1047,6 +1045,11 @@ const recoverHistoryData=async (historyDatas) => {
 	hasOrder=__hasOrder;
 	readyTradingDirection=__readyTradingDirection; // 是否准备开单
 	readyTradingDirectionFlag=__readyTradingDirectionFlag
+
+	availableMoney=__availableMoney
+	firstProtectProfitRate=__firstProtectProfitRate
+	firstStopLossRate=__firstStopLossRate
+	lossCount=__lossCount
 };
 const recoverHistoryDataByPosition=async (historyDatas, {up, down}) => {
 	//
@@ -1062,6 +1065,11 @@ const recoverHistoryDataByPosition=async (historyDatas, {up, down}) => {
 		readyTradingDirection: __readyTradingDirection, // 是否准备开单
 		readyTradingDirectionFlag: __readyTradingDirectionFlag,
 		hasOrder: __hasOrder,
+
+		availableMoney: __availableMoney,
+		firstProtectProfitRate: __firstProtectProfitRate,
+		firstStopLossRate: __firstStopLossRate,
+		lossCount: __lossCount,
 	}=historyDatas;
 
 	prePrice=__currentPrice; // 记录当前价格的前一个
@@ -1072,6 +1080,10 @@ const recoverHistoryDataByPosition=async (historyDatas, {up, down}) => {
 	readyTradingDirection=__readyTradingDirection; // 是否准备开单
 	readyTradingDirectionFlag=__readyTradingDirectionFlag
 
+	availableMoney=__availableMoney
+	firstProtectProfitRate=__firstProtectProfitRate
+	firstStopLossRate=__firstStopLossRate
+	lossCount=__lossCount
 	if (__isProfitRun) {
 		console.log("上次停止程序时处于利润奔跑模式，当前重启后继续奔跑");
 		// await closeOrder(tradingInfo.side, tradingInfo.quantity);
@@ -1091,6 +1103,10 @@ const checkOverGrid=async ({up, down}) => {
 		isProfitRun=false;
 		readyTradingDirection="hold"; // 是否准备开单
 		readyTradingDirectionFlag=0
+		availableMoney=DefaultAvailableMoney
+		firstProtectProfitRate=DefaultFirstProtectProfitRate
+		firstStopLossRate=DefaultFirstStopLossRate
+		lossCount=0
 		resetTradingDatas();
 		gridPoints=[];
 	}
@@ -1214,6 +1230,7 @@ const startTrading=async () => {
 };
 // 获取下单量
 const getQuantity=() => {
+	availableMoney=DefaultAvailableMoney*(1+lossCount)
 	return Math.round(availableMoney/currentPrice);
 };
 
@@ -1224,10 +1241,13 @@ const closeAllOrders=async ({up, down}) => {
 		const upPromise=closeOrder("SELL", up.quantity, () => {
 			if (showProfit) {
 				// 测试
-				testMoney+=
+				const curTestMoney=
 					up.quantity*currentPrice-
 					up.orderPrice*up.quantity-
 					(up.quantity*currentPrice+up.orderPrice*up.quantity)*0.0007;
+
+				testMoney+=curTestMoney
+				setLossCount(curTestMoney)
 				console.log("平多 closeAllOrders ~ testMoney:", testMoney);
 			}
 			console.log("平多完成");
@@ -1249,10 +1269,14 @@ const closeAllOrders=async ({up, down}) => {
 		const downPromise=closeOrder("BUY", down.quantity, () => {
 			if (showProfit) {
 				// 测试
-				testMoney+=
+				const curTestMoney=
 					down.quantity*down.orderPrice-
 					down.quantity*currentPrice-
 					(down.quantity*down.orderPrice+down.quantity*currentPrice)*0.0007;
+
+				testMoney+=curTestMoney
+				setLossCount(curTestMoney)
+
 				console.log("平空 closeAllOrders ~ testMoney:", testMoney);
 			}
 			console.log("平空完成");
@@ -1279,10 +1303,13 @@ const closeUp=async () => {
 	await closeOrder("SELL", tradingInfo.quantity, () => {
 		if (showProfit) {
 			// 测试
-			testMoney+=
+			const curTestMoney=
 				tradingInfo.quantity*currentPrice-
 				tradingInfo.quantity*tradingInfo.orderPrice-
 				(tradingInfo.quantity*currentPrice+tradingInfo.quantity*tradingInfo.orderPrice)*0.0007;
+
+			testMoney+=curTestMoney
+			setLossCount(curTestMoney)
 			console.log("平多 gridPointClearTrading ~ currentPrice testMoney:", currentPrice, testMoney);
 		}
 		console.log("平多完成");
@@ -1298,16 +1325,26 @@ const closeUp=async () => {
 		// });
 	});
 }
-
+const setLossCount=(curTestMoney) => {
+	if (double) {
+		if (curTestMoney<=0) {
+			lossCount=lossCount+1>maxLossCount? maxLossCount:lossCount+1
+		} else {
+			lossCount=0
+		}
+	}
+}
 // 平空
 const closeDown=async () => {
 	await closeOrder("BUY", tradingInfo.quantity, () => {
 		if (showProfit) {
 			// 测试
-			testMoney+=
-				tradingInfo.quantity*tradingInfo.orderPrice-
+			const curTestMoney=tradingInfo.quantity*tradingInfo.orderPrice-
 				tradingInfo.quantity*currentPrice-
 				(tradingInfo.quantity*tradingInfo.orderPrice+tradingInfo.quantity*currentPrice)*0.0007;
+
+			testMoney+=curTestMoney
+			setLossCount(curTestMoney)
 			console.log("平空 gridPointClearTrading ~ currentPrice testMoney:", currentPrice, testMoney);
 		}
 		console.log("平空完成");
@@ -1563,6 +1600,10 @@ function saveGlobalVariables() {
 				gridPoints: gridPoints,
 				readyTradingDirection, // 是否准备开单
 				readyTradingDirectionFlag,
+				availableMoney,
+				firstProtectProfitRate,
+				firstStopLossRate,
+				lossCount,
 			});
 			fs.writeFileSync(`data/${isTest? "test":"prod"}-${strategyType}-${SYMBOL}.js`, `module.exports = ${data}`, {
 				flag: "w",

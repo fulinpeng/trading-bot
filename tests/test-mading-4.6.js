@@ -172,6 +172,7 @@ withAllDatas 是否通过全部数据进行测试
 */
 
 const resetInit=() => {
+	_kLineData=[...kLineData];
 	// const symbol = s;
 	gridPoints2=[];
 	maArr=[];

@@ -39,16 +39,16 @@ const calculateNormalizedMACD=require("../utils/nmacd");
 const calculateRSI=require("../utils/rsi_marsi");
 const {calculateSimpleMovingAverage}=require("../utils/ma.js");
 const fs=require("fs");
-const symbol="1000pepeUSDT";
+const symbol="dogeUSDT";
 let {kLineData}=require(`./source/${symbol}-2h.js`);
 
-const defaultAvailableMoney=100
+const DefaultAvailableMoney=100
 let maxAvailableMoney=0;
 let _kLineData=[...kLineData];
 let double=0;
 let lossCount=0
 let maxLossCount=2
-let availableMoney=defaultAvailableMoney*(1+lossCount)
+let availableMoney=DefaultAvailableMoney*(1+lossCount)
 let howManyCandle=1;
 let isProfitRun=0;
 let firstProtectProfitRate=0;
@@ -59,7 +59,7 @@ let maxStopLossRate=0.01;
 let invalidSigleStopRate=0.05;
 
 const getQuantity=(currentPrice) => {
-	availableMoney=defaultAvailableMoney*(1+lossCount)
+	availableMoney=DefaultAvailableMoney*(1+lossCount)
 	if (maxAvailableMoney<availableMoney) maxAvailableMoney=availableMoney
 	return Math.round(availableMoney/currentPrice);
 };
@@ -91,9 +91,9 @@ let rsiArr=[];
 let nmacdArr=[];
 let smaArr=[];
 
-const NMACD_PARAMS={sma: 13, lma: 21, tsp: 9, np: 50, type: 1};
-const MA_RSI_PARAMS={rsiLength: 21, smaLength: 55};
-const SMA_PERIOD=13;
+let NMACD_PARAMS={sma: 13, lma: 21, tsp: 9, np: 50, type: 1};
+let MA_RSI_PARAMS={rsiLength: 21, smaLength: 55};
+let SMA_PERIOD=13;
 
 const setProfit=(orderPrice, currentPrice, time) => {
 	let curTestMoney=0
@@ -118,6 +118,8 @@ const setProfit=(orderPrice, currentPrice, time) => {
 	closeHistory.push(time);
 	closePriceHistory.push(currentPrice);
 	trendHistory.push(trend);
+	// 最大亏损值
+	setMinMoney(orderPrice, currentPrice);
 };
 const setMinMoney=(orderPrice, currentPrice, closeTime) => {
 	let _testMoney=0;
@@ -158,6 +160,7 @@ const setEmaArr=(historyClosePrices) => {
 };
 
 const resetInit=() => {
+	_kLineData=[...kLineData];
 	howManyCandle=1;
 	isProfitRun=0;
 	double=0;
@@ -168,7 +171,6 @@ const resetInit=() => {
 	profitProtectRate=0.6;
 	howManyCandleForProfitRun=0.5;
 	maxStopLossRate=0.01;
-	invalidSigleStopRate=0.02;
 	invalidSigleStopRate=0.02;
 	gridPoints=[];
 	trend="";
@@ -191,6 +193,9 @@ const resetInit=() => {
 	ema144=[];
 	ema169=[];
 	targetTime=null;
+	NMACD_PARAMS={sma: 13, lma: 21, tsp: 9, np: 50, type: 1};
+	MA_RSI_PARAMS={rsiLength: 21, smaLength: 55};
+	SMA_PERIOD=13;
 };
 const start=(params) => {
 	// 每次需要初始化 ???? 检查初始化是否覆盖所有全局变量
@@ -207,6 +212,9 @@ const start=(params) => {
 		double=params.double;
 		maxLossCount=params.maxLossCount;
 		targetTime=params.targetTime;
+		NMACD_PARAMS=params.NMACD_PARAMS;
+		MA_RSI_PARAMS=params.MA_RSI_PARAMS;
+		SMA_PERIOD=params.SMA_PERIOD;
 	}
 	if (targetTime) {
 		targetTime=params.targetTime;
@@ -361,10 +369,6 @@ const start=(params) => {
 					}
 				}
 			}
-			if (hasOrder) {
-				// 最大亏损值
-				setMinMoney(orderPrice, close);
-			}
 		}
 	}
 
@@ -410,10 +414,6 @@ const start=(params) => {
 				reset();
 				return;
 			}
-		}
-		if (hasOrder) {
-			// 最大亏损值
-			setMinMoney(orderPrice, close);
 		}
 	}
 };
@@ -740,15 +740,18 @@ function run(params) {
 run({
 	howManyCandle: 5, // 初始止盈，盈亏比
 	isProfitRun: 1, // 是否开启移动止盈
-	firstProtectProfitRate: 1, // 是否开启初始止盈（到初始止盈点时，移动止损到开仓价）
-	firstStopLossRate: 0.5, // 是否开启初始止损（到初始止损点时，移动动止盈到开仓价）
+	firstProtectProfitRate: 1, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
+	firstStopLossRate: 0.5, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
 	profitProtectRate: 0.8, // 移动止盈，保留盈利比例
 	howManyCandleForProfitRun: 0.5,
 	maxStopLossRate: 0.05, // 止损小于10%的情况，最大止损5%
 	invalidSigleStopRate: 0.1, // 止损在10%，不开单
 	double: 1, // 是否损失后加倍开仓
-	maxLossCount: 9, // 损失后加倍开仓，最大倍数
-	// targetTime: "2024-09-01_00-00-00",
+	maxLossCount: 20, // 损失后加倍开仓，最大倍数
+	targetTime: "2024-09-01_00-00-00",
+	NMACD_PARAMS: {sma: 13, lma: 21, tsp: 9, np: 50, type: 1},
+	MA_RSI_PARAMS: {rsiLength: 21, smaLength: 55},
+	SMA_PERIOD: 15,
 });
 module.exports={
 	evaluateStrategy: start,

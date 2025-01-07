@@ -39,16 +39,17 @@ const {calculateKDJs}=require("../utils/KDJ");
 const {calculateBBKeltnerSqueeze}=require("../utils/BBKeltner");
 const fs=require("fs");
 const symbol="dogeUSDT";
-let {kLineData}=require(`./source/${symbol}-15m.js`);
+let {kLineData}=require(`./source/${symbol}-2h.js`);
 
-const defaultAvailableMoney=100000
+const DefaultAvailableMoney=100
+let maxAvailableMoney=0;
 let _kLineData=[...kLineData];
 let double=0;
 let lossCount=0
 let maxLossCount=2
-let availableMoney=defaultAvailableMoney*(1+lossCount)
+let availableMoney=DefaultAvailableMoney*(1+lossCount)
 let howManyCandle=1;
-let numForAverage=1;
+let numForAverage=12;
 let isProfitRun=0;
 let firstProtectProfitRate=0;
 let profitProtectRate=0.6;
@@ -61,7 +62,7 @@ let bbkPeroid=20;
 let KDJ=[10, 90];
 
 const getQuantity=(currentPrice) => {
-	availableMoney=defaultAvailableMoney*(1+lossCount)
+	availableMoney=DefaultAvailableMoney*(1+lossCount)
 	return Math.round(availableMoney/currentPrice);
 };
 
@@ -101,8 +102,8 @@ const setProfit=(orderPrice, currentPrice, time) => {
 	}
 	testMoney+=curTestMoney
 	if (double) {
-		if (curTestMoney<0) {
-			lossCount=(++lossCount)%maxLossCount
+		if (curTestMoney<=0) {
+			lossCount=lossCount+1>maxLossCount? maxLossCount:lossCount+1
 		} else {
 			lossCount=0
 		}
@@ -114,6 +115,8 @@ const setProfit=(orderPrice, currentPrice, time) => {
 	closeHistory.push(time);
 	closePriceHistory.push(currentPrice);
 	trendHistory.push(trend);
+	// 最大亏损值
+	setMinMoney(orderPrice, currentPrice);
 };
 const setMinMoney=(orderPrice, currentPrice, closeTime) => {
 	let _testMoney=0;
@@ -135,12 +138,14 @@ const setEveryIndex=(historyClosePrices, curKLines) => {
 };
 
 const resetInit=() => {
+	_kLineData=[...kLineData];
 	howManyCandle=1;
 	isProfitRun=0;
 	double=0;
 	lossCount=0
 	maxLossCount=2
 	firstProtectProfitRate=0;
+	firstStopLossRate=0;
 	profitProtectRate=0.6;
 	howManyCandleForProfitRun=0.5;
 	maxStopLossRate=0.01;
@@ -166,6 +171,10 @@ const resetInit=() => {
 	ema144=[];
 	ema169=[];
 	targetTime=null;
+
+	kdjPeroid=25
+	bbkPeroid=20
+	KDJ=[10, 90]
 };
 const start=(params) => {
 	// 每次需要初始化 ???? 检查初始化是否覆盖所有全局变量
@@ -182,6 +191,9 @@ const start=(params) => {
 		double=params.double;
 		maxLossCount=params.maxLossCount;
 		targetTime=params.targetTime;
+		kdjPeroid=params.kdjPeroid;
+		bbkPeroid=params.bbkPeroid;
+		KDJ=params.KDJ;
 	}
 	if (targetTime) {
 		targetTime=params.targetTime;
@@ -235,6 +247,7 @@ const start=(params) => {
 					isSqueeze,
 					kdj,
 					getLastFromArr(curKLines, 5),
+					params
 				);
 			}
 			continue;
@@ -255,14 +268,27 @@ const start=(params) => {
 					}
 
 					if (firstProtectProfitRate) {
-						// 未达到初始止盈点时，根据ema指标盈动止损，避免亏损过大
-						if (close<curKma&&close<open) {
-							gridPoints[0]=orderPrice+Math.abs(orderPrice-curKma)*firstProtectProfitRate;
-							// gridPoints = [
-							//     orderPrice + Math.abs(curKma - orderPrice) * profitProtectRate,
-							//     curKma + candleHeight * howManyCandleForProfitRun,
-							// ];
-							continue;
+						const firstProfitPrice=orderPrice+Math.abs(orderPrice-point1)*firstProtectProfitRate
+						if (close>firstProfitPrice) {
+							// 到初始止盈点时，并且该k线是阴线，移动止损到开仓价，避免盈利回撤
+							if (close<open) {
+								// 减少止损
+								gridPoints[0]=orderPrice//+Math.abs(orderPrice-firstProfitPrice)/2;
+								firstProtectProfitRate=0
+								continue;
+							}
+						}
+					}
+					if (firstStopLossRate) {
+						const firstStopPrice=orderPrice-Math.abs(orderPrice-point1)*firstStopLossRate
+						if (close<firstStopPrice) {
+							// 到初始止损点时，并且该k线是阳线，移动止盈到开仓价，避免亏损太多
+							if (close<open) {
+								// 减少止盈利接近开盘价
+								gridPoints[1]=orderPrice //+Math.abs(orderPrice-firstStopPrice)/25;
+								firstStopLossRate=0
+								continue;
+							}
 						}
 					}
 				}
@@ -275,14 +301,27 @@ const start=(params) => {
 						continue;
 					}
 					if (firstProtectProfitRate) {
-						// 未达到初始止盈点时，根据ema指标盈动止损，避免亏损过大
-						if (close>curKma&&close>open) {
-							gridPoints[1]=orderPrice-Math.abs(orderPrice-curKma)*firstProtectProfitRate;
-							// gridPoints = [
-							//     curKma - candleHeight * howManyCandleForProfitRun,
-							//     orderPrice - Math.abs(orderPrice - curKma) * profitProtectRate,
-							// ];
-							continue;
+						const firstProfitPrice=orderPrice-Math.abs(orderPrice-point2)*firstProtectProfitRate
+						if (close<firstProfitPrice) {
+							// 到初始止盈点时，并且该k线是阳线，移动止损到开仓价，避免盈利回撤
+							if (close>open) {
+								// 减少止损
+								gridPoints[1]=orderPrice//-Math.abs(orderPrice-firstProfitPrice)/25;
+								firstProtectProfitRate=0
+								continue;
+							}
+						}
+					}
+					if (firstStopLossRate) {
+						const firstStopPrice=orderPrice+Math.abs(orderPrice-point2)*firstStopLossRate
+						if (close>firstStopPrice) {
+							// 到初始止损点时，并且该k线是阴线，移动止盈到开仓价，避免亏损太多
+							if (close>open) {
+								// 减少止盈利接近开盘价
+								gridPoints[0]=orderPrice //+Math.abs(orderPrice-firstStopPrice)/25;
+								firstStopLossRate=0
+								continue;
+							}
 						}
 					}
 				}
@@ -323,10 +362,6 @@ const start=(params) => {
 						continue;
 					}
 				}
-			}
-			if (hasOrder) {
-				// 最大亏损值
-				setMinMoney(orderPrice, close);
 			}
 		}
 	}
@@ -373,10 +408,6 @@ const start=(params) => {
 				reset();
 				return;
 			}
-		}
-		if (hasOrder) {
-			// 最大亏损值
-			setMinMoney(orderPrice, close);
 		}
 	}
 };
@@ -452,7 +483,7 @@ const setGridPoints=(trend, stopLoss, stopProfit, _currentPrice) => {
 	}
 };
 // 判断+交易
-const judgeAndTrading=(curB2basis, curB2upper, curB2lower, curKma, curkLine, isSqueeze, kdj, curKLines) => {
+const judgeAndTrading=(curB2basis, curB2upper, curB2lower, curKma, curkLine, isSqueeze, kdj, curKLines, params) => {
 	// 根据指标判断是否可以开单
 	const trendInfo=calculateTradingSignal(
 		curB2basis,
@@ -476,6 +507,8 @@ const judgeAndTrading=(curB2basis, curB2upper, curB2lower, curKma, curkLine, isS
 			hasOrder=true;
 			openHistory.push(curkLine.openTime); // 其实开单时间是：curkLine.closeTime，binance的时间显示的是open Time，方便调试这里记录openTime
 			openPriceHistory.push(curkLine.close);
+			firstProtectProfitRate=params.firstProtectProfitRate
+			firstStopLossRate=params.firstStopLossRate
 			break;
 		case "down":
 			trend="down";
@@ -485,6 +518,8 @@ const judgeAndTrading=(curB2basis, curB2upper, curB2lower, curKma, curkLine, isS
 			hasOrder=true;
 			openHistory.push(curkLine.openTime); // 其实开单时间是：curkLine.closeTime，binance的时间显示的是open Time，方便调试这里记录openTime
 			openPriceHistory.push(curkLine.close);
+			firstProtectProfitRate=params.firstProtectProfitRate
+			firstStopLossRate=params.firstStopLossRate
 			break;
 		default:
 			break;
@@ -651,17 +686,32 @@ function run(params) {
 	);
 }
 run({
-	howManyCandle: 1,
+	// howManyCandle: 1,
 	numForAverage: 12,
-	isProfitRun: 1,
-	firstProtectProfitRate: 0.5,
-	profitProtectRate: 0.9,
+	// isProfitRun: 1,
+	// firstProtectProfitRate: 0.5,
+	// profitProtectRate: 0.9,
+	// howManyCandleForProfitRun: 0.5,
+	// maxStopLossRate: 0.05,
+	// invalidSigleStopRate: 0.1,
+	// double: 1, // 损失后加倍开仓
+	// maxLossCount: 5,
+	// targetTime: "2024-09-01_00-00-00",
+	howManyCandle: 1, // 初始止盈，盈亏比
+	isProfitRun: 1, // 是否开启移动止盈
+	firstProtectProfitRate: 0.5, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
+	firstStopLossRate: 0.5, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
+	profitProtectRate: 0.8, // 移动止盈，保留盈利比例
 	howManyCandleForProfitRun: 0.5,
-	maxStopLossRate: 0.05,
-	invalidSigleStopRate: 0.1,
-	double: 1, // 损失后加倍开仓
-	maxLossCount: 5,
+	maxStopLossRate: 0.05, // 止损小于10%的情况，最大止损5%
+	invalidSigleStopRate: 0.1, // 止损在10%，不开单
+	double: 1, // 是否损失后加倍开仓
+	maxLossCount: 20, // 损失后加倍开仓，最大倍数
 	targetTime: "2024-09-01_00-00-00",
+
+	kdjPeroid: 25,
+	bbkPeroid: 20,
+	KDJ: [10, 90],
 });
 module.exports={
 	evaluateStrategy: start,
