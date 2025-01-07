@@ -43,13 +43,13 @@
 
 boll策略参数：待优化
 
-grid策略机器人：待优化
+grid策略机器人：已完成
 
-emaMaCrossover策略机器人：待开发
+emaMaCrossover策略机器人：已完成
 
-highesthighLowestLow策略机器人：待开发
+highesthighLowestLow策略机器人：已完成
 
-rsiEma策略机器人：待优化
+rsiEma策略机器人：已完成
 
 #### 获取币安API_KEY
 先获取币安API_KEY，新建`.env`文件
@@ -81,20 +81,20 @@ node getKlines-1m-to-now.js 1000pepeUSDT
 ```
 2. 生成所有可能的参数
 ```sh
-node paramsFactory/mading/functions/setParamsGroup.js.js
+node paramsFactory/mading/functions/createParams-mading.js
 ```
 3. 通过历史k线数据找最优参数
 ```sh
-node paramsFactory/mading/best-for-mading-sequence.js
-node paramsFactory/mading/functions/paramsSort.js
+node paramsFactory/mading/pipeline-mading
+node paramsFactory/mading/functions/paramsSort.js mading-1000pepeUSDT
 ```
-4. 将参数填入goldDigger对应量化机器人
+4. 将参数填入对应量化机器人
 ```sh
-node goldDigger/mading/mading-sequence.js
+node mading-sequence.js
 ```
 5. 通过历史数据测试最佳参数盈利情况
 ```sh
-node tests/test-mading4-3.js
+node tests/test-mading4-6.js
 ```
 6. 查看测试情况
 
@@ -123,7 +123,11 @@ node tests/test-mading4-3.js
 }
 ```
 
-* 会将更详细的测试情况输出到文件，复制其中的`option`对象，浏览器打开 [echarts-line-simple](https://echarts.apache.org/examples/zh/editor.html?c=line-simple) 粘贴即可查看盈利曲线
+* 会将更详细的测试情况运行node服务结合k线图查看，浏览器打开：`http://localhost:3000`
+
+```sh
+node tests/nodeServer/server.js
+```
 
 #### 调用正式环境api
 进入`gridBot-doge3-7-1-mading-speed-small.js` 后，修改 `isTest`值为false即可

@@ -35,16 +35,15 @@ const {
 	isAllDownTail,
 	isAllUpTail,
 }=require("../utils/kLineTools");
-const {calculateATR}=require("../utils/atr.js");
-const {calculateRSI}=require("../utils/rsi.js");
-const {emaMacrossover}=require("../utils/ema_ma_crossover.js");
+const calculateNormalizedMACD=require("../utils/nmacd");
+const calculateRSI=require("../utils/rsi_marsi");
+const {calculateSimpleMovingAverage}=require("../utils/ma.js");
 const fs=require("fs");
-const symbol="1000pepeUSDT";
-let {kLineData}=require(`./source/${symbol}-1h.js`);
+const symbol="dogeUSDT";
+let {kLineData}=require(`./source/${symbol}-2h.js`);
 
 const DefaultAvailableMoney=100
 let maxAvailableMoney=0;
-let numForAverage=0;
 let _kLineData=[...kLineData];
 let double=0;
 let lossCount=0
@@ -53,21 +52,21 @@ let availableMoney=DefaultAvailableMoney*(1+lossCount)
 let howManyCandle=1;
 let isProfitRun=0;
 let firstProtectProfitRate=0;
+let firstStopLossRate=0;
 let profitProtectRate=0.6;
-let maxStopLossRate=0.01;
-let invalidSigleStopRate=0.02;
 let howManyCandleForProfitRun=0.5;
-let emaPeriod=10;
-let smaPeriod=10;
-let rsiPeriod=14;
+let maxStopLossRate=0.01;
+let invalidSigleStopRate=0.05;
 
 const getQuantity=(currentPrice) => {
 	availableMoney=DefaultAvailableMoney*(1+lossCount)
+	if (maxAvailableMoney<availableMoney) maxAvailableMoney=availableMoney
 	return Math.round(availableMoney/currentPrice);
 };
 
 let gridPoints=[];
 let trend="";
+
 let winNum=0;
 let failNum=0;
 let testMoney=0;
@@ -81,14 +80,20 @@ let trendHistory=[];
 let openPriceHistory=[];
 let closePriceHistory=[];
 let testMoneyHistory=[];
-let readyTradingDirection="hold";
-let hasOrder=false;
-let candleHeight=0;
-let emaMaArr=[];
-let rsiArr=[];
-
 let maxStopLossMoney=0;
 let curTestMoneyHistory=[]
+let readyTradingDirection="hold";
+let readyTradingDirectionFlag=0;
+let hasOrder=false;
+let candleHeight=0;
+
+let rsiArr=[];
+let nmacdArr=[];
+let smaArr=[];
+
+let NMACD_PARAMS={sma: 13, lma: 21, tsp: 9, np: 50, type: 1};
+let MA_RSI_PARAMS={rsiLength: 21, smaLength: 55};
+let SMA_PERIOD=13;
 
 const setProfit=(orderPrice, currentPrice, time) => {
 	let curTestMoney=0
@@ -126,6 +131,7 @@ const setMinMoney=(orderPrice, currentPrice, closeTime) => {
 	}
 	if (_testMoney<maxStopLossMoney) maxStopLossMoney=_testMoney;
 };
+
 const initEveryIndex=(historyClosePrices) => {
 	const len=historyClosePrices.length;
 	for (let i=len-20;i<len;i++) {
@@ -133,18 +139,24 @@ const initEveryIndex=(historyClosePrices) => {
 	}
 };
 const setEveryIndex=(historyClosePrices) => {
-	// 计算 ema
-	setEmaMaArr(historyClosePrices);
-	// 计算 rsi
+	// 计算 nmacd
+	setNmacdArr(historyClosePrices);
+	// 计算 ma_rsi
 	setRsiArr(historyClosePrices);
+	// 计算 ema
+	setEmaArr(historyClosePrices);
 };
-const setEmaMaArr=(historyClosePrices) => {
-	emaMaArr.length>=10&&emaMaArr.shift();
-	emaMaArr.push(emaMacrossover(historyClosePrices, smaPeriod, emaPeriod));
+const setNmacdArr=(historyClosePrices) => {
+	nmacdArr.length>=10&&nmacdArr.shift();
+	nmacdArr.push(calculateNormalizedMACD(historyClosePrices, NMACD_PARAMS));
 };
 const setRsiArr=(historyClosePrices) => {
 	rsiArr.length>=10&&rsiArr.shift();
-	rsiArr.push(calculateRSI(historyClosePrices, rsiPeriod));
+	rsiArr.push(calculateRSI(historyClosePrices, MA_RSI_PARAMS));
+};
+const setEmaArr=(historyClosePrices) => {
+	smaArr.length>=10&&smaArr.shift();
+	smaArr.push(calculateSimpleMovingAverage(historyClosePrices, SMA_PERIOD));
 };
 
 const resetInit=() => {
@@ -160,7 +172,6 @@ const resetInit=() => {
 	howManyCandleForProfitRun=0.5;
 	maxStopLossRate=0.01;
 	invalidSigleStopRate=0.02;
-	fastPeriod=12;
 	gridPoints=[];
 	trend="";
 	winNum=0;
@@ -175,22 +186,21 @@ const resetInit=() => {
 	trendHistory=[];
 	testMoneyHistory=[];
 	readyTradingDirection="hold";
+	readyTradingDirectionFlag=0;
 	hasOrder=false;
 	candleHeight=0;
-	emaMaArr=[];
 	rsiArr=[];
-	emaPeriod=10;
-	smaPeriod=10;
-	rsiPeriod=14;
-	numForAverage=12;
-
+	ema144=[];
+	ema169=[];
 	targetTime=null;
+	NMACD_PARAMS={sma: 13, lma: 21, tsp: 9, np: 50, type: 1};
+	MA_RSI_PARAMS={rsiLength: 21, smaLength: 55};
+	SMA_PERIOD=13;
 };
 const start=(params) => {
 	// 每次需要初始化 ???? 检查初始化是否覆盖所有全局变量
 	resetInit();
 	if (params) {
-		numForAverage=params.numForAverage;
 		howManyCandle=params.howManyCandle;
 		isProfitRun=params.isProfitRun;
 		firstProtectProfitRate=params.firstProtectProfitRate;
@@ -202,9 +212,9 @@ const start=(params) => {
 		double=params.double;
 		maxLossCount=params.maxLossCount;
 		targetTime=params.targetTime;
-		emaPeriod=params.emaPeriod;
-		smaPeriod=params.smaPeriod;
-		rsiPeriod=params.rsiPeriod;
+		NMACD_PARAMS=params.NMACD_PARAMS;
+		MA_RSI_PARAMS=params.MA_RSI_PARAMS;
+		SMA_PERIOD=params.SMA_PERIOD;
 	}
 	if (targetTime) {
 		targetTime=params.targetTime;
@@ -218,7 +228,7 @@ const start=(params) => {
 		const curKLines=_kLineData.slice(idx-100, idx);
 		const historyClosePrices=curKLines.map((v) => v.close);
 
-		candleHeight=calculateCandleHeight(_kLineData.slice(idx-numForAverage, idx));
+		candleHeight=calculateCandleHeight(_kLineData.slice(idx-12, idx));
 
 		// 设置各种指标
 		setEveryIndex([...historyClosePrices]);
@@ -226,21 +236,24 @@ const start=(params) => {
 		const curkLine=_kLineData[idx];
 		const {open, close, openTime, closeTime, low, high}=curkLine;
 
-		// let [emaMa1, emaMa2, emaMa3, emaMa4, emaMa5]=getLastFromArr(emaMaArr, 5);
-		// let [rsi1, rsi2, rsi3, rsi4, rsi5]=getLastFromArr(rsiArr, 5);
+		let [sma1, sma2, sma3, sma4, sma5]=getLastFromArr(smaArr, 5);
 
 		// 准备开仓
-		if (readyTradingDirection==="hold") {
+		if (readyTradingDirectionFlag===0) {
 			// 判断趋势
 			judgeTradingDirection(getLastFromArr(curKLines, 5));
-		} else {
-			// 趋势是否被破坏
+		} else if (readyTradingDirectionFlag===1) {
+			// 趋势是否被破坏 ?????先煮食
 			judgeBreakTradingDirection(getLastFromArr(curKLines, 5));
+			if (readyTradingDirectionFlag===1) {
+				// 判断趋势2
+				judgeTradingDirection2(getLastFromArr(curKLines, 5));
+			}
 		}
 		if (!hasOrder) {
 			// 开仓：没有仓位就根据 readyTradingDirection 开单
 			// 开单完成后会重置 readyTradingDirection
-			if (readyTradingDirection!=="hold") {
+			if (readyTradingDirection!=="hold"&&readyTradingDirectionFlag===1) {
 				judgeAndTrading(getLastFromArr(curKLines, 5), params);
 			}
 			continue;
@@ -260,24 +273,13 @@ const start=(params) => {
 						continue;
 					}
 
-					// if (firstProtectProfitRate) {
-					// 	// 未达到初始止盈点时，根据ema12指标盈动止损，避免亏损过大
-					// 	if (close<emaMa5.sma&&close<open) {
-					// 		gridPoints[0]=orderPrice+Math.abs(orderPrice-emaMa5.sma)*firstProtectProfitRate;
-					// 		// gridPoints = [
-					// 		//     orderPrice + Math.abs(emaMa5.sma - orderPrice) * profitProtectRate,
-					// 		//     emaMa5.sma + candleHeight * howManyCandleForProfitRun,
-					// 		// ];
-					// 		continue;
-					// 	}
-					// }
 					if (firstProtectProfitRate) {
 						const firstProfitPrice=orderPrice+Math.abs(orderPrice-point1)*firstProtectProfitRate
 						if (close>firstProfitPrice) {
 							// 到初始止盈点时，并且该k线是阴线，移动止损到开仓价，避免盈利回撤
 							if (close<open) {
 								// 减少止损
-								gridPoints[0]=orderPrice+Math.abs(orderPrice-firstProfitPrice)/20;
+								gridPoints[0]=orderPrice//+Math.abs(orderPrice-firstProfitPrice)/2;
 								firstProtectProfitRate=0
 								continue;
 							}
@@ -289,7 +291,7 @@ const start=(params) => {
 							// 到初始止损点时，并且该k线是阳线，移动止盈到开仓价，避免亏损太多
 							if (close<open) {
 								// 减少止盈利接近开盘价
-								gridPoints[1]=orderPrice+Math.abs(orderPrice-firstStopPrice)/25;
+								gridPoints[1]=orderPrice //+Math.abs(orderPrice-firstStopPrice)/25;
 								firstStopLossRate=0
 								continue;
 							}
@@ -310,7 +312,7 @@ const start=(params) => {
 							// 到初始止盈点时，并且该k线是阳线，移动止损到开仓价，避免盈利回撤
 							if (close>open) {
 								// 减少止损
-								gridPoints[1]=orderPrice-Math.abs(orderPrice-firstProfitPrice)/20;
+								gridPoints[1]=orderPrice//-Math.abs(orderPrice-firstProfitPrice)/25;
 								firstProtectProfitRate=0
 								continue;
 							}
@@ -322,7 +324,7 @@ const start=(params) => {
 							// 到初始止损点时，并且该k线是阴线，移动止盈到开仓价，避免亏损太多
 							if (close>open) {
 								// 减少止盈利接近开盘价
-								gridPoints[0]=orderPrice+Math.abs(orderPrice-firstStopPrice)/25;
+								gridPoints[0]=orderPrice //+Math.abs(orderPrice-firstStopPrice)/25;
 								firstStopLossRate=0
 								continue;
 							}
@@ -374,7 +376,7 @@ const start=(params) => {
 	if (hasOrder) {
 		const len=_kLineData.length;
 		const curkLine=_kLineData[len-1];
-		const {close, openTime, closeTime, low, high}=curkLine;
+		const {close, closeTime, openTime, low, high}=curkLine;
 		const [point1, point2]=gridPoints;
 		if (hasOrder) {
 			// 判断止损
@@ -398,14 +400,14 @@ const start=(params) => {
 			}
 		}
 		if (hasOrder) {
-			// 判断止盈：上面没有被止损，那看下面是否能止盈，high 大于 point2 就止盈利，否则继续持有
+			// 判断止盈：上面没有被止损，也没被止盈，那看下面是否能止盈，high 大于 point2 就止盈利，否则继续持有
 			if (trend==="up"&&high>=point2) {
 				setProfit(orderPrice, point2, openTime);
 				winNum++;
 				reset();
 				return;
 			}
-			// 判断止盈：上面没有被止损，那看是否能止盈，low 小于 point1 就止盈利，否则继续持有
+			// 上面没有被止损，那看是否能止盈，low 小于 point1 就止盈利，否则继续持有
 			if (hasOrder&&trend==="down"&&low<=point1) {
 				setProfit(orderPrice, point1, openTime);
 				winNum++;
@@ -413,33 +415,12 @@ const start=(params) => {
 				return;
 			}
 		}
-		if (hasOrder) {
-			setProfit(orderPrice, close, openTime);
-		}
 	}
-
-	const timeRange=`${_kLineData[0].openTime} ~ ${_kLineData[_kLineData.length-1].closeTime}`;
-	// if (params&&params.targetTime) {
-	// 	console.log(
-	// 		"🚀 targetTime, testMoney, maxMoney, minMoney::",
-	// 		symbol,
-	// 		withAllDatas,
-	// 		timeRange,
-	// 		Math.round(testMoney*100)/100,
-	// 		Math.round(maxMoney*100)/100,
-	// 		Math.round(minMoney*100)/100,
-	// 	);
-	// }
-	return {
-		timeRange,
-		testMoney,
-		maxMoney,
-		minMoney,
-	};
 };
 const reset=() => {
 	gridPoints=[];
 	readyTradingDirection="hold";
+	readyTradingDirectionFlag=0;
 	trend="";
 	quantity=0;
 	orderPrice=0;
@@ -449,47 +430,85 @@ const reset=() => {
 // 指标判断方向 / 交易
 const judgeTradingDirection=(kLines) => {
 	let [, , kLine1, kLine2, kLine3]=kLines;
-	let [emaMa1, emaMa2, emaMa3, emaMa4, emaMa5]=getLastFromArr(emaMaArr, 5);
-	// let [rsi1, rsi2, rsi3, rsi4, rsi5] = getLastFromArr(rsiArr, 5);
+	let [nmacd1, nmacd2, nmacd3, nmacd4, nmacd5]=getLastFromArr(nmacdArr, 5);
+	let [marsi1, marsi2, marsi3, marsi4, marsi5]=getLastFromArr(rsiArr, 5);
 
-	let {high, low, open, close}=kLine3;
+	let {openTime, high, low, close}=kLine3;
 
 	// 多头行情
-	// 准备条件一：金叉 preSma <= preEma && sma > ema
-	// 准备条件二：sma > ema && 阴k && 收盘在sma下
-	const upTerm1=emaMa1.hist<0&&emaMa5.hist>0;
-	const upTerm2=emaMa5.hist>0&&close<open&&close>emaMa5.ema&&low<=emaMa5.sma;
-	if (upTerm1||upTerm2) {
+	// 准备条件一: nmacd金叉
+	const upTerm1=nmacd1.hist<=0&&nmacd5.hist>0;
+
+	if (upTerm1) {
 		readyTradingDirection="up";
+		readyTradingDirectionFlag=1;
 		return;
 	}
 	// 空头行情
-	// 准备条件一：死叉 preSma >= preEma && sma < ema
-	// 准备条件二：sma < ema && 阳k && 收盘在ema上
-	const downTerm1=emaMa1.hist>0&&emaMa5.hist<0;
-	const downTerm2=emaMa5.hist<0&&close>open&&close<emaMa5.ema&&high>=emaMa5.sma;
-	if (downTerm1||downTerm2) {
+	// 准备条件一: nmacd死叉
+	const downTerm1=nmacd1.hist>=0&&nmacd5.hist<0;
+
+	if (downTerm1) {
 		readyTradingDirection="down";
+		readyTradingDirectionFlag=1;
+		return;
+	}
+};
+const judgeTradingDirection2=(kLines) => {
+	let [, , kLine1, kLine2, kLine3]=kLines;
+	let [nmacd1, nmacd2, nmacd3, nmacd4, nmacd5]=getLastFromArr(nmacdArr, 5);
+	let [marsi1, marsi2, marsi3, marsi4, marsi5]=getLastFromArr(rsiArr, 5);
+
+	let {openTime, high, low, close}=kLine3;
+
+	// 多头行情
+	// 准备条件一: marsi金叉
+	const upTerm1=marsi1.rsi<=marsi1.smoothedRsi&&marsi1.rsi>marsi1.smoothedRsi;
+
+	if (upTerm1) {
+		readyTradingDirection="up";
+		readyTradingDirectionFlag=2;
+		return;
+	}
+	// 空头行情
+	// 准备条件一: marsi死叉
+	const downTerm1=marsi1.rsi>=marsi1.smoothedRsi&&marsi1.rsi<marsi1.smoothedRsi;
+
+	if (downTerm1) {
+		readyTradingDirection="down";
+		readyTradingDirectionFlag=2;
 		return;
 	}
 };
 const judgeBreakTradingDirection=(kLines) => {
 	let [, , kLine1, kLine2, kLine3]=kLines;
-	let [emaMa1, emaMa2, emaMa3, emaMa4, emaMa5]=getLastFromArr(emaMaArr, 5);
+	let [nmacd1, nmacd2, nmacd3, nmacd4, nmacd5]=getLastFromArr(nmacdArr, 5);
+	let [marsi1, marsi2, marsi3, marsi4, marsi5]=getLastFromArr(rsiArr, 5);
 
 	let {high, low, close}=kLine3;
 
-	// 多头被破坏
-	const upTerm2=emaMa1.hist<0&&emaMa5.hist>0;
-	if (readyTradingDirection==="up"&&!upTerm2) {
-		readyTradingDirection="hold";
-		return;
+	if (readyTradingDirection==="up") {
+		// 多头被破坏
+		const upTerm1=readyTradingDirectionFlag===1&&nmacd4.hist>=0&&nmacd5.hist>=0;
+		const upTerm2=
+			readyTradingDirectionFlag===2&&nmacd4.hist>=0&&nmacd5.hist>=0&&marsi5.rsi>=marsi5.smoothedRsi;
+		if (!upTerm1||!upTerm2) {
+			readyTradingDirection="hold";
+			readyTradingDirectionFlag=0;
+			return;
+		}
 	}
-	// 空头被破坏
-	const downTerm2=emaMa1.hist>0&&emaMa5.hist<0;
-	if (readyTradingDirection==="down"&&!downTerm2) {
-		readyTradingDirection="hold";
-		return;
+	if (readyTradingDirection==="down") {
+		// 空头被破坏
+		const downTerm1=readyTradingDirectionFlag===1&&nmacd4.hist<=0&&nmacd5.hist<=0;
+		const downTerm2=
+			readyTradingDirectionFlag===2&&nmacd4.hist<=0&&nmacd5.hist<=0&&marsi5.rsi<=marsi5.smoothedRsi;
+
+		if (!downTerm1||!downTerm2) {
+			readyTradingDirection="hold";
+			readyTradingDirectionFlag=0;
+			return;
+		}
 	}
 };
 
@@ -547,33 +566,37 @@ const judgeAndTrading=(kLines, params) => {
 	}
 };
 const calculateTradingSignal=(kLines) => {
-	const [kLine_fu1, kLine_0, kLine1, kLine2, kLine3]=kLines;
+	const [, , kLine1, kLine2, kLine3]=kLines;
 	const {open, close, openTime, closeTime, low, high}=kLine3;
-	let [emaMa1, emaMa2, emaMa3, emaMa4, emaMa5]=getLastFromArr(emaMaArr, 5);
-	let [rsi1, rsi2, rsi3, rsi4, rsi5]=getLastFromArr(rsiArr, 5);
+	let [nmacd1, nmacd2, nmacd3, nmacd4, nmacd5]=getLastFromArr(nmacdArr, 5);
+	let [marsi1, marsi2, marsi3, marsi4, marsi5]=getLastFromArr(rsiArr, 5);
+	let [sma1, sma2, sma3, sma4, sma5]=getLastFromArr(smaArr, 5);
 
 	let max=Math.max(kLine1.high, kLine2.high, kLine3.high);
 	let min=Math.min(kLine1.low, kLine2.low, kLine3.low);
-	let maxBody=Math.max(kLine1.open, kLine1.close, kLine2.open, kLine2.close, kLine3.open, kLine3.close);
-	let minBody=Math.min(kLine1.open, kLine1.close, kLine2.open, kLine2.close, kLine3.open, kLine3.close);
+	// let maxBody = Math.max(kLine1.open, kLine1.close, kLine2.open, kLine2.close, kLine3.open, kLine3.close);
+	// let minBody = Math.min(kLine1.open, kLine1.close, kLine2.open, kLine2.close, kLine3.open, kLine3.close);
 
+	const signalUpTerm0=readyTradingDirection==="up"&&close>open;
 	const signalUpTerm1=
-		isBottomFractal(kLine1, kLine2, kLine3)|| // 是否底分形态
-		isBigAndYang(kLine3, 0.85)||
-		(isUpLinesGroup2(kLine2, kLine3)&&(isUpCross(kLine1)||isBigAndYang(kLine1, 0.6)))|| // 是否两个k形成垂线
-		(isUpLinesGroup3(kLine1, kLine2, kLine3)&&(isBigAndYang(kLine3, 0.6)||isUpCross(kLine3, 0.4)))|| // 是否三个k形成垂线
-		(isUpSwallow(kLine2, kLine3)&&kLine3.high>kLine1.high)|| // 看涨吞没
-		(isUpSwallow(kLine1, kLine2)&&isBigAndYang(kLine3, 0.6))|| // 看涨吞没 + 大阳k
-		(isUpLinesGroup2(kLine1, kLine2)&&(isUpCross(kLine3)||isBigLine(kLine3, 0.6)))|| // k1，k2刺透, k3垂线
-		isUpStar(kLine1, kLine2, kLine3)|| // 启明星
-		isBreakUp(kLine1, kLine2, kLine3)|| // k3 突破k1/k2，k3是光k
-		upPao(kLine1, kLine2, kLine3);
+		(isBottomFractal(kLine1, kLine2, kLine3)|| // 是否底分形态
+			isBigAndYang(kLine3, 0.85)||
+			(isUpLinesGroup2(kLine2, kLine3)&&(isUpCross(kLine1)||isBigAndYang(kLine1, 0.6)))|| // 是否两个k形成垂线
+			(isUpLinesGroup3(kLine1, kLine2, kLine3)&&(isBigAndYang(kLine3, 0.6)||isUpCross(kLine3, 0.4)))|| // 是否三个k形成垂线
+			(isUpSwallow(kLine2, kLine3)&&kLine3.high>kLine1.high)|| // 看涨吞没
+			(isUpSwallow(kLine1, kLine2)&&isBigAndYang(kLine3, 0.6))|| // 看涨吞没 + 大阳k
+			(isUpLinesGroup2(kLine1, kLine2)&&(isUpCross(kLine3)||isBigLine(kLine3, 0.6)))|| // k1，k2刺透, k3垂线
+			isUpStar(kLine1, kLine2, kLine3)|| // 启明星
+			isBreakUp(kLine1, kLine2, kLine3)|| // k3 突破k1/k2，k3是光k
+			upPao(kLine1, kLine2, kLine3))
 
-	const signalUpTerm2=emaMa4.sma<emaMa5.sma&&emaMa4.ema<emaMa5.ema;
-	const signalUpTerm3=low>emaMa5.sma;
-	const signalUpTerm4=rsi4<rsi5&&rsi5>50&&rsi5<70;
-	if (readyTradingDirection==="up"&&signalUpTerm1&&signalUpTerm2&&signalUpTerm3&&signalUpTerm4) {
-		min=min<emaMa5.sma? emaMa5.sma:min;
+
+	// nmacd 快线 大于 慢线
+	const signalUpTerm2=nmacd5.hist>0;
+	// marsi 大于 rsi
+	const signalUpTerm3=marsi5.rsi>marsi5.smoothedRsi;
+	const signalUpTerm4=sma5>sma4&&close>sma5;
+	if (signalUpTerm0&&signalUpTerm4&&signalUpTerm2&&signalUpTerm3) {
 		if (min<close*(1-invalidSigleStopRate)) {
 			return {
 				trend: "hold",
@@ -589,23 +612,25 @@ const calculateTradingSignal=(kLines) => {
 		};
 	}
 
+	const signalDownTerm0=readyTradingDirection==="down"&&close<open;
 	const signalDownTerm1=
-		(isLowerLow(kLine1, kLine2, kLine3)&&isBigLine(kLine3, 0.6))|| // 顶顶高 k3是光k / 三小连阳
-		isBigAndYin(kLine3, 0.85)||
-		isTopFractal(kLine1, kLine2, kLine3)|| // 是否顶分形态
-		(isDownLinesGroup2(kLine2, kLine3)&&(isDownCross(kLine1)||isBigAndYin(kLine1, 0.6)))|| // 是否两个k形成垂线/光头阴
-		(isDownLinesGroup3(kLine1, kLine2, kLine3)&&(isBigAndYin(kLine3, 0.6)||isDownCross(kLine3, 0.4)))|| // 是否三个k形成垂线
-		(isDownSwallow(kLine2, kLine3)&&kLine3.low<kLine1.low)|| // 看跌吞没
-		(isDownSwallow(kLine1, kLine2)&&isBigAndYin(kLine3, 0.6))|| // 看跌吞没 + 大阴k
-		(isDownLinesGroup2(kLine1, kLine2)&&(isDownCross(kLine3)||isBigLine(kLine3, 0.6)))|| // k1，k2刺透, k3垂线/大k
-		isDownStar(kLine1, kLine2, kLine3)|| // 启明星
-		isBreakDown(kLine1, kLine2, kLine3)|| // k3 突破k1/k2，k3是光k
-		downPao(kLine1, kLine2, kLine3);
-	const signalDownTerm2=emaMa4.sma>emaMa5.sma&&emaMa4.ema>emaMa5.ema;
-	const signalDownTerm3=high<emaMa5.sma;
-	const signalDownTerm4=rsi4>rsi5&&rsi5>30&&rsi5<50;
-	if (readyTradingDirection==="down"&&signalDownTerm1&&signalDownTerm2&&signalDownTerm3&&signalDownTerm4) {
-		max=max>emaMa5.sma? emaMa5.sma:max;
+		((isLowerLow(kLine1, kLine2, kLine3)&&isBigLine(kLine3, 0.6))|| // 顶顶高 k3是光k / 三小连阳
+			isBigAndYin(kLine3, 0.85)||
+			isTopFractal(kLine1, kLine2, kLine3)|| // 是否顶分形态
+			(isDownLinesGroup2(kLine2, kLine3)&&(isDownCross(kLine1)||isBigAndYin(kLine1, 0.6)))|| // 是否两个k形成垂线/光头阴
+			(isDownLinesGroup3(kLine1, kLine2, kLine3)&&(isBigAndYin(kLine3, 0.6)||isDownCross(kLine3, 0.4)))|| // 是否三个k形成垂线
+			(isDownSwallow(kLine2, kLine3)&&kLine3.low<kLine1.low)|| // 看跌吞没
+			(isDownSwallow(kLine1, kLine2)&&isBigAndYin(kLine3, 0.6))|| // 看跌吞没 + 大阴k
+			(isDownLinesGroup2(kLine1, kLine2)&&(isDownCross(kLine3)||isBigLine(kLine3, 0.6)))|| // k1，k2刺透, k3垂线/大k
+			isDownStar(kLine1, kLine2, kLine3)|| // 启明星
+			isBreakDown(kLine1, kLine2, kLine3)|| // k3 突破k1/k2，k3是光k
+			downPao(kLine1, kLine2, kLine3))
+	const signalDownTerm4=sma5<sma4&&close<sma5
+	// nmacd 快线 小于 慢线
+	const signalDownTerm2=nmacd5.hist<0;
+	// marsi 小于 rsi
+	const signalDownTerm3=marsi5.rsi<marsi5.smoothedRsi;
+	if (signalDownTerm0&&signalDownTerm4&&signalDownTerm2&&signalDownTerm3) {
 		if (max>close*(1+invalidSigleStopRate)) {
 			return {
 				trend: "hold",
@@ -634,6 +659,7 @@ function run(params) {
 	start(params);
 	const result={
 		availableMoney,
+		maxAvailableMoney,
 		winNum,
 		failNum,
 		testMoney,
@@ -646,7 +672,7 @@ function run(params) {
 	console.log("length::", openHistory.length, closeHistory.length, trendHistory.length);
 	// https://echarts.apache.org/examples/zh/editor.html?c=line-simple
 	writeInFile(
-		`./tests/data/${symbol}-EmaMaCrossover.js`,
+		`./tests/data/${symbol}-nmacd_marsi.js`,
 		`
         var openHistory = ${JSON.stringify(openHistory, null, 2)}
         var closeHistory = ${JSON.stringify(closeHistory, null, 2)}
@@ -706,27 +732,27 @@ function run(params) {
             trendHistory,
             openPriceHistory,
             closePriceHistory,
-			curTestMoneyHistory
+            curTestMoneyHistory
         }
     `,
 	);
 }
-// run({
-// 	howManyCandle: 3, // 初始止盈，盈亏比
-// 	isProfitRun: 1, // 是否开启移动止盈
-// 	firstProtectProfitRate: 1.5, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
-// 	firstStopLossRate: 0.8, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
-// 	profitProtectRate: 0.7, // 移动止盈，保留盈利比例
-// 	howManyCandleForProfitRun: 0.3,
-// 	maxStopLossRate: 0.05, // 止损小于10%的情况，最大止损5%
-// 	invalidSigleStopRate: 0.1, // 止损在10%，不开单
-// 	double: 1, // 是否损失后加倍开仓
-// 	maxLossCount: 20, // 损失后加倍开仓，最大倍数
-// 	emaPeriod: 10,
-// 	smaPeriod: 10,
-// 	rsiPeriod: 14,
-// 	targetTime: "2024-09-01_00-00-00",
-// });
+run({
+	howManyCandle: 5, // 初始止盈，盈亏比
+	isProfitRun: 1, // 是否开启移动止盈
+	firstProtectProfitRate: 1, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
+	firstStopLossRate: 0.5, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
+	profitProtectRate: 0.8, // 移动止盈，保留盈利比例
+	howManyCandleForProfitRun: 0.5,
+	maxStopLossRate: 0.05, // 止损小于10%的情况，最大止损5%
+	invalidSigleStopRate: 0.1, // 止损在10%，不开单
+	double: 1, // 是否损失后加倍开仓
+	maxLossCount: 20, // 损失后加倍开仓，最大倍数
+	targetTime: "2024-09-01_00-00-00",
+	NMACD_PARAMS: {sma: 13, lma: 21, tsp: 9, np: 50, type: 1},
+	MA_RSI_PARAMS: {rsiLength: 21, smaLength: 55},
+	SMA_PERIOD: 15,
+});
 module.exports={
 	evaluateStrategy: start,
 };

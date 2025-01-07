@@ -1,9 +1,10 @@
 node_modules
+__MACOSX
 logs
 errors
 garbage
 README.*
-# !/README.md
+**/xxx.md
 .env
 .vscode
 *.cer
@@ -12,3 +13,6 @@ __upload
 source
 *.jsonl
 qualifiedSolutions
+tests/data
+nodeServer/data
+nodeServer/source
