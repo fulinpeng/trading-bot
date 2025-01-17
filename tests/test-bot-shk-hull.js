@@ -35,14 +35,14 @@ const {
 	isAllDownTail,
 	isAllUpTail,
 }=require("../utils/kLineTools");
-const {calculateATR}=require("../utils/atr.js");
-const {calculateRSI}=require("../utils/rsi.js");
-const {emaMacrossover}=require("../utils/ema_ma_crossover.js");
+const {calculateHullSuite}=require("../utils/bot-shk-hull/HullSuite.js");
+const {calculateSHK}=require("../utils/bot-shk-hull/SHKIndicator.js");
+const {calculateUTBot}=require("../utils/bot-shk-hull/UTBotStrategy.js");
 const fs=require("fs");
 const symbol="dogeUSDT";
-let {kLineData}=require(`./source/${symbol}-1h.js`);
+let {kLineData}=require(`./source/${symbol}-5m.js`);
 
-const DefaultAvailableMoney=100
+const DefaultAvailableMoney=10
 let maxAvailableMoney=0;
 let numForAverage=0;
 let _kLineData=[...kLineData];
@@ -57,9 +57,17 @@ let profitProtectRate=0.6;
 let maxStopLossRate=0.01;
 let invalidSigleStopRate=0.02;
 let howManyCandleForProfitRun=0.5;
-let emaPeriod=10;
-let smaPeriod=10;
-let rsiPeriod=14;
+let keyValue=2
+let atrPeriod=6
+let stcLength=80
+let fastLength=27
+let slowLength=27
+let hullLength=55
+
+
+let HullSuite=[];
+let SHK=[];
+let UTBot=[];
 
 const getQuantity=(currentPrice) => {
 	availableMoney=DefaultAvailableMoney*(1+lossCount)
@@ -84,11 +92,11 @@ let testMoneyHistory=[];
 let readyTradingDirection="hold";
 let hasOrder=false;
 let candleHeight=0;
-let emaMaArr=[];
-let rsiArr=[];
+
 
 let maxStopLossMoney=0;
 let curTestMoneyHistory=[]
+
 
 const setProfit=(orderPrice, currentPrice, time) => {
 	let curTestMoney=0
@@ -126,25 +134,14 @@ const setMinMoney=(orderPrice, currentPrice, closeTime) => {
 	}
 	if (_testMoney<maxStopLossMoney) maxStopLossMoney=_testMoney;
 };
-const initEveryIndex=(historyClosePrices) => {
-	const len=historyClosePrices.length;
-	for (let i=len-20;i<len;i++) {
-		setEveryIndex(historyClosePrices.slice(0, i));
-	}
+const initEveryIndex=(curKLines) => {
+	setEveryIndex(curKLines);
 };
-const setEveryIndex=(historyClosePrices) => {
-	// 计算 ema
-	setEmaMaArr(historyClosePrices);
-	// 计算 rsi
-	setRsiArr(historyClosePrices);
-};
-const setEmaMaArr=(historyClosePrices) => {
-	emaMaArr.length>=10&&emaMaArr.shift();
-	emaMaArr.push(emaMacrossover(historyClosePrices, smaPeriod, emaPeriod));
-};
-const setRsiArr=(historyClosePrices) => {
-	rsiArr.length>=10&&rsiArr.shift();
-	rsiArr.push(calculateRSI(historyClosePrices, rsiPeriod));
+
+const setEveryIndex=(curKLines) => {
+	UTBot=calculateUTBot(curKLines, {keyValue, atrPeriod});
+	SHK=calculateSHK(curKLines, {stcLength, fastLength, slowLength});
+	HullSuite=calculateHullSuite(curKLines, {length: hullLength});
 };
 
 const resetInit=() => {
@@ -160,7 +157,6 @@ const resetInit=() => {
 	howManyCandleForProfitRun=0.5;
 	maxStopLossRate=0.01;
 	invalidSigleStopRate=0.02;
-	fastPeriod=12;
 	gridPoints=[];
 	trend="";
 	winNum=0;
@@ -183,6 +179,12 @@ const resetInit=() => {
 	smaPeriod=10;
 	rsiPeriod=14;
 	numForAverage=12;
+	keyValue=2
+	atrPeriod=6
+	stcLength=80
+	fastLength=27
+	slowLength=27
+	hullLength=55
 
 	targetTime=null;
 };
@@ -205,23 +207,28 @@ const start=(params) => {
 		emaPeriod=params.emaPeriod;
 		smaPeriod=params.smaPeriod;
 		rsiPeriod=params.rsiPeriod;
+
+		keyValue=params.keyValue;
+		atrPeriod=params.atrPeriod;
+		stcLength=params.stcLength;
+		fastLength=params.fastLength;
+		slowLength=params.slowLength;
+		hullLength=params.hullLength;
 	}
 	if (targetTime) {
 		targetTime=params.targetTime;
 		let start=kLineData.findIndex((v) => v.openTime===targetTime);
 		_kLineData=[...kLineData].slice(start);
 	}
-	const preKLines=_kLineData.slice(0, 100);
-	const prePrices=preKLines.map((v) => v.close);
-	initEveryIndex(prePrices);
-	for (let idx=101;idx<_kLineData.length;idx++) {
-		const curKLines=_kLineData.slice(idx-100, idx);
-		const historyClosePrices=curKLines.map((v) => v.close);
+	const preKLines=_kLineData.slice(0, 500);
+	initEveryIndex(preKLines);
+	for (let idx=500;idx<_kLineData.length;idx++) {
+		const curKLines=_kLineData.slice(idx-500, idx);
 
 		candleHeight=calculateCandleHeight(_kLineData.slice(idx-numForAverage, idx));
 
 		// 设置各种指标
-		setEveryIndex([...historyClosePrices]);
+		setEveryIndex([...curKLines]);
 
 		const curkLine=_kLineData[idx];
 		const {open, close, openTime, closeTime, low, high}=curkLine;
@@ -448,48 +455,38 @@ const reset=() => {
 };
 // 指标判断方向 / 交易
 const judgeTradingDirection=(kLines) => {
-	let [, , kLine1, kLine2, kLine3]=kLines;
-	let [emaMa1, emaMa2, emaMa3, emaMa4, emaMa5]=getLastFromArr(emaMaArr, 5);
-	// let [rsi1, rsi2, rsi3, rsi4, rsi5] = getLastFromArr(rsiArr, 5);
+	// const [, , kLine1, kLine2, kLine3]=kLines;
+	const {buy, sell}=UTBot[UTBot.length-1];
+	const shk=SHK[SHK.length-1];
+	// const { MHULL, SHULL } = HullSuite[HullSuite.length-1];
 
-	let {high, low, open, close}=kLine3;
-
-	// 多头行情
-	// 准备条件一：金叉 preSma <= preEma && sma > ema
-	// 准备条件二：sma > ema && 阴k && 收盘在sma下
-	const upTerm1=emaMa1.hist<0&&emaMa5.hist>0;
-	const upTerm2=emaMa5.hist>0&&close<open&&close>emaMa5.ema&&low<=emaMa5.sma;
-	if (upTerm1||upTerm2) {
+	const upTerm1=buy&&shk<25;
+	if (upTerm1) {
 		readyTradingDirection="up";
-		return;
+		return
 	}
-	// 空头行情
-	// 准备条件一：死叉 preSma >= preEma && sma < ema
-	// 准备条件二：sma < ema && 阳k && 收盘在ema上
-	const downTerm1=emaMa1.hist>0&&emaMa5.hist<0;
-	const downTerm2=emaMa5.hist<0&&close>open&&close<emaMa5.ema&&high>=emaMa5.sma;
-	if (downTerm1||downTerm2) {
+
+	const downTerm1=sell&&shk>75;
+	if (downTerm1) {
 		readyTradingDirection="down";
-		return;
+		return
 	}
+	readyTradingDirection="hold";
 };
 const judgeBreakTradingDirection=(kLines) => {
-	let [, , kLine1, kLine2, kLine3]=kLines;
-	let [emaMa1, emaMa2, emaMa3, emaMa4, emaMa5]=getLastFromArr(emaMaArr, 5);
+	const shk=SHK[SHK.length-1];
+	// const { MHULL, SHULL } = HullSuite[HullSuite.length-1];
 
-	let {high, low, close}=kLine3;
-
-	// 多头被破坏
-	const upTerm2=emaMa1.hist<0&&emaMa5.hist>0;
-	if (readyTradingDirection==="up"&&!upTerm2) {
-		readyTradingDirection="hold";
-		return;
+	const upTerm1=shk<25;
+	if (readyTradingDirection==="up"&&!upTerm1) {
+		readyTradingDirection="hold"
+		return
 	}
-	// 空头被破坏
-	const downTerm2=emaMa1.hist>0&&emaMa5.hist<0;
-	if (readyTradingDirection==="down"&&!downTerm2) {
-		readyTradingDirection="hold";
-		return;
+
+	const downTerm1=shk>75;
+	if (readyTradingDirection==="down"&&!downTerm1) {
+		readyTradingDirection="hold"
+		return
 	}
 };
 
@@ -549,8 +546,10 @@ const judgeAndTrading=(kLines, params) => {
 const calculateTradingSignal=(kLines) => {
 	const [kLine_fu1, kLine_0, kLine1, kLine2, kLine3]=kLines;
 	const {open, close, openTime, closeTime, low, high}=kLine3;
-	let [emaMa1, emaMa2, emaMa3, emaMa4, emaMa5]=getLastFromArr(emaMaArr, 5);
-	let [rsi1, rsi2, rsi3, rsi4, rsi5]=getLastFromArr(rsiArr, 5);
+
+	const {buy, sell}=UTBot[UTBot.length-1];
+	const shk=SHK[SHK.length-1];
+	const {MHULL, SHULL}=HullSuite[HullSuite.length-1];
 
 	let max=Math.max(kLine1.high, kLine2.high, kLine3.high);
 	let min=Math.min(kLine1.low, kLine2.low, kLine3.low);
@@ -569,11 +568,9 @@ const calculateTradingSignal=(kLines) => {
 		isBreakUp(kLine1, kLine2, kLine3)|| // k3 突破k1/k2，k3是光k
 		upPao(kLine1, kLine2, kLine3);
 
-	const signalUpTerm2=emaMa4.sma<emaMa5.sma&&emaMa4.ema<emaMa5.ema;
-	const signalUpTerm3=low>emaMa5.sma;
-	const signalUpTerm4=rsi4<rsi5&&rsi5>50&&rsi5<70;
-	if (readyTradingDirection==="up"&&signalUpTerm1&&signalUpTerm2&&signalUpTerm3&&signalUpTerm4) {
-		min=min<emaMa5.sma? emaMa5.sma:min;
+	const signalUpTerm2=kLine3.close>Math.max(MHULL, SHULL);
+	if (readyTradingDirection==="up"&&signalUpTerm1&&signalUpTerm2) {
+		// min=min<emaMa5.sma? emaMa5.sma:min;
 		if (min<close*(1-invalidSigleStopRate)) {
 			return {
 				trend: "hold",
@@ -601,11 +598,9 @@ const calculateTradingSignal=(kLines) => {
 		isDownStar(kLine1, kLine2, kLine3)|| // 启明星
 		isBreakDown(kLine1, kLine2, kLine3)|| // k3 突破k1/k2，k3是光k
 		downPao(kLine1, kLine2, kLine3);
-	const signalDownTerm2=emaMa4.sma>emaMa5.sma&&emaMa4.ema>emaMa5.ema;
-	const signalDownTerm3=high<emaMa5.sma;
-	const signalDownTerm4=rsi4>rsi5&&rsi5>30&&rsi5<50;
-	if (readyTradingDirection==="down"&&signalDownTerm1&&signalDownTerm2&&signalDownTerm3&&signalDownTerm4) {
-		max=max>emaMa5.sma? emaMa5.sma:max;
+	const signalDownTerm2=kLine3.close<Math.min(MHULL, SHULL);
+	if (readyTradingDirection==="down"&&signalDownTerm1&&signalDownTerm2) {
+		// max=max>emaMa5.sma? emaMa5.sma:max;
 		if (max>close*(1+invalidSigleStopRate)) {
 			return {
 				trend: "hold",
@@ -646,7 +641,7 @@ function run(params) {
 	console.log("length::", openHistory.length, closeHistory.length, trendHistory.length);
 	// https://echarts.apache.org/examples/zh/editor.html?c=line-simple
 	writeInFile(
-		`./tests/data/${symbol}-EmaMaCrossover.js`,
+		`./tests/data/${symbol}-bot-shk-hull.js`,
 		`
         var openHistory = ${JSON.stringify(openHistory, null, 2)}
         var closeHistory = ${JSON.stringify(closeHistory, null, 2)}
@@ -712,20 +707,24 @@ function run(params) {
 	);
 }
 run({
-	howManyCandle: 3, // 初始止盈，盈亏比
-	isProfitRun: 1, // 是否开启移动止盈
-	firstStopProfitRate: 1.5, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
-	firstStopLossRate: 0.8, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
-	profitProtectRate: 0.7, // 移动止盈，保留盈利比例
-	howManyCandleForProfitRun: 0.3,
-	maxStopLossRate: 0.05, // 止损小于10%的情况，最大止损5%
-	invalidSigleStopRate: 0.1, // 止损在10%，不开单
-	double: 1, // 是否损失后加倍开仓
-	maxLossCount: 20, // 损失后加倍开仓，最大倍数
-	emaPeriod: 10,
-	smaPeriod: 10,
-	rsiPeriod: 14,
-	// targetTime: "2024-09-01_00-00-00",
+	"howManyCandle": 1.1,
+	"isProfitRun": 1,
+	"firstStopProfitRate": 0,
+	"firstStopLossRate": 0,
+	"profitProtectRate": 0.9,
+	"howManyCandleForProfitRun": 1,
+	"maxStopLossRate": 0.03,
+	"invalidSigleStopRate": 0.1,
+	"double": 0,
+	"maxLossCount": 20,
+	keyValue: 2,
+	atrPeriod: 6,
+	stcLength: 80,
+	fastLength: 27,
+	slowLength: 27,
+	hullLength: 55,
+
+	targetTime: "2024-11-30_00-00-00",
 });
 module.exports={
 	evaluateStrategy: start,

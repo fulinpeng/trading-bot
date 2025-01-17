@@ -13,7 +13,7 @@ const config={
 		numForAverage: 12, // 多少根k线求取candleHeight
 		howManyCandle: 2, // 初始止盈，盈亏比
 		isProfitRun: 1, // 是否开启移动止盈
-		firstProtectProfitRate: 1, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
+		firstStopProfitRate: 1, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
 		firstStopLossRate: 0.5, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
 		profitProtectRate: 0.9, // 移动止盈，保留盈利比例
 		howManyCandleForProfitRun: 0.5,
@@ -35,7 +35,7 @@ const config={
 		numForAverage: 12, // 多少根k线求取candleHeight
 		howManyCandle: 2, // 初始止盈，盈亏比
 		isProfitRun: 1, // 是否开启移动止盈
-		firstProtectProfitRate: 1, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
+		firstStopProfitRate: 1, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
 		firstStopLossRate: 0.5, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
 		profitProtectRate: 0.9, // 移动止盈，保留盈利比例
 		howManyCandleForProfitRun: 0.5,

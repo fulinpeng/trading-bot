@@ -13,7 +13,7 @@ const config={
 		numForAverage: 12,
 		howManyCandle: 1, //3 初始止盈，盈亏比
 		isProfitRun: 1, // 是否开启移动止盈
-		firstProtectProfitRate: 1.5, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
+		firstStopProfitRate: 1.5, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
 		firstStopLossRate: 0.8, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
 		profitProtectRate: 0.7, // 移动止盈，保留盈利比例
 		howManyCandleForProfitRun: 0.3,

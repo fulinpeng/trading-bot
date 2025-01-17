@@ -14,7 +14,7 @@ const {qualifiedSolutions}=require(qualifiedSolutionsPath);
 
 const newQualifiedSolutions=qualifiedSolutions.filter((item) => {
 	let result=item.result||item.results||[];
-	if (result[result.length-1].testMoney<=400) {
+	if (result[result.length-1].testMoney<=700) {
 		return false;
 	}
 	// 是否需要忽略了最后一个，忽略了最后一个，因为最后一个是最新的，不一定准确
@@ -45,16 +45,16 @@ function saveQualifiedSolutions(newSolutions) {
 	let allSolutions=[...originSolutions, ...existingSolutions].sort((a, b) => {
 		let resulta=a.result||a.results||[];
 		let resultb=b.result||b.results||[];
-		let aRatial=resulta.reduce((sum, cur) => sum+Math.abs(cur.testMoney/cur.minMoney), 0)/resulta.length;
-		let bRatial=resultb.reduce((sum, cur) => sum+Math.abs(cur.testMoney/cur.minMoney), 0)/resultb.length;
+		// let aRatial=resulta.reduce((sum, cur) => sum+Math.abs(cur.testMoney/cur.minMoney), 0)/resulta.length;
+		// let bRatial=resultb.reduce((sum, cur) => sum+Math.abs(cur.testMoney/cur.minMoney), 0)/resultb.length;
 		// let aRatial = resulta.reduce((sum, cur) => sum + Math.abs(cur.maxMoney / cur.minMoney), 0) / resulta.length;
 		// let bRatial = resultb.reduce((sum, cur) => sum + Math.abs(cur.maxMoney / cur.minMoney), 0) / resultb.length;
 		// let aRatial = resulta.reduce((sum, cur) => sum + Math.abs(cur.maxMoney / cur.minMoney) + Math.abs(cur.testMoney / cur.minMoney), 0) / resulta.length;
 		// let bRatial = resultb.reduce((sum, cur) => sum + Math.abs(cur.maxMoney / cur.minMoney) + Math.abs(cur.testMoney / cur.minMoney), 0) / resultb.length;
 		// let aRatial = resulta.reduce((sum, cur) => sum + cur.minMoney, 0) / resulta.length;
 		// let bRatial = resultb.reduce((sum, cur) => sum + cur.minMoney, 0) / resultb.length;
-		// let aRatial = resulta.reduce((sum, cur) => sum + cur.testMoney, 0) / resulta.length;
-		// let bRatial = resultb.reduce((sum, cur) => sum + cur.testMoney, 0) / resultb.length;
+		let aRatial=resulta.reduce((sum, cur) => sum+cur.testMoney, 0)/resulta.length;
+		let bRatial=resultb.reduce((sum, cur) => sum+cur.testMoney, 0)/resultb.length;
 		return bRatial-aRatial;
 	});
 	fs.writeFileSync(outputPath, `module.exports = { qualifiedSolutions: ${JSON.stringify(allSolutions, null, 2)} }`);

@@ -5,47 +5,47 @@
 // 当 RSI 处于 30 到 70 之间时，市场被认为是在正常范围内，没有明显的超买或超卖信号，可能处于横盘状态。
 
 function calculateRSI(prices, period) {
-    if (prices.length < period + 1) {
-        throw new Error("数据不足，无法计算 RSI");
-    }
+	if (prices.length<period+1) {
+		throw new Error("数据不足，无法计算 RSI");
+	}
 
-    let gains = 0;
-    let losses = 0;
+	let gains=0;
+	let losses=0;
 
-    // 计算第一期的平均上涨和平均下跌
-    for (let i = 1; i <= period; i++) {
-        let change = prices[i] - prices[i - 1];
-        if (change > 0) {
-            gains += change;
-        } else {
-            losses -= change;
-        }
-    }
+	// 计算第一期的平均上涨和平均下跌
+	for (let i=1;i<=period;i++) {
+		let change=prices[i]-prices[i-1];
+		if (change>0) {
+			gains+=change;
+		} else {
+			losses-=change;
+		}
+	}
 
-    let averageGain = gains / period;
-    let averageLoss = losses / period;
+	let averageGain=gains/period;
+	let averageLoss=losses/period;
 
-    let RS = averageGain / averageLoss;
-    let RSI = 100 - 100 / (1 + RS);
+	let RS=averageGain/averageLoss;
+	let RSI=100-100/(1+RS);
 
-    // 计算后续时期的平均上涨和平均下跌
-    for (let i = period + 1; i < prices.length; i++) {
-        let change = prices[i] - prices[i - 1];
-        if (change > 0) {
-            averageGain = (averageGain * (period - 1) + change) / period;
-            averageLoss = (averageLoss * (period - 1)) / period;
-        } else {
-            averageGain = (averageGain * (period - 1)) / period;
-            averageLoss = (averageLoss * (period - 1) - change) / period;
-        }
+	// 计算后续时期的平均上涨和平均下跌
+	for (let i=period+1;i<prices.length;i++) {
+		let change=prices[i]-prices[i-1];
+		if (change>0) {
+			averageGain=(averageGain*(period-1)+change)/period;
+			averageLoss=(averageLoss*(period-1))/period;
+		} else {
+			averageGain=(averageGain*(period-1))/period;
+			averageLoss=(averageLoss*(period-1)-change)/period;
+		}
 
-        RS = averageGain / averageLoss;
-        RSI = 100 - 100 / (1 + RS);
-    }
+		RS=averageGain/averageLoss;
+		RSI=100-100/(1+RS);
+	}
 
-    return RSI;
+	return RSI;
 }
 
-module.exports = {
-    calculateRSI,
+module.exports={
+	calculateRSI,
 };

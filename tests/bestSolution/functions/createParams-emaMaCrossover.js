@@ -5,7 +5,7 @@ const path=require("path");
 const paramRangesObj={
 	howManyCandle: {min: 1, max: 10, step: 1},
 	isProfitRun: {min: 1, max: 1, step: 1},
-	firstProtectProfitRate: {min: 1, max: 10, step: 0.5},
+	firstStopProfitRate: {min: 1, max: 10, step: 0.5},
 	firstStopLossRate: {min: 0.3, max: 0.9, step: 0.1},
 	profitProtectRate: {min: 0.3, max: 0.9, step: 0.1},
 	howManyCandleForProfitRun: {min: 0.3, max: 2, step: 0.1},

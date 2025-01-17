@@ -43,6 +43,8 @@
 		const closePriceHistory={{closePriceHistory}}
 		const trendHistory={{trendHistory}}
 		const curTestMoneyHistory={{curTestMoneyHistory}}
+		const ht={{ht}}
+		console.log("🚀 ~ ht:", ht)
 
 		// Each item: open，close，lowest，highest
 		function splitData(rawData) {
@@ -73,6 +75,11 @@
 			return result;
 		}
 		let data0=splitData(kLineData.map(v => [v.openTime, v.open, v.close, v.low, v.high, v.closeTime]))
+
+		console.log("🚀 ~ data0.values:", data0.values.length)
+
+		const ema169=calculateMA(169)
+		console.log("🚀 ~ ema169:", ema169)
 
 		const markArea=openHistory.map((t, i) => {
 			if (i===1) {
@@ -136,7 +143,7 @@
 				},
 			},
 			legend: {
-				data: [timeLevel, "MA144", "MA169"],
+				data: [timeLevel, "MA144", "MA169", "ht"],
 			},
 			grid: {
 				left: "10%",
@@ -254,7 +261,17 @@
 					name: "MA169",
 					type: "line",
 					symbol: 'none',
-					data: calculateMA(169),
+					data: ema169,
+					smooth: true,
+					lineStyle: {
+						opacity: 0.5,
+					},
+				},
+				{
+					name: "ht",
+					type: "line",
+					symbol: 'none',
+					data: ht,
 					smooth: true,
 					lineStyle: {
 						opacity: 0.5,

@@ -50,7 +50,7 @@ let maxLossCount=2
 let availableMoney=DefaultAvailableMoney*(1+lossCount)
 let howManyCandle=1;
 let isProfitRun=0;
-let firstProtectProfitRate=0;
+let firstStopProfitRate=0;
 let profitProtectRate=0.6;
 let howManyCandleForProfitRun=0.5;
 let maxStopLossRate=0.01;
@@ -155,7 +155,7 @@ const resetInit=() => {
 	double=0;
 	lossCount=0
 	maxLossCount=2
-	firstProtectProfitRate=0;
+	firstStopProfitRate=0;
 	firstStopLossRate=0;
 	profitProtectRate=0.6;
 	howManyCandleForProfitRun=0.5;
@@ -194,7 +194,7 @@ const start=(params) => {
 		EMA_PERIOD[0]=fastPeriod
 		howManyCandle=params.howManyCandle;
 		isProfitRun=params.isProfitRun;
-		firstProtectProfitRate=params.firstProtectProfitRate;
+		firstStopProfitRate=params.firstStopProfitRate;
 		firstStopLossRate=params.firstStopLossRate;
 		profitProtectRate=params.profitProtectRate;
 		howManyCandleForProfitRun=params.howManyCandleForProfitRun;
@@ -212,7 +212,7 @@ const start=(params) => {
 	const preKLines=_kLineData.slice(0, 500);
 	const prePrices=preKLines.map((v) => v.close);
 	initEveryIndex(prePrices);
-	for (let idx=501;idx<_kLineData.length;idx++) {
+	for (let idx=500;idx<_kLineData.length;idx++) {
 		const curKLines=_kLineData.slice(idx-500, idx);
 		const historyClosePrices=curKLines.map((v) => v.close);
 
@@ -259,10 +259,10 @@ const start=(params) => {
 						continue;
 					}
 
-					// if (firstProtectProfitRate) {
+					// if (firstStopProfitRate) {
 					// 	// 未达到初始止盈点时，根据ema12指标盈动止损，避免亏损过大
 					// 	if (close<emaFast5&&close<open) {
-					// 		gridPoints[0]=orderPrice+Math.abs(orderPrice-emaFast5)*firstProtectProfitRate;
+					// 		gridPoints[0]=orderPrice+Math.abs(orderPrice-emaFast5)*firstStopProfitRate;
 					// 		// gridPoints = [
 					// 		//     orderPrice + Math.abs(emaFast5 - orderPrice) * profitProtectRate,
 					// 		//     emaFast5 + candleHeight * howManyCandleForProfitRun,
@@ -270,14 +270,14 @@ const start=(params) => {
 					// 		continue;
 					// 	}
 					// }
-					if (firstProtectProfitRate) {
-						const firstProfitPrice=orderPrice+Math.abs(orderPrice-point1)*firstProtectProfitRate
+					if (firstStopProfitRate) {
+						const firstProfitPrice=orderPrice+Math.abs(orderPrice-point1)*firstStopProfitRate
 						if (close>firstProfitPrice) {
 							// 到初始止盈点时，并且该k线是阴线，移动止损到开仓价，避免盈利回撤
 							if (close<open) {
 								// 减少止损
 								gridPoints[0]=orderPrice//+Math.abs(orderPrice-firstProfitPrice)/2;
-								firstProtectProfitRate=0
+								firstStopProfitRate=0
 								continue;
 							}
 						}
@@ -303,14 +303,14 @@ const start=(params) => {
 						reset();
 						continue;
 					}
-					if (firstProtectProfitRate) {
-						const firstProfitPrice=orderPrice-Math.abs(orderPrice-point2)*firstProtectProfitRate
+					if (firstStopProfitRate) {
+						const firstProfitPrice=orderPrice-Math.abs(orderPrice-point2)*firstStopProfitRate
 						if (close<firstProfitPrice) {
 							// 到初始止盈点时，并且该k线是阳线，移动止损到开仓价，避免盈利回撤
 							if (close>open) {
 								// 减少止损
 								gridPoints[1]=orderPrice//-Math.abs(orderPrice-firstProfitPrice)/25;
-								firstProtectProfitRate=0
+								firstStopProfitRate=0
 								continue;
 							}
 						}
@@ -563,7 +563,7 @@ const judgeAndTrading=(kLines, params) => {
 			hasOrder=true;
 			openHistory.push(curkLine.openTime); // 其实开单时间是：curkLine.closeTime，binance的时间显示的是open Time，方便调试这里记录openTime
 			openPriceHistory.push(curkLine.close);
-			firstProtectProfitRate=params.firstProtectProfitRate
+			firstStopProfitRate=params.firstStopProfitRate
 			firstStopLossRate=params.firstStopLossRate
 			break;
 		case "down":
@@ -574,7 +574,7 @@ const judgeAndTrading=(kLines, params) => {
 			hasOrder=true;
 			openHistory.push(curkLine.openTime); // 其实开单时间是：curkLine.closeTime，binance的时间显示的是open Time，方便调试这里记录openTime
 			openPriceHistory.push(curkLine.close);
-			firstProtectProfitRate=params.firstProtectProfitRate
+			firstStopProfitRate=params.firstStopProfitRate
 			firstStopLossRate=params.firstStopLossRate
 			break;
 		default:
@@ -766,7 +766,7 @@ run({
 	fastPeriod: 40,
 	howManyCandle: 5, // 初始止盈，盈亏比
 	isProfitRun: 1, // 是否开启移动止盈
-	firstProtectProfitRate: 2, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
+	firstStopProfitRate: 2, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
 	firstStopLossRate: 0.6, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
 	profitProtectRate: 0.6, // 移动止盈，保留盈利比例
 	howManyCandleForProfitRun: 0.6,
@@ -780,7 +780,7 @@ run({
 	// fastPeriod: 80,
 	// howManyCandle: 5, // 初始止盈，盈亏比
 	// isProfitRun: 1, // 是否开启移动止盈
-	// firstProtectProfitRate: 2, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
+	// firstStopProfitRate: 2, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
 	// firstStopLossRate: 0.6, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
 	// profitProtectRate: 0.6, // 移动止盈，保留盈利比例
 	// howManyCandleForProfitRun: 0.6,

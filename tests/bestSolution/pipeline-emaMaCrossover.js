@@ -23,7 +23,7 @@ const batchSize=parseInt(os.cpus().length); // 每次处理cpus个参数组合
 const paramRangesObj={
 	howManyCandle: {min: 1, max: 10, step: 1},
 	isProfitRun: {min: 1, max: 1, step: 1},
-	firstProtectProfitRate: {min: 1, max: 10, step: 0.5},
+	firstStopProfitRate: {min: 1, max: 10, step: 0.5},
 	firstStopLossRate: {min: 0.3, max: 0.9, step: 0.1},
 	profitProtectRate: {min: 0.3, max: 0.9, step: 0.1},
 	howManyCandleForProfitRun: {min: 0.3, max: 2, step: 0.1},
@@ -80,7 +80,7 @@ function areSolutionsEqual(solutionA, solutionB) {
 	return (
 		solutionA.howManyCandle===solutionB.howManyCandle&&
 		solutionA.isProfitRun===solutionB.isProfitRun&&
-		solutionA.firstProtectProfitRate===solutionB.firstProtectProfitRate&&
+		solutionA.firstStopProfitRate===solutionB.firstStopProfitRate&&
 		solutionA.firstStopLossRate===solutionB.firstStopLossRate&&
 		solutionA.profitProtectRate===solutionB.profitProtectRate&&
 		solutionA.howManyCandleForProfitRun===solutionB.howManyCandleForProfitRun&&
