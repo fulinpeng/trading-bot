@@ -65,7 +65,7 @@ const {
 	numForAverage, // 多少根k线求取candleHeight
 	howManyCandle, // 初始止盈，盈亏比
 	isProfitRun, // 是否开启移动止盈
-	firstProtectProfitRate: DefaultFirstProtectProfitRate, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
+	firstStopProfitRate: DefaultFirstProtectProfitRate, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
 	firstStopLossRate: DefaultFirstStopLossRate, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
 	profitProtectRate, // 移动止盈，保留盈利比例
 	howManyCandleForProfitRun,
@@ -77,7 +77,7 @@ const {
 
 
 let availableMoney=DefaultAvailableMoney
-let firstProtectProfitRate=DefaultFirstProtectProfitRate
+let firstStopProfitRate=DefaultFirstProtectProfitRate
 let firstStopLossRate=DefaultFirstStopLossRate
 let lossCount=0
 
@@ -409,14 +409,14 @@ const judgeFirstProtectProfit=async () => {
 		}
 
 
-		if (firstProtectProfitRate) {
-			const firstProfitPrice=orderPrice+Math.abs(orderPrice-point1)*firstProtectProfitRate
+		if (firstStopProfitRate) {
+			const firstProfitPrice=orderPrice+Math.abs(orderPrice-point1)*firstStopProfitRate
 			if (close>firstProfitPrice) {
 				// 到初始止盈点时，并且该k线是阴线，移动止损到开仓价，避免盈利回撤
 				if (close<open) {
 					// 减少止损
 					gridPoints[0]=orderPrice//+Math.abs(orderPrice-firstProfitPrice)/2;
-					firstProtectProfitRate=0
+					firstStopProfitRate=0
 					isJudgeFirstProfit=false
 					return;
 				}
@@ -444,14 +444,14 @@ const judgeFirstProtectProfit=async () => {
 			isJudgeFirstProfit=false
 			return;
 		}
-		if (firstProtectProfitRate) {
-			const firstProfitPrice=orderPrice-Math.abs(orderPrice-point2)*firstProtectProfitRate
+		if (firstStopProfitRate) {
+			const firstProfitPrice=orderPrice-Math.abs(orderPrice-point2)*firstStopProfitRate
 			if (close<firstProfitPrice) {
 				// 到初始止盈点时，并且该k线是阳线，移动止损到开仓价，避免盈利回撤
 				if (close>open) {
 					// 减少止损
 					gridPoints[1]=orderPrice//-Math.abs(orderPrice-firstProfitPrice)/25;
-					firstProtectProfitRate=0
+					firstStopProfitRate=0
 					isJudgeFirstProfit=false
 					return;
 				}
@@ -568,13 +568,13 @@ const judgeAndTrading=async () => {
 		case "up":
 			await teadeBuy();
 			setGridPoints("up", stopLoss, stopProfit);
-			firstProtectProfitRate=DefaultFirstProtectProfitRate
+			firstStopProfitRate=DefaultFirstProtectProfitRate
 			firstStopLossRate=DefaultFirstStopLossRate
 			break;
 		case "down":
 			await teadeSell();
 			setGridPoints("down", stopLoss, stopProfit);
-			firstProtectProfitRate=DefaultFirstProtectProfitRate
+			firstStopProfitRate=DefaultFirstProtectProfitRate
 			firstStopLossRate=DefaultFirstStopLossRate
 			break;
 		default:
@@ -1032,7 +1032,7 @@ const recoverHistoryData=async (historyDatas) => {
 		hasOrder: __hasOrder,
 
 		availableMoney: __availableMoney,
-		firstProtectProfitRate: __firstProtectProfitRate,
+		firstStopProfitRate: __firstStopProfitRate,
 		firstStopLossRate: __firstStopLossRate,
 		lossCount: __lossCount,
 	}=historyDatas;
@@ -1047,7 +1047,7 @@ const recoverHistoryData=async (historyDatas) => {
 	readyTradingDirectionFlag=__readyTradingDirectionFlag
 
 	availableMoney=__availableMoney
-	firstProtectProfitRate=__firstProtectProfitRate
+	firstStopProfitRate=__firstStopProfitRate
 	firstStopLossRate=__firstStopLossRate
 	lossCount=__lossCount
 };
@@ -1067,7 +1067,7 @@ const recoverHistoryDataByPosition=async (historyDatas, {up, down}) => {
 		hasOrder: __hasOrder,
 
 		availableMoney: __availableMoney,
-		firstProtectProfitRate: __firstProtectProfitRate,
+		firstStopProfitRate: __firstStopProfitRate,
 		firstStopLossRate: __firstStopLossRate,
 		lossCount: __lossCount,
 	}=historyDatas;
@@ -1081,7 +1081,7 @@ const recoverHistoryDataByPosition=async (historyDatas, {up, down}) => {
 	readyTradingDirectionFlag=__readyTradingDirectionFlag
 
 	availableMoney=__availableMoney
-	firstProtectProfitRate=__firstProtectProfitRate
+	firstStopProfitRate=__firstStopProfitRate
 	firstStopLossRate=__firstStopLossRate
 	lossCount=__lossCount
 	if (__isProfitRun) {
@@ -1104,7 +1104,7 @@ const checkOverGrid=async ({up, down}) => {
 		readyTradingDirection="hold"; // 是否准备开单
 		readyTradingDirectionFlag=0
 		availableMoney=DefaultAvailableMoney
-		firstProtectProfitRate=DefaultFirstProtectProfitRate
+		firstStopProfitRate=DefaultFirstProtectProfitRate
 		firstStopLossRate=DefaultFirstStopLossRate
 		lossCount=0
 		resetTradingDatas();
@@ -1601,7 +1601,7 @@ function saveGlobalVariables() {
 				readyTradingDirection, // 是否准备开单
 				readyTradingDirectionFlag,
 				availableMoney,
-				firstProtectProfitRate,
+				firstStopProfitRate,
 				firstStopLossRate,
 				lossCount,
 			});

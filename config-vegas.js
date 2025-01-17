@@ -14,7 +14,7 @@ const config={
 		fastPeriod: 20,
 		howManyCandle: 2, // 初始止盈，盈亏比
 		isProfitRun: 1, // 是否开启移动止盈
-		firstProtectProfitRate: 1, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
+		firstStopProfitRate: 1, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
 		firstStopLossRate: 0.6, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
 		profitProtectRate: 0.6, // 移动止盈，保留盈利比例
 		howManyCandleForProfitRun: 0.6,
@@ -27,7 +27,7 @@ const config={
 		// fastPeriod: 80,
 		// howManyCandle: 5, // 初始止盈，盈亏比
 		// isProfitRun: 1, // 是否开启移动止盈
-		// firstProtectProfitRate: 2, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
+		// firstStopProfitRate: 2, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
 		// firstStopLossRate: 0.6, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
 		// profitProtectRate: 0.6, // 移动止盈，保留盈利比例
 		// howManyCandleForProfitRun: 0.6,
@@ -36,7 +36,7 @@ const config={
 		// double: 1, // 是否损失后加倍开仓
 		// maxLossCount: 9, // 损失后加倍开仓，最大倍数
 
-		
+
 	},
 };
 

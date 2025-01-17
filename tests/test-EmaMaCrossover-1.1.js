@@ -53,6 +53,7 @@ let availableMoney=DefaultAvailableMoney*(1+lossCount)
 let howManyCandle=1;
 let isProfitRun=0;
 let firstStopProfitRate=0;
+let firstProtectProfitRate=0;
 let profitProtectRate=0.6;
 let maxStopLossRate=0.01;
 let invalidSigleStopRate=0.02;
@@ -63,6 +64,7 @@ let rsiPeriod=14;
 
 const getQuantity=(currentPrice) => {
 	availableMoney=DefaultAvailableMoney*(1+lossCount)
+	if (maxAvailableMoney<availableMoney) maxAvailableMoney=availableMoney
 	return Math.round(availableMoney/currentPrice);
 };
 
@@ -105,6 +107,11 @@ const setProfit=(orderPrice, currentPrice, time) => {
 		} else {
 			lossCount=0
 		}
+	}
+	if (curTestMoney<=0) {
+		failNum++
+	} else {
+		winNum++
 	}
 	if (testMoney>maxMoney) maxMoney=testMoney;
 	if (testMoney<minMoney) minMoney=testMoney;
@@ -155,6 +162,7 @@ const resetInit=() => {
 	lossCount=0
 	maxLossCount=2
 	firstStopProfitRate=0;
+	firstProtectProfitRate=0;
 	firstStopLossRate=0;
 	profitProtectRate=0.6;
 	howManyCandleForProfitRun=0.5;
@@ -194,6 +202,7 @@ const start=(params) => {
 		howManyCandle=params.howManyCandle;
 		isProfitRun=params.isProfitRun;
 		firstStopProfitRate=params.firstStopProfitRate;
+		firstProtectProfitRate=params.firstProtectProfitRate;
 		firstStopLossRate=params.firstStopLossRate;
 		profitProtectRate=params.profitProtectRate;
 		howManyCandleForProfitRun=params.howManyCandleForProfitRun;
@@ -248,48 +257,39 @@ const start=(params) => {
 		// 有仓位就准备平仓
 		else {
 			const [point1, point2]=gridPoints;
-			// 先判断止损
+			// 判断止损
 			if (trend) {
 				// 判断止损
 				if (trend==="up") {
 					// low 小于 point1 就止损，否则继续持有
 					if (low<=point1) {
 						setProfit(orderPrice, point1, openTime);
-						failNum++;
 						reset();
 						continue;
 					}
-
-					// if (firstStopProfitRate) {
-					// 	// 未达到初始止盈点时，根据ema12指标盈动止损，避免亏损过大
-					// 	if (close<emaMa5.sma&&close<open) {
-					// 		gridPoints[0]=orderPrice+Math.abs(orderPrice-emaMa5.sma)*firstStopProfitRate;
-					// 		// gridPoints = [
-					// 		//     orderPrice + Math.abs(emaMa5.sma - orderPrice) * profitProtectRate,
-					// 		//     emaMa5.sma + candleHeight * howManyCandleForProfitRun,
-					// 		// ];
-					// 		continue;
-					// 	}
-					// }
 					if (firstStopProfitRate) {
 						const firstProfitPrice=orderPrice+Math.abs(orderPrice-point1)*firstStopProfitRate
 						if (close>firstProfitPrice) {
 							// 到初始止盈点时，并且该k线是阴线，移动止损到开仓价，避免盈利回撤
-							if (close<open) {
-								// 减少止损
-								gridPoints[0]=orderPrice+Math.abs(orderPrice-firstProfitPrice)/20;
-								firstStopProfitRate=0
-								continue;
-							}
+							// if (close<open) {
+							// 减少止损
+							gridPoints[0]=orderPrice+Math.abs(orderPrice-firstProfitPrice)*firstProtectProfitRate;
+							firstStopProfitRate=0
+							firstStopLossRate=0 // 防止同时触发止损
+							continue;
+							// }
 						}
 					}
 					if (firstStopLossRate) {
 						const firstStopPrice=orderPrice-Math.abs(orderPrice-point1)*firstStopLossRate
 						if (close<firstStopPrice) {
-							// 到初始止损点时，并且该k线是阳线，移动止盈到开仓价，避免亏损太多
-							if (close<open) {
-								// 减少止盈利接近开盘价
-								gridPoints[1]=orderPrice+Math.abs(orderPrice-firstStopPrice)/25;
+							// 到初始止损点时，并且该k线是大阴线，移动止损到该k线的下方，避免亏损太多
+							// 仓位还在，说明没有 low 没有触发止损，所以low在point1上方
+							// 0.8还是比较苛刻，比较难触发，所以不会频繁触发
+							// 这里不再修改止盈点，避免打破策略的平衡
+							if (isBigAndYin(curkLine, 0.8)) {
+								// 移动止损到low下方
+								gridPoints[0]=Math.abs(low+point1)/2;
 								firstStopLossRate=0
 								continue;
 							}
@@ -300,7 +300,6 @@ const start=(params) => {
 					// high 大于 point2 就止损，否则继续持有
 					if (high>=point2) {
 						setProfit(orderPrice, point2, openTime);
-						failNum++;
 						reset();
 						continue;
 					}
@@ -308,21 +307,25 @@ const start=(params) => {
 						const firstProfitPrice=orderPrice-Math.abs(orderPrice-point2)*firstStopProfitRate
 						if (close<firstProfitPrice) {
 							// 到初始止盈点时，并且该k线是阳线，移动止损到开仓价，避免盈利回撤
-							if (close>open) {
-								// 减少止损
-								gridPoints[1]=orderPrice-Math.abs(orderPrice-firstProfitPrice)/20;
-								firstStopProfitRate=0
-								continue;
-							}
+							// if (close>open) {
+							// 减少止损
+							gridPoints[1]=orderPrice-Math.abs(orderPrice-firstProfitPrice)*firstProtectProfitRate;
+							firstStopProfitRate=0
+							firstStopLossRate=0 // 防止同时触发止损
+							continue;
+							// }
 						}
 					}
 					if (firstStopLossRate) {
 						const firstStopPrice=orderPrice+Math.abs(orderPrice-point2)*firstStopLossRate
 						if (close>firstStopPrice) {
-							// 到初始止损点时，并且该k线是阴线，移动止盈到开仓价，避免亏损太多
-							if (close>open) {
+							// 到初始止损点时，并且该k线是大阳线，移动止损到该k线的上方，避免亏损太多
+							// 仓位还在，说明没有 high 没有触发止损，所以high在point2下方
+							// 0.8还是比较苛刻，比较难触发，所以不会频繁触发
+							// 这里不再修改止盈点，避免打破策略的平衡
+							if (isBigAndYang(curkLine, 0.8)) {
 								// 减少止盈利接近开盘价
-								gridPoints[0]=orderPrice+Math.abs(orderPrice-firstStopPrice)/25;
+								gridPoints[1]=Math.abs(high+point2)/2;
 								firstStopLossRate=0
 								continue;
 							}
@@ -354,14 +357,12 @@ const start=(params) => {
 					// 判断止盈：上面没有被止损，也没被止盈，那看下面是否能止盈，high 大于 point2 就止盈利，否则继续持有
 					if (trend==="up"&&high>=point2) {
 						setProfit(orderPrice, point2, openTime);
-						winNum++;
 						reset();
 						continue;
 					}
 					// 上面没有被止损，那看是否能止盈，low 小于 point1 就止盈利，否则继续持有
 					if (hasOrder&&trend==="down"&&low<=point1) {
 						setProfit(orderPrice, point1, openTime);
-						winNum++;
 						reset();
 						continue;
 					}
@@ -382,7 +383,6 @@ const start=(params) => {
 				// low 小于 point1 就止损，否则继续持有
 				if (low<=point1) {
 					setProfit(orderPrice, point1, openTime);
-					failNum++;
 					reset();
 					return;
 				}
@@ -391,7 +391,6 @@ const start=(params) => {
 				// high 大于 point2 就止损，否则继续持有
 				if (high>=point2) {
 					setProfit(orderPrice, point2, openTime);
-					failNum++;
 					reset();
 					return;
 				}
@@ -401,14 +400,12 @@ const start=(params) => {
 			// 判断止盈：上面没有被止损，那看下面是否能止盈，high 大于 point2 就止盈利，否则继续持有
 			if (trend==="up"&&high>=point2) {
 				setProfit(orderPrice, point2, openTime);
-				winNum++;
 				reset();
 				return;
 			}
 			// 判断止盈：上面没有被止损，那看是否能止盈，low 小于 point1 就止盈利，否则继续持有
 			if (hasOrder&&trend==="down"&&low<=point1) {
 				setProfit(orderPrice, point1, openTime);
-				winNum++;
 				reset();
 				return;
 			}
@@ -633,7 +630,23 @@ function writeInFile(fileName, str) {
 function run(params) {
 	start(params);
 	const result={
+		howManyCandle,
+		firstStopProfitRate,
+		firstProtectProfitRate,
+		firstStopLossRate,
+		isProfitRun,
+		profitProtectRate,
+		howManyCandleForProfitRun,
+		maxStopLossRate,
+		invalidSigleStopRate,
+		double,
+		maxLossCount,
+		emaPeriod,
+		smaPeriod,
+		rsiPeriod,
+		xxxx: '--------------------------------',
 		availableMoney,
+		maxAvailableMoney,
 		winNum,
 		failNum,
 		testMoney,
@@ -712,12 +725,13 @@ function run(params) {
 	);
 }
 run({
-	howManyCandle: 3, // 初始止盈，盈亏比
-	isProfitRun: 1, // 是否开启移动止盈
-	firstStopProfitRate: 1.5, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
-	firstStopLossRate: 0.8, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
-	profitProtectRate: 0.7, // 移动止盈，保留盈利比例
-	howManyCandleForProfitRun: 0.3,
+	howManyCandle: 4.2, // 初始止盈，盈亏比
+	firstStopProfitRate: 1.2, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
+	firstProtectProfitRate: 0.1, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
+	firstStopLossRate: 0.8, //  当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
+	isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
+	profitProtectRate: 0.95, // 移动止盈，保留盈利比例
+	howManyCandleForProfitRun: 0.1,
 	maxStopLossRate: 0.05, // 止损小于10%的情况，最大止损5%
 	invalidSigleStopRate: 0.1, // 止损在10%，不开单
 	double: 1, // 是否损失后加倍开仓
@@ -725,7 +739,7 @@ run({
 	emaPeriod: 10,
 	smaPeriod: 10,
 	rsiPeriod: 14,
-	// targetTime: "2024-09-01_00-00-00",
+	// targetTime: "2024-02-01_00-00-00",
 });
 module.exports={
 	evaluateStrategy: start,

@@ -127,6 +127,7 @@ app.get('/', (req, res) => {
 		.replace('{{openPriceHistory}}', jsonString(data.openPriceHistory))
 		.replace('{{closePriceHistory}}', jsonString(data.closePriceHistory))
 		.replace('{{curTestMoneyHistory}}', jsonString(data.curTestMoneyHistory))
+		.replace('{{ht}}', jsonString(data.ht))
 		.replace('{{title}}', `${symbol}-${strategy}`)
 		.replace('{{symbol}}', symbol)
 		.replace('{{timeLevel}}', timeLevel)
