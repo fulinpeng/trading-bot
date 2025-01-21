@@ -75,7 +75,7 @@ let {
 	NMACD_PARAMS,
 	MA_RSI_PARAMS,
 	SMA_PERIOD,
-}=config["doge"];
+}=config["1000pepe"];
 
 let availableMoney=DefaultAvailableMoney
 let firstStopProfitRate=DefaultFirstStopProfitRate

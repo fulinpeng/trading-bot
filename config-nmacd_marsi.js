@@ -1,15 +1,15 @@
 // 常量配置
 const config={
-	doge: {
+	'1000pepe': {
 		strategyType: 'nmacd_marsi',
-		SYMBOL: "dogeUSDT".toLowerCase(), // 交易对
+		SYMBOL: "1000pepeUSDT".toLowerCase(), // 交易对
 		base: "USDT",
 		logsFolder: "logs", // 日志配置
 		errorsFolder: "errors",
 		availableMoney: 100, // 可用的USDT数量
 		invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-		klineStage: '3m', // k线级别
-		numForAverage: 12, // 多少根k线求取candleHeight
+		klineStage: '3m', // 2h k线级别
+		numForAverage: 12, // 多少根k线求取candleHeight/*  */
 
 		howManyCandle: 3, // 初始止盈，盈亏比
 		firstStopProfitRate: 1, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
