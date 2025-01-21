@@ -40,7 +40,7 @@ const fs=require("fs");
 const symbol="dogeUSDT";
 let {kLineData}=require(`./source/${symbol}-1h.js`);
 
-const DefaultAvailableMoney=100
+const DefaultAvailableMoney=10
 let maxAvailableMoney=0;
 let _kLineData=[...kLineData];
 let numForAverage=12;

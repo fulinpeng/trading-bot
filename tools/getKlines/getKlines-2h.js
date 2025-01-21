@@ -1,7 +1,7 @@
 // https://fapi.binance.com/fapi/v1/klines?symbol=zkUSDT&interval=2h&limit=1440&startTime=1721836800000
 
 const axios=require("axios"); // HTTP请求库
-const {getDate}=require("./utils/functions.js");
+const {getDate}=require("../../utils/functions.js");
 const fs=require("fs");
 const fapi="https://fapi.binance.com/fapi";
 const {HttpsProxyAgent}=require("https-proxy-agent");
@@ -33,14 +33,14 @@ if (num) {
 	process.exit(1);
 }
 // mac 小地球仪
-let httpProxyAgent=new HttpsProxyAgent("http://127.0.0.1:31550");
+let httpProxyAgent=new HttpsProxyAgent("http://127.0.0.1:7890");
 // 创建公用的 Axios 实例
 const axiosInstance=axios.create({
-	// headers: {
-	//     "Content-Type": "application/json",
-	//     "X-MBX-APIKEY": apiKey,
-	// },
-	// httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
+	headers: {
+		"Content-Type": "application/json",
+		// "X-MBX-APIKEY": apiKey,
+	},
+	httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
 });
 const getKLineData=async (symbol, interval, limit, startTime) => {
 	try {

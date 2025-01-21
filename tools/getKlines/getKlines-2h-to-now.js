@@ -1,7 +1,7 @@
 // https://fapi.binance.com/fapi/v1/klines?symbol=zkUSDT&interval=2h&limit=1440&startTime=1721836800000
 
 const axios=require("axios"); // HTTP请求库
-const {getDate}=require("./utils/functions.js");
+const {getDate}=require("../../utils/functions.js");
 const fs=require("fs");
 const dayjs=require("dayjs");
 const fapi="https://fapi.binance.com/fapi";
@@ -16,17 +16,17 @@ if (!symbol) {
 	console.error("请提供symbol");
 	process.exit(1);
 }
-const data1=require(`./tests/source/${symbol}-2h.js`);
+const data1=require(`../../tests/source/${symbol}-2h.js`);
 
 // mac 小地球仪
-let httpProxyAgent=new HttpsProxyAgent("http://127.0.0.1:31550");
+let httpProxyAgent=new HttpsProxyAgent("http://127.0.0.1:7890");
 // 创建公用的 Axios 实例
 const axiosInstance=axios.create({
 	// headers: {
 	//     "Content-Type": "application/json",
 	//     "X-MBX-APIKEY": apiKey,
 	// },
-	// httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
+	httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
 });
 const getKLineData=async (symbol, interval, limit, startTime) => {
 	try {
@@ -79,7 +79,7 @@ const getDatas=async (symbol) => {
 	let limit=(24/2)*30*4; // 4个月有 2h 级别k线 1440 根
 	let eightMonth=30*4*24*60*60*1000; // ms
 	let num=parseInt((Date.now()-startTime)/eightMonth); // 多少个towMonth（请求多少次）
-	let rest=parseInt(((Date.now()-startTime)%eightMonth)/1000/60/60/4);
+	let rest=parseInt(((Date.now()-startTime)%eightMonth)/1000/60/60/2);
 
 	let isErro=false;
 	for (let i=0;i<num;i++) {

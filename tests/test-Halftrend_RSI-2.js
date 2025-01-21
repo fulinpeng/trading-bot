@@ -41,7 +41,7 @@ const fs=require("fs");
 const symbol="dogeUSDT";
 let {kLineData}=require(`./source/${symbol}-1h.js`);
 
-const DefaultAvailableMoney=100
+const DefaultAvailableMoney=10
 let maxAvailableMoney=0;
 let numForAverage=0;
 let _kLineData=[...kLineData];
@@ -53,6 +53,7 @@ let howManyCandle=1;
 let isProfitRun=0;
 let firstStopProfitRate=0;
 let firstProtectProfitRate=0;
+let firstStopLossRate=0;
 let profitProtectRate=0.6;
 let maxStopLossRate=0.01;
 let invalidSigleStopRate=0.02;
@@ -657,6 +658,18 @@ function writeInFile(fileName, str) {
 function run(params) {
 	start(params);
 	const result={
+		howManyCandle,
+		firstStopProfitRate,
+		firstProtectProfitRate,
+		firstStopLossRate,
+		isProfitRun,
+		profitProtectRate,
+		howManyCandleForProfitRun,
+		maxStopLossRate,
+		invalidSigleStopRate,
+		double,
+		maxLossCount,
+		xxx: '-----------------------------------------------------',
 		arriveFirstStopLoss: arriveFirstStopLoss+'次',
 		availableMoney,
 		maxAvailableMoney,

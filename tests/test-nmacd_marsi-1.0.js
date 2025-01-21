@@ -42,7 +42,7 @@ const fs=require("fs");
 const symbol="dogeUSDT";
 let {kLineData}=require(`./source/${symbol}-2h.js`);
 
-const DefaultAvailableMoney=100
+const DefaultAvailableMoney=10
 let maxAvailableMoney=0;
 let _kLineData=[...kLineData];
 let double=0;
@@ -110,6 +110,11 @@ const setProfit=(orderPrice, currentPrice, time) => {
 		} else {
 			lossCount=0
 		}
+	}
+	if (curTestMoney<=0) {
+		failNum++
+	} else {
+		winNum++
 	}
 	if (testMoney>maxMoney) maxMoney=testMoney;
 	if (testMoney<minMoney) minMoney=testMoney;
@@ -356,14 +361,12 @@ const start=(params) => {
 					// 判断止盈：上面没有被止损，也没被止盈，那看下面是否能止盈，high 大于 point2 就止盈利，否则继续持有
 					if (trend==="up"&&high>=point2) {
 						setProfit(orderPrice, point2, openTime);
-						winNum++;
 						reset();
 						continue;
 					}
 					// 上面没有被止损，那看是否能止盈，low 小于 point1 就止盈利，否则继续持有
 					if (hasOrder&&trend==="down"&&low<=point1) {
 						setProfit(orderPrice, point1, openTime);
-						winNum++;
 						reset();
 						continue;
 					}
@@ -384,7 +387,6 @@ const start=(params) => {
 				// low 小于 point1 就止损，否则继续持有
 				if (low<=point1) {
 					setProfit(orderPrice, point1, openTime);
-					failNum++;
 					reset();
 					return;
 				}
@@ -393,7 +395,6 @@ const start=(params) => {
 				// high 大于 point2 就止损，否则继续持有
 				if (high>=point2) {
 					setProfit(orderPrice, point2, openTime);
-					failNum++;
 					reset();
 					return;
 				}
@@ -403,14 +404,12 @@ const start=(params) => {
 			// 判断止盈：上面没有被止损，也没被止盈，那看下面是否能止盈，high 大于 point2 就止盈利，否则继续持有
 			if (trend==="up"&&high>=point2) {
 				setProfit(orderPrice, point2, openTime);
-				winNum++;
 				reset();
 				return;
 			}
 			// 上面没有被止损，那看是否能止盈，low 小于 point1 就止盈利，否则继续持有
 			if (hasOrder&&trend==="down"&&low<=point1) {
 				setProfit(orderPrice, point1, openTime);
-				winNum++;
 				reset();
 				return;
 			}
@@ -658,6 +657,17 @@ function writeInFile(fileName, str) {
 function run(params) {
 	start(params);
 	const result={
+		howManyCandle,
+		isProfitRun,
+		firstStopProfitRate,
+		firstStopLossRate,
+		profitProtectRate,
+		howManyCandleForProfitRun,
+		maxStopLossRate,
+		invalidSigleStopRate,
+		double,
+		maxLossCount,
+		xxx: '---------------------------------------------------',
 		availableMoney,
 		maxAvailableMoney,
 		winNum,
