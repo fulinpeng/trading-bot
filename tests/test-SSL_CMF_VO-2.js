@@ -1,4 +1,4 @@
-const {getDate, getLastFromArr}=require("../utils/functions");
+const {getDate, getSequenceArr, getLastFromArr}=require("../utils/functions");
 const {
 	calculateCandleHeight,
 	isBigLine,
@@ -40,7 +40,7 @@ const {calculateCMF}=require("../utils/SSL_CMF_VO/CMF.js");
 const {calculateVO}=require("../utils/SSL_CMF_VO/volatilityOscillator.js");
 const fs=require("fs");
 const symbol="dogeUSDT";
-let {kLineData}=require(`./source/${symbol}-1h.js`);
+let {kLineData}=require(`./source/${symbol}-2h.js`);
 
 const DefaultAvailableMoney=10
 let maxAvailableMoney=0;
@@ -725,13 +725,13 @@ function run(params) {
 	);
 }
 run({
-	"howManyCandle": 2.1,
-	"firstStopProfitRate": 1.5,
-	firstProtectProfitRate: -0.1,
-	firstStopLossRate: 0.8, //  当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
+	"howManyCandle": 1.5,
+	"firstStopProfitRate": 1,
+	firstProtectProfitRate: 0.01,
+	firstStopLossRate: 0.4, //  当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
 	"isProfitRun": 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
 	"profitProtectRate": 0.8,
-	"howManyCandleForProfitRun": 1,
+	"howManyCandleForProfitRun": 0.1,
 	"maxStopLossRate": 0.05,
 	"invalidSigleStopRate": 0.1,
 	"double": 0,

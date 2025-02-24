@@ -1,7 +1,7 @@
 // https://fapi.binance.com/fapi/v1/klines?symbol=zkUSDT&interval=5m&limit=1440&startTime=1721836800000
 
 const axios=require("axios"); // HTTP请求库
-const {getDate}=require("./utils/functions.js");
+const {getDate}=require("../../utils/functions.js");
 const fs=require("fs");
 const dayjs=require("dayjs");
 const fapi="https://fapi.binance.com/fapi";
@@ -16,7 +16,7 @@ if (!symbol) {
     console.error("请提供symbol");
     process.exit(1);
 }
-const data1=require(`./tests/source/${symbol}-5m.js`);
+const data1=require(`../../tests/source/${symbol}-5m.js`);
 
 // mac 小地球仪
 let httpProxyAgent=new HttpsProxyAgent("http://127.0.0.1:31550");

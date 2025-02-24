@@ -38,7 +38,7 @@ const {
 const {calculateSimpleMovingAverage}=require("../utils/ma.js");
 const fs=require("fs");
 const symbol="dogeUSDT";
-let {kLineData}=require(`./source/${symbol}-1h.js`);
+let {kLineData}=require(`./source/${symbol}-2h.js`);
 
 const DefaultAvailableMoney=10
 let maxAvailableMoney=0;

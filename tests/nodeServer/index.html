@@ -78,7 +78,7 @@
 
 		console.log("🚀 ~ data0.values:", data0.values.length)
 
-		const ema169=calculateMA(169)
+		const ema169=calculateMA(144)
 		console.log("🚀 ~ ema169:", ema169)
 
 		const markArea=openHistory.map((t, i) => {
@@ -250,7 +250,7 @@
 				{
 					name: "MA144",
 					type: "line",
-					data: calculateMA(144),
+					data: calculateMA(30),
 					smooth: true,
 					symbol: 'none',
 					lineStyle: {

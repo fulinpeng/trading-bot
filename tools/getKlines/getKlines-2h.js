@@ -88,7 +88,7 @@ const getDatas=async (symbol, startTime, num) => {
 			break;
 		}
 	}
-	writeInFile(`./tests/source/${symbol}-2h.js`, {
+	writeInFile(`../../tests/source/${symbol}-2h.js`, {
 		kLineData: result,
 	});
 };

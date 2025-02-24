@@ -105,7 +105,7 @@ const getDatas=async (symbol) => {
 			// getKLineData 返回没有数据，说明api次数被用完了
 		}
 	}
-	writeInFile(`./tests/source/${symbol}-2h.js`, {
+	writeInFile(`../../tests/source/${symbol}-2h.js`, {
 		kLineData: result,
 	});
 };
