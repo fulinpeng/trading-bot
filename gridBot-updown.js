@@ -73,7 +73,7 @@ let maxAvailableMoney=0;
 
 // 环境变量
 const B_SYMBOL=SYMBOL.toUpperCase();
-const isTest=false; // 将此标志设置为  false/true 使用沙盒环境
+const isTest=true; // 将此标志设置为  false/true 使用沙盒环境
 const api="https://api.binance.com/api";
 const fapi="https://fapi.binance.com/fapi";
 const apiKey=process.env.BINANCE_API_KEY; // 获取API密钥
@@ -133,7 +133,7 @@ const times=getSequenceArr(diff, 100);
 const initialSize=DefaultAvailableMoney; // 初始每次开仓100u
 const addSize=(n) => times[n] // 每次加仓10u
 const profitTarget=0; // 目标浮盈，单位为U
-const isLongOpen=false;
+const isLongOpen=true;
 const isShortOpen=true;
 let longPositions=[]
 let shortPositions=[]
@@ -141,6 +141,7 @@ let maxHigh=0
 let minLow=0
 let maxLongSize=0;
 let maxShortSize=0;
+let gridRatio=0.005;
 
 // 模拟获取历史数据并计算极值
 function getMarketData(candles) {
@@ -196,46 +197,13 @@ async function closeShortPositions(currentPrice, totalProfit) {
 }
 
 // 执行交易：开仓、加仓
-async function executeTrade(_candles, curkLine) {
+async function executeTrade(_candles, price) {
 	try {
-		const {open, close, openTime, closeTime, low, high}=curkLine;
-		const price=close;
-		let candles=getLastFromArr(_candles.slice(0, -1), n);
-
-		// 初始化时开多仓和空仓
-		if (isLongOpen&&longPositions.length===0) {
-			let quantity=getQuantity(initialSize, price);
-			await teadeBuy(quantity);
-			// 开多仓
-			longPositions.push({
-				price,
-				quantity,
-			})
-			availableMoney=initialSize
-			// 重置 maxHigh minLow
-			const value=getMarketData(candles);
-			// maxHigh=value.maxHigh
-			minLow=value.minLow
-			console.log("🚀 ~ executeTrade ~ 开多仓 close, initialSize, availableMoney, minLow:", close, initialSize, availableMoney, minLow)
-		}
-		if (isShortOpen&&shortPositions.length===0) {
-			let quantity=getQuantity(initialSize, price);
-			await teadeSell(quantity);
-			// 开空仓
-			shortPositions.push({
-				price,
-				quantity,
-			})
-			availableMoney=initialSize
-			// 重置 maxHigh minLow
-			const value=getMarketData(candles);
-			maxHigh=value.maxHigh
-			// minLow=value.minLow
-			console.log("🚀 ~ executeTrade ~ 开空仓 close, initialSize, availableMoney, maxHigh:", close, initialSize, availableMoney, maxHigh)
-		}
+		// let candles=getLastFromArr(_candles.slice(0, -1), n);
+		// const value=getMarketData(candles);
 
 		// 多仓加仓
-		if (isLongOpen&&longPositions.length>0&&price<minLow) {
+		if (isLongOpen&&longPositions.length>0&&price<minLow*(1-gridRatio)) {
 			let size=addSize(longPositions.length)
 			if (size>maxLongSize) maxLongSize=size;
 			let quantity=getQuantity(size, price);
@@ -246,12 +214,12 @@ async function executeTrade(_candles, curkLine) {
 			})
 			if (availableMoney+size>maxAvailableMoney) maxAvailableMoney=availableMoney+size
 			availableMoney+=size
-			if (close<minLow) minLow=low; // close
-			console.log("🚀 ~ executeTrade ~ 多仓加仓, close, size, minLow:", close, size, minLow)
+			minLow=price; // price
+			console.log("🚀 ~ executeTrade ~ 多仓加仓, price, size, minLow:", price, size, minLow)
 		}
 
 		// 空仓加仓
-		if (isShortOpen&&shortPositions.length>0&&price>maxHigh) {
+		if (isShortOpen&&shortPositions.length>0&&price>maxHigh*(1+gridRatio)) {
 			let size=addSize(shortPositions.length)
 			if (size>maxShortSize) maxShortSize=size;
 			let quantity=getQuantity(size, price);
@@ -262,8 +230,37 @@ async function executeTrade(_candles, curkLine) {
 			})
 			if (availableMoney+size>maxAvailableMoney) maxAvailableMoney=availableMoney+size
 			availableMoney+=size
-			if (close>maxHigh) maxHigh=high; // close
-			console.log("🚀 ~ executeTrade ~ 空仓加仓, close, size, minLow:", close, size, maxHigh)
+			maxHigh=price; // price
+			console.log("🚀 ~ executeTrade ~ 空仓加仓, price, size, minLow:", price, size, maxHigh)
+		}
+
+		// 初始化时开多仓
+		if (isLongOpen&&longPositions.length===0) {
+			let quantity=getQuantity(initialSize, price);
+			await teadeBuy(quantity);
+			// 开多仓
+			longPositions.push({
+				price,
+				quantity,
+			})
+			availableMoney=initialSize
+			// 重置 maxHigh minLow
+			minLow=price
+			console.log("🚀 ~ executeTrade ~ 开多仓 price, initialSize, availableMoney, minLow:", price, initialSize, availableMoney, minLow)
+		}
+		// 初始化时开空仓
+		if (isShortOpen&&shortPositions.length===0) {
+			let quantity=getQuantity(initialSize, price);
+			await teadeSell(quantity);
+			// 开空仓
+			shortPositions.push({
+				price,
+				quantity,
+			})
+			availableMoney=initialSize
+			// 重置 maxHigh minLow
+			maxHigh=price
+			console.log("🚀 ~ executeTrade ~ 开空仓 price, initialSize, availableMoney, maxHigh:", price, initialSize, availableMoney, maxHigh)
 		}
 
 	} catch (error) {
@@ -433,9 +430,9 @@ const refreshKLineAndIndex=(curKLine) => {
 	}
 };
 
-const kaiDanDaJi=async (curKLine) => {
+const kaiDanDaJi=async (price) => {
 	isOrdering=true;
-	await executeTrade(kLineData, curKLine)
+	await executeTrade(kLineData, price)
 
 	isOrdering=false;
 };
@@ -693,7 +690,9 @@ const getHistoryData=() => {
 			currentPrice: __currentPrice, // 记录当前价格
 			prePrice: __prePrice, // 记录当前价格的前一个
 			longPositions: __longPositions,
-			shortPositions: __shortPositions
+			shortPositions: __shortPositions,
+			minLow: __minLow,
+			maxHigh: __maxHigh,
 		}=historyDatas;
 		console.log("上一次停止程序时，交易情况", historyDatas);
 
@@ -718,44 +717,35 @@ const recoverHistoryData=async (historyDatas) => {
 		longPositions: __longPositions,
 		shortPositions: __shortPositions,
 		testMoney: __testMoney,
-
 		availableMoney: __availableMoney,
+		minLow: __minLow,
+		maxHigh: __maxHigh,
 	}=historyDatas;
 
 	prePrice=__prePrice; // 记录当前价格的前一个
 	testMoney=__testMoney;
 	longPositions=__longPositions;
 	shortPositions=__shortPositions;
-
 	availableMoney=__availableMoney
+	minLow=__minLow;
+	maxHigh=__maxHigh;
 };
 const recoverHistoryDataByPosition=async (historyDatas, allPositionDetail) => {
 	// ??????????? 未处理allPositionDetail
 	//
 	// 从数据库拿出上次的数据，并且与现在的比较，如果数据和的上就用以前的，数据和不上就解析出
 	loadingInit=true;
-	let {
-		currentPrice: __currentPrice, // 记录当前价格
-		prePrice: __prePrice, // 记录当前价格的前一个
-		longPositions: __longPositions,
-		shortPositions: __shortPositions,
-		testMoney: __testMoney,
+	await recoverHistoryData(historyDatas)
 
-		availableMoney: __availableMoney,
-	}=historyDatas;
-
-	prePrice=__currentPrice; // 记录当前价格的前一个
-	testMoney=__testMoney;
-	longPositions=__longPositions;
-	shortPositions=__shortPositions;
-
-	availableMoney=__availableMoney
-	// 多空相差很大时全平
-	// 盈利状态立即全平
-
-	if (longPositions.length||shortPositions.length) {
-		await getCurrentPrice();
-		await gridPointClearTrading(currentPrice)
+	if ((allPositionDetail.up&&longPositions.length)||(allPositionDetail.down&&shortPositions.length)) {
+		// 盈利状态立即全平
+		if (longPositions.length||shortPositions.length) {
+			await getCurrentPrice();
+			await gridPointClearTrading(currentPrice)
+		}
+	} else {
+		console.error("recoverHistoryDataByPosition Error: data记录仓位和实际仓位不一致 historyDatas, allPositionDetail", historyDatas, allPositionDetail);
+		process.exit(1);
 	}
 	loadingInit=false;
 };
@@ -885,9 +875,9 @@ const startWebSocket=async () => {
 			};
 			// 更新k线和指标数据
 			refreshKLineAndIndex(curKLine);
-			// 开单
-			await kaiDanDaJi(curKLine);
 		}
+		// 开单
+		await kaiDanDaJi(currentPrice); // k线收盘后再交易是不是加仓次数少一些，到底哪个好一些待测试??????
 		// 相等的话直接退出，因为它到不了任何交易点，继续执行也没有意义
 		// 没有订单也不继续了
 		if (isLoading()||prePrice===currentPrice) {
@@ -1037,11 +1027,13 @@ function saveGlobalVariables() {
 			const data=JSON.stringify({
 				currentPrice, // 记录当前价格
 				prePrice, // 记录当前价格的前一个
-				candleHeight: candleHeight,
+				candleHeight,
 				testMoney,
-				longPositions: longPositions,
-				shortPositions: shortPositions,
+				longPositions,
+				shortPositions,
 				availableMoney,
+				minLow,
+				maxHigh,
 			});
 			fs.writeFileSync(`data/${isTest? "test":"prod"}-${strategyType}-${SYMBOL}.js`, `module.exports = ${data}`, {
 				flag: "w",
