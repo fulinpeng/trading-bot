@@ -128,7 +128,7 @@ const axiosInstance=axios.create({
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 初始化参数
 const n=3; // 计算极值的 K 线数量
-const diff=2;
+const diff=1;
 const times=getSequenceArr(diff, 100);
 const initialSize=DefaultAvailableMoney; // 初始每次开仓100u
 const addSize=(n) => times[n] // 每次加仓10u
@@ -731,15 +731,26 @@ const recoverHistoryData=async (historyDatas) => {
 	maxHigh=__maxHigh;
 };
 const recoverHistoryDataByPosition=async (historyDatas, allPositionDetail) => {
-	// ??????????? 未处理allPositionDetail
-	//
 	// 从数据库拿出上次的数据，并且与现在的比较，如果数据和的上就用以前的，数据和不上就解析出
 	loadingInit=true;
 	await recoverHistoryData(historyDatas)
 
 	if ((allPositionDetail.up&&longPositions.length)||(allPositionDetail.down&&shortPositions.length)) {
+		if (allPositionDetail.up) {
+			longPositions=[{
+				price: allPositionDetail.up.orderPrice,
+				quantity: allPositionDetail.up.quantity,
+			}]
+		}
+		if (allPositionDetail.down) {
+			shortPositions=[{
+				price: allPositionDetail.down.orderPrice,
+				quantity: allPositionDetail.down.quantity,
+			}]
+		}
 		// 盈利状态立即全平
 		if (longPositions.length||shortPositions.length) {
+			console.log("🚀 ~ recoverHistoryDataByPosition ~ longPositions , shortPositions:", longPositions, shortPositions)
 			await getCurrentPrice();
 			await gridPointClearTrading(currentPrice)
 		}

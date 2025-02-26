@@ -27,11 +27,11 @@ const fs=require("fs");
 const {calculateBBKeltnerSqueeze}=require("../utils/BBKeltner.js");
 // let { kLineData } = require("./source/bomeUSDT-1m.js");
 // let { kLineData } = require("./source/zkUSDT-1m.js");
-// let { kLineData } = require("./source/dogeUSDT-1m.js");
+let {kLineData}=require("./source/dogeUSDT-1m.js");
 // let { kLineData } = require("./source/1000pepeUSDT-1m.js");
 // let { kLineData } = require("./source/peopleUSDT-1m.js");
 // let { kLineData } = require("./source/bigtimeUSDT-1m.js");
-let {kLineData}=require("./source/beamxUSDT-1m.js");
+// let {kLineData}=require("./source/beamxUSDT-1m.js");
 // let { kLineData } = require("./source/iotxUSDT-1m.js");
 // let { kLineData } = require("./source/zetaUSDT-1m.js");
 // let { kLineData } = require("./source/solUSDT-1m.js");
@@ -51,7 +51,7 @@ let {kLineData}=require("./source/beamxUSDT-1m.js");
 // let { kLineData } = require("./source/neoUSDT-1m.js");
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
-const symbol="beamxUSDT";
+const symbol="dogeUSDT";
 const profitRate=10000;
 let _kLineData=[...kLineData];
 const diff=2; // 1053/1410
@@ -579,7 +579,7 @@ const gridPointTrading2=() => {
 start(
 	{
 		timeDis: 8,
-		profit: 2.9,
+		profit: 1,
 		howManyCandleHeight: 5,
 		howManyNumForAvarageCandleHight: 12,
 		// targetTime: "2024-02-03_23-40-00",
