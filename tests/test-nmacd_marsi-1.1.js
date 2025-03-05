@@ -474,7 +474,7 @@ const judgeTradingDirection2=(kLines) => {
 
 	// 多头行情
 	// 准备条件一: marsi金叉
-	const upTerm1=marsi1.rsi<=marsi1.smoothedRsi&&marsi1.rsi>marsi1.smoothedRsi;
+	const upTerm1=marsi1.rsi<=marsi1.smoothedRsi&&marsi5.rsi>marsi5.smoothedRsi;
 
 	if (upTerm1) {
 		readyTradingDirection="up";
@@ -483,7 +483,7 @@ const judgeTradingDirection2=(kLines) => {
 	}
 	// 空头行情
 	// 准备条件一: marsi死叉
-	const downTerm1=marsi1.rsi>=marsi1.smoothedRsi&&marsi1.rsi<marsi1.smoothedRsi;
+	const downTerm1=marsi1.rsi>=marsi1.smoothedRsi&&marsi5.rsi<marsi5.smoothedRsi;
 
 	if (downTerm1) {
 		readyTradingDirection="down";

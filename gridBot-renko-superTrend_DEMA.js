@@ -11,6 +11,7 @@ const {getDate, hasUpDownVal, getLastFromArr}=require("./utils/functions.js");
 // const {calculateSimpleMovingAverage}=require("./utils/ma.js");
 const {calculateATR}=require("./utils/atr.js");
 const {calculateIndicators}=require("./utils/superTrend");
+const {convertToRenko}=require("./utils/renko.js");
 const config=require("./config-superTrend_DEMA.js");
 const {
 	calculateCandleHeight,
@@ -67,10 +68,10 @@ let {
 	slAtrPeriod,
 	numForAverage, // 多少根k线求取candleHeight
 	howManyCandle, // 初始止盈，盈亏比
+	isProfitRun, // 是否开启移动止盈
 	firstStopProfitRate: DefaultFirstStopProfitRate, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
 	firstProtectProfitRate,
 	firstStopLossRate: DefaultFirstStopLossRate, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
-	isProfitRun, // 是否开启移动止盈
 	profitProtectRate, // 移动止盈，保留盈利比例
 	howManyCandleForProfitRun,
 	maxStopLossRate, // 止损小于10%的情况，最大止损5%
@@ -83,6 +84,9 @@ let availableMoney=DefaultAvailableMoney
 let firstStopProfitRate=DefaultFirstStopProfitRate
 let firstStopLossRate=DefaultFirstStopLossRate
 let lossCount=0
+
+let lastRenkoClose=null;
+let brickSize=0.00005;
 
 // 环境变量
 const B_SYMBOL=SYMBOL.toUpperCase();
@@ -185,7 +189,7 @@ let allPositionDetail={}; // 当前仓位信息
 
 let superTrendArr=[]
 
-const maxKLinelen=500; // 储存kLine最大数量
+const maxKLinelen=1000; // 储存kLine最大数量
 // 日志
 let logStream=null;
 let errorStream=null;
@@ -302,7 +306,16 @@ const setCandleHeight=() => {
 // 获取收盘价
 const getHistoryClosePrices=async () => {
 	// 在getKLineData方法中获取至少15分钟内的价格数据
-	kLineData=await getKLineData(B_SYMBOL, `${klineStage}`, maxKLinelen);
+	const kLines=await getKLineData(B_SYMBOL, `${klineStage}`, maxKLinelen);
+
+	console.log("🚀 ~ getHistoryClosePrices ~ kLines.length:", kLines.length)
+	kLines.forEach(v => {
+		const {renkoData, newLastRenkoClose}=convertToRenko({klineData: v, brickSize, lastRenkoClose});
+		lastRenkoClose=newLastRenkoClose;
+		renkoData.length&&kLineData.push(...renkoData)
+	})
+	console.log("🚀 ~ getHistoryClosePrices ~ kLineData:", kLineData)
+
 	historyClosePrices=kLineData.map((data) => data.close); // K线数据有一个close字段表示收盘价，根据实际情况调整
 	// console.log("k线收盘价:", historyClosePrices);
 };
@@ -341,14 +354,19 @@ const refreshKLineAndIndex=(curKLine) => {
 	}
 };
 
+
+// 开仓
 const kaiDanDaJi=async () => {
 	isOrdering=true;
 
-	// 准备开仓
-	// 判断趋势
-	judgeTradingDirection();
-	// 趋势是否被破坏
-	// judgeBreakTradingDirection();
+
+	if (readyTradingDirection==="hold") {
+		// 判断趋势
+		judgeTradingDirection();
+	} else {
+		// 趋势是否被破坏
+		// judgeBreakTradingDirection();
+	}
 
 	// 没有仓位，准备开仓
 	if (!hasOrder) {
@@ -905,6 +923,9 @@ const closeOrder=async (side, quantity, cb) => {
 			firstStopLossRate=DefaultFirstStopLossRate
 			resetTradingDatas();
 			gridPoints=[];
+			readyTradingDirection="hold"; // 是否准备开单
+			hasOrder=false;
+
 			saveGlobalVariables();
 			console.log("🚀 ~ 平仓：平", side==="BUY"? "空":"多", response.data.origQty);
 		} else {
@@ -1071,13 +1092,6 @@ const checkOverGrid=async ({up, down}) => {
 		await closeAllOrders({up, down});
 
 		prePrice=currentPrice; // 记录当前价格的前一个
-		readyTradingDirection="hold"; // 是否准备开单
-		availableMoney=DefaultAvailableMoney
-		firstStopProfitRate=DefaultFirstStopProfitRate
-		firstStopLossRate=DefaultFirstStopLossRate
-		lossCount=0
-		resetTradingDatas();
-		gridPoints=[];
 	}
 };
 
@@ -1263,7 +1277,6 @@ const closeAllOrders=async ({up, down}) => {
 		promises.push(downPromise);
 	}
 	await Promise.all(promises);
-	hasOrder=false;
 };
 
 // 平多
@@ -1372,22 +1385,30 @@ const startWebSocket=async () => {
 		prePrice=currentPrice; // 不能删除
 		currentPrice=Number(close)||0;
 
-		if (isNewLine) {
-			const curKLine={
-				openTime, // 这根K线的起始时间
-				closeTime, // 这根K线的结束时间
-				open: Number(open), // 这根K线期间第一笔成交价
-				close: Number(close), // 这根K线期间末一笔成交价
-				high: Number(high), // 这根K线期间最高成交价
-				low: Number(low), // 这根K线期间最低成交价
-				volume: Number(volume), // 这根K线期间成交量
-				isNewLine, // 这根K线是否完结(是否已经开始下一根K线)
-				takerBuyBaseAssetVolume: Number(takerBuyBaseAssetVolume), // 主动买入的成交量
-			};
-			// 更新k线和指标数据
-			refreshKLineAndIndex(curKLine);
-			// 开单
-			await kaiDanDaJi();
+
+		const curKLine={
+			openTime, // 这根K线的起始时间
+			closeTime, // 这根K线的结束时间
+			open: Number(open), // 这根K线期间第一笔成交价
+			close: Number(close), // 这根K线期间末一笔成交价
+			high: Number(high), // 这根K线期间最高成交价
+			low: Number(low), // 这根K线期间最低成交价
+			volume: Number(volume), // 这根K线期间成交量
+			isNewLine, // 这根K线是否完结(是否已经开始下一根K线)
+			takerBuyBaseAssetVolume: Number(takerBuyBaseAssetVolume), // 主动买入的成交量
+		};
+
+		const {renkoData, newLastRenkoClose}=convertToRenko({klineData: curKLine, brickSize, lastRenkoClose});
+		lastRenkoClose=newLastRenkoClose;
+		// renkoData 这个值可能大于1，是插针，一般不会??????
+		if (renkoData.length) {
+			console.log("🚀 ~ ws.on ~ renkoData:", renkoData)
+			for (const line of renkoData) {
+				// 更新k线和指标数据
+				refreshKLineAndIndex(line);
+				// 开单
+				await kaiDanDaJi();
+			}
 		}
 		// 相等的话直接退出，因为它到不了任何交易点，继续执行也没有意义
 		// 没有订单也不继续了

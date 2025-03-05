@@ -1,4 +1,4 @@
-const {getDate, getLastFromArr}=require("../utils/functions");
+const {getDate, getSequenceArr, getLastFromArr}=require("../utils/functions");
 const {
 	calculateCandleHeight,
 	isBigLine,
@@ -39,9 +39,15 @@ const {calculateRSI}=require("../utils/rsi.js");
 const {calculateHalfTrend}=require("../utils/halfTrend.js");
 const fs=require("fs");
 const symbol="dogeUSDT";
-let {kLineData}=require(`./source/${symbol}-1h.js`);
+let {kLineData}=require(`./source/renko-${symbol}-1m.js`);
 
+// renko在这个策略上表现不错，策略本身也适合1m线，加上renko更好了
+let lastRenkoClose=null;
+let brickSize=0.002;
+
+const diff=2;
 const DefaultAvailableMoney=10
+const times=getSequenceArr(diff, 100);
 let maxAvailableMoney=0;
 let numForAverage=0;
 let _kLineData=[...kLineData];
@@ -68,9 +74,10 @@ let HalfTrend=[];
 let ht=[];
 
 const getQuantity=(currentPrice) => {
-	availableMoney=DefaultAvailableMoney*(1+lossCount)
+	availableMoney=DefaultAvailableMoney*times[lossCount]
 	if (maxAvailableMoney<availableMoney) maxAvailableMoney=availableMoney
-	return Math.round(availableMoney/currentPrice);
+	// return Math.round(availableMoney/currentPrice);
+	return availableMoney/currentPrice;
 };
 
 let gridPoints=[];
@@ -586,18 +593,6 @@ const calculateTradingSignal=(kLines) => {
 	// let maxBody=Math.max(kLine1.open, kLine1.close, kLine2.open, kLine2.close, kLine3.open, kLine3.close);
 	// let minBody=Math.min(kLine1.open, kLine1.close, kLine2.open, kLine2.close, kLine3.open, kLine3.close);
 
-	// const signalUpTerm1=
-	// 	isBottomFractal(kLine1, kLine2, kLine3)|| // 是否底分形态
-	// 	isBigAndYang(kLine3, 0.85)||
-	// 	(isUpLinesGroup2(kLine2, kLine3)&&(isUpCross(kLine1)||isBigAndYang(kLine1, 0.6)))|| // 是否两个k形成垂线
-	// 	(isUpLinesGroup3(kLine1, kLine2, kLine3)&&(isBigAndYang(kLine3, 0.6)||isUpCross(kLine3, 0.4)))|| // 是否三个k形成垂线
-	// 	(isUpSwallow(kLine2, kLine3)&&kLine3.high>kLine1.high)|| // 看涨吞没
-	// 	(isUpSwallow(kLine1, kLine2)&&isBigAndYang(kLine3, 0.6))|| // 看涨吞没 + 大阳k
-	// 	(isUpLinesGroup2(kLine1, kLine2)&&(isUpCross(kLine3)||isBigLine(kLine3, 0.6)))|| // k1，k2刺透, k3垂线
-	// 	isUpStar(kLine1, kLine2, kLine3)|| // 启明星
-	// 	isBreakUp(kLine1, kLine2, kLine3)|| // k3 突破k1/k2，k3是光k
-	// 	upPao(kLine1, kLine2, kLine3);
-
 	const signalUpTerm2=close>open
 	if (readyTradingDirection==="up"&&signalUpTerm2) {
 		// min=min<emaMa5.sma? emaMa5.sma:min;
@@ -616,18 +611,6 @@ const calculateTradingSignal=(kLines) => {
 		};
 	}
 
-	// const signalDownTerm1=
-	// 	(isLowerLow(kLine1, kLine2, kLine3)&&isBigLine(kLine3, 0.6))|| // 顶顶高 k3是光k / 三小连阳
-	// 	isBigAndYin(kLine3, 0.85)||
-	// 	isTopFractal(kLine1, kLine2, kLine3)|| // 是否顶分形态
-	// 	(isDownLinesGroup2(kLine2, kLine3)&&(isDownCross(kLine1)||isBigAndYin(kLine1, 0.6)))|| // 是否两个k形成垂线/光头阴
-	// 	(isDownLinesGroup3(kLine1, kLine2, kLine3)&&(isBigAndYin(kLine3, 0.6)||isDownCross(kLine3, 0.4)))|| // 是否三个k形成垂线
-	// 	(isDownSwallow(kLine2, kLine3)&&kLine3.low<kLine1.low)|| // 看跌吞没
-	// 	(isDownSwallow(kLine1, kLine2)&&isBigAndYin(kLine3, 0.6))|| // 看跌吞没 + 大阴k
-	// 	(isDownLinesGroup2(kLine1, kLine2)&&(isDownCross(kLine3)||isBigLine(kLine3, 0.6)))|| // k1，k2刺透, k3垂线/大k
-	// 	isDownStar(kLine1, kLine2, kLine3)|| // 启明星
-	// 	isBreakDown(kLine1, kLine2, kLine3)|| // k3 突破k1/k2，k3是光k
-	// 	downPao(kLine1, kLine2, kLine3);
 	const signalDownTerm2=close<open
 	if (readyTradingDirection==="down"&&signalDownTerm2) {
 		// max=max>emaMa5.sma? emaMa5.sma:max;
@@ -685,7 +668,7 @@ function run(params) {
 	console.log("length::", openHistory.length, closeHistory.length, trendHistory.length);
 	// https://echarts.apache.org/examples/zh/editor.html?c=line-simple
 	writeInFile(
-		`./tests/data/${symbol}-Halftrend_RSI.js`,
+		`./tests/data/renko-${symbol}-Halftrend_RSI.js`,
 		`
         var openHistory = ${JSON.stringify(openHistory, null, 2)}
         var closeHistory = ${JSON.stringify(closeHistory, null, 2)}
@@ -753,13 +736,13 @@ function run(params) {
 	);
 }
 run({
-	"howManyCandle": 0.2, // 最终盈亏比（二次止盈）
-	"firstStopProfitRate": 0.1, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
-	firstProtectProfitRate: -0.2, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
+	"howManyCandle": 1, // 最终盈亏比（二次止盈）
+	"firstStopProfitRate": 0.5, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
+	firstProtectProfitRate: 0, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
 	"firstStopLossRate": 0, //  当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
 	"isProfitRun": 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
-	"profitProtectRate": 0.95,  // isProfitRun === 1 时生效，保留多少利润
-	"howManyCandleForProfitRun": 0.1,
+	"profitProtectRate": 0.9,  // isProfitRun === 1 时生效，保留多少利润
+	"howManyCandleForProfitRun": 1,
 	"maxStopLossRate": 0.03, // 最大止损比例
 	"invalidSigleStopRate": 0.1, // 止损比例大于该值不开单
 	"double": 1,
@@ -767,7 +750,7 @@ run({
 	RSI_PERIOD: 2,
 	amplitude: 4,
 	channelDeviation: 2,
-	targetTime: "2024-11-30_00-00-00",
+	targetTime: "2025-02-01_00-00-00",
 });
 module.exports={
 	evaluateStrategy: start,

@@ -78,8 +78,7 @@
 
 		console.log("🚀 ~ data0.values:", data0.values.length)
 
-		const ema169=calculateMA(144)
-		console.log("🚀 ~ ema169:", ema169)
+		const emaLong=calculateMA(200)
 
 		const markArea=openHistory.map((t, i) => {
 			if (i===1) {
@@ -143,7 +142,7 @@
 				},
 			},
 			legend: {
-				data: [timeLevel, "MA144", "MA169", "ht"],
+				data: [timeLevel, "MA30", "MA200", "ht"],
 			},
 			grid: {
 				left: "10%",
@@ -248,7 +247,7 @@
 					},
 				},
 				{
-					name: "MA144",
+					name: "MA30",
 					type: "line",
 					data: calculateMA(30),
 					smooth: true,
@@ -258,10 +257,10 @@
 					},
 				},
 				{
-					name: "MA169",
+					name: "MA200",
 					type: "line",
 					symbol: 'none',
-					data: ema169,
+					data: emaLong,
 					smooth: true,
 					lineStyle: {
 						opacity: 0.5,

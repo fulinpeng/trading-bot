@@ -130,4 +130,6 @@ function calculateIndicators(klineData, demaShortPeriod=144, demaLongPeriod=169,
 
 module.exports={
 	calculateIndicators,
+	calculateSuperTrend,
+	calculateATR,
 };

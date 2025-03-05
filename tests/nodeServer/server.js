@@ -88,6 +88,7 @@ function resolveModulePath(moduleName, currentFilePath) {
 // 加载数据
 function reloadData() {
 	const sourcePath=path.resolve(__dirname, `source/${symbol}-${timeLevel}.js`);
+	// const sourcePath=path.resolve(__dirname, `source/renko.js`); // 测试用，查看报错时或中断程序时最新的砖块数据
 	const dataPath=path.resolve(__dirname, `data/${symbol}-${strategy}.js`);
 
 	kLineData=require(sourcePath).kLineData||[];

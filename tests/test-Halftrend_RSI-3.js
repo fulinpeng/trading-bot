@@ -770,7 +770,7 @@ run({
 	RSI_PERIOD: 2,
 	amplitude: 4,
 	channelDeviation: 2,
-	// targetTime: "2024-11-30_00-00-00",
+	targetTime: "2024-11-30_00-00-00",
 });
 module.exports={
 	evaluateStrategy: start,

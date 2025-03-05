@@ -515,6 +515,13 @@ function isAllUpTail(kLine1, kLine2, kLine3) {
 	// console.log("🚀 ~ k1 k2 k3长上引线 ~ res:", num >= 2);
 	return num>=2;
 }
+
+function isYang(kLine) {
+	return kLine.close>kLine.open;
+}
+function isYin(kLine) {
+	return kLine.close<kLine.open;
+}
 module.exports={
 	calculateCandleHeight,
 	isBigLine,
@@ -550,4 +557,6 @@ module.exports={
 	isDownMacd,
 	isAllDownTail,
 	isAllUpTail,
+	isYang,
+	isYin
 };

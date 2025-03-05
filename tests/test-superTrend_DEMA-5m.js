@@ -38,13 +38,14 @@ const {
 const {calculateATR}=require("../utils/atr.js");
 const {calculateIndicators}=require("../utils/superTrend");
 const fs=require("fs");
-const symbol="1000pepeUSDT";
+const symbol="dogeUSDT";
 let {kLineData}=require(`./source/${symbol}-5m.js`);
 
 const DefaultAvailableMoney=10
 let maxAvailableMoney=0;
 let numForAverage=0;
 let _kLineData=[...kLineData];
+let curKLines=[];
 let double=0;
 let lossCount=0
 let maxLossCount=2
@@ -228,7 +229,7 @@ const start=(params) => {
 	const preKLines=_kLineData.slice(0, 500);
 	initEveryIndex(preKLines);
 	for (let idx=500;idx<_kLineData.length;idx++) {
-		const curKLines=_kLineData.slice(idx-500, idx);
+		curKLines=_kLineData.slice(idx-500, idx);
 
 		candleHeight=calculateCandleHeight(_kLineData.slice(idx-numForAverage, idx));
 
@@ -559,7 +560,7 @@ const calculateTradingSignal=(kLines) => {
 	const {latestClose, demaShort, demaLong, superTrend, }=superTrend3
 
 	// 计算ATR
-	const atr=calculateATR(kLines, atrPeriod);
+	const atr=calculateATR(curKLines, atrPeriod).atr;
 
 	let max=Math.max(kLine1.high, kLine2.high, kLine3.high);
 	let min=Math.min(kLine1.low, kLine2.low, kLine3.low);

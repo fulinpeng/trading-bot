@@ -8,7 +8,7 @@ const config={
 		errorsFolder: "errors",
 		availableMoney: 100, // 可用的USDT数量
 		invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-		klineStage: '5m', // k线级别
+		klineStage: '1m', // k线级别
 
 		demaShortPeriod: 30,
 		demaLongPeriod: 144,
@@ -17,6 +17,7 @@ const config={
 		slAtrPeriod: 15,
 		numForAverage: 12, // 多少根k线求取candleHeight
 
+		brickSize: 0.0005, // 砖块大小
 		howManyCandle: 3, // 初始止盈，盈亏比
 		firstStopProfitRate: 1, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
 		firstProtectProfitRate: 0.04, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
