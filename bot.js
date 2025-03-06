@@ -33,7 +33,7 @@ binance.balance((error, balances) => {
 });
 
 // 下单示例
-binance.buy("BTCUSDT", 1, 30000, { type: "LIMIT" }, (error, response) => {
+binance.buy("BTCUSDT", 1, 30000, {type: "LIMIT"}, (error, response) => {
     if (error) {
         console.error("Error placing order:", error.body);
         return;
@@ -49,7 +49,7 @@ const getHistoricalPrices = async () => {
         const limit = ((60 * 60 * 1000) / 100) * 24 * 30; // 一个月的数据点
 
         const response = await axios.get(
-            `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
+            `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
         );
 
         const historicalPrices = response.data.map((item) => ({

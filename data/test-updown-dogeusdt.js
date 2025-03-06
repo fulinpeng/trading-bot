@@ -1,1 +1,11 @@
-module.exports = {"currentPrice":0.19889,"prePrice":0.19889,"candleHeight":0.0009539999999999979,"testMoney":0.8944597109999931,"longPositions":[{"price":0.19942,"quantity":50}],"shortPositions":[{"price":0.19889,"quantity":50}],"availableMoney":10,"minLow":0.19942,"maxHigh":0.19889}
+module.exports = {
+    currentPrice: 0.19889,
+    prePrice: 0.19889,
+    candleHeight: 0.0009539999999999979,
+    testMoney: 0.8944597109999931,
+    longPositions: [{price: 0.19942, quantity: 50}],
+    shortPositions: [{price: 0.19889, quantity: 50}],
+    availableMoney: 10,
+    minLow: 0.19942,
+    maxHigh: 0.19889,
+};

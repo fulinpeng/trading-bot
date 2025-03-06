@@ -2,9 +2,9 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const os = require("os");
-const { fork } = require("child_process");
+const {fork} = require("child_process");
 const GeneticAlgorithmConstructor = require("geneticalgorithm");
-const { evaluateStrategy } = require("../test-mading4-6.js"); // 引入你的验证逻辑
+const {evaluateStrategy} = require("../test-mading4-6.js"); // 引入你的验证逻辑
 
 const symbol = "1000pepeUSDT";
 
@@ -19,10 +19,10 @@ if (fs.existsSync(qualifiedSolutionsPath)) {
 
 // 参数范围对象
 const paramRangesObj = {
-    timeDis: { min: 1, max: 300 },
-    profit: { min: 0.1, max: 10 },
-    howManyCandleHeight: { min: 3, max: 10 },
-    howManyNumForAvarageCandleHight: { min: 6, max: 300 },
+    timeDis: {min: 1, max: 300},
+    profit: {min: 0.1, max: 10},
+    howManyCandleHeight: {min: 3, max: 10},
+    howManyNumForAvarageCandleHight: {min: 6, max: 300},
 };
 
 const paramRanges = [
@@ -114,7 +114,12 @@ function crossoverFunction(parent1, parent2) {
 
 // 编码参数为数组
 function encodeParams(params) {
-    return [params.timeDis, params.profit, params.howManyCandleHeight, params.howManyNumForAvarageCandleHight];
+    return [
+        params.timeDis,
+        params.profit,
+        params.howManyCandleHeight,
+        params.howManyNumForAvarageCandleHight,
+    ];
 }
 
 // 解码参数为对象
@@ -144,7 +149,7 @@ function saveTriedSolutions(triedSolutions) {
     // 检查并创建目录
     const dir = path.dirname(triedSolutionsPath);
     if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true }); // 递归创建所有不存在的目录
+        fs.mkdirSync(dir, {recursive: true}); // 递归创建所有不存在的目录
     }
 
     // 写入文件
@@ -154,14 +159,16 @@ function saveTriedSolutions(triedSolutions) {
 // 保存合格的解决方案
 function saveQualifiedSolutions(newSolution) {
     let existingSolutions = loadExistingQualifiedSolutions();
-    const alreadyExist = existingSolutions.some((solution) => areSolutionsEqual(solution.params, newSolution.params));
+    const alreadyExist = existingSolutions.some((solution) =>
+        areSolutionsEqual(solution.params, newSolution.params)
+    );
 
     if (!alreadyExist) {
         existingSolutions.push(newSolution);
         fs.writeFileSync(
             qualifiedSolutionsPath,
             `module.exports = { qualifiedSolutions: ${JSON.stringify(existingSolutions)} }`,
-            "utf8",
+            "utf8"
         );
     }
 }
@@ -191,7 +198,7 @@ function getParamsHash(params) {
 }
 function fitnessFunction(phenotype) {
     const params = decodeParams(phenotype);
-    const { maxMoney, minMoney, testMoney } = evaluateStrategy(params);
+    const {maxMoney, minMoney, testMoney} = evaluateStrategy(params);
 
     if (testMoney <= 0 || maxMoney <= 0) return 0;
 
@@ -264,13 +271,13 @@ function distributeTasks() {
             }
 
             const child = fork(childPath);
-            child.send({ params });
+            child.send({params});
             child.on("message", (message) => {
                 if (message.type === "result") {
                     console.log("处理结果:", message.result);
                     // 处理结果，并判断是否合格
                     if (message.result.qualified) {
-                        saveQualifiedSolutions({ params, score: message.result.score });
+                        saveQualifiedSolutions({params, score: message.result.score});
                     }
                     triedSolutions.add(paramHash); // 记录已尝试的参数
                     saveTriedSolutions(triedSolutions); // 持久化

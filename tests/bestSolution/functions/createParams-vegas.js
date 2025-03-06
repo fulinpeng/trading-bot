@@ -11,11 +11,11 @@ const path = require("path");
 // };
 
 const paramRangesObj = {
-    howManyCandle: { min: 1, max: 10, step: 1 },
-    invalidNumber: { min: 5, max: 150, step: 5 },
-    isProfitRun: { min: 0, max: 1, step: 1 },
-    profitProtectRate: { min: 0.5, max: 0.9, step: 0.1 },
-    howManyCandleForProfitRun: { min: 0.5, max: 5, step: 0.5 },
+    howManyCandle: {min: 1, max: 10, step: 1},
+    invalidNumber: {min: 5, max: 150, step: 5},
+    isProfitRun: {min: 0, max: 1, step: 1},
+    profitProtectRate: {min: 0.5, max: 0.9, step: 0.1},
+    howManyCandleForProfitRun: {min: 0.5, max: 5, step: 0.5},
 };
 
 // 参数文件路径
@@ -55,7 +55,7 @@ function writeBatchToFile(writeStream, batch) {
 async function generateCombinationsAndSave(paramRangesObj) {
     const allKeys = Object.keys(paramRangesObj); // 获取参数对象的所有字段名
     const allParams = allKeys.map((key) =>
-        generateParams(paramRangesObj[key].min, paramRangesObj[key].max, paramRangesObj[key].step),
+        generateParams(paramRangesObj[key].min, paramRangesObj[key].max, paramRangesObj[key].step)
     ); // 根据每个字段的 min、max、step 生成相应的参数数组
 
     ensureParamsDirExists(); // 确保目录存在

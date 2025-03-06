@@ -24,11 +24,11 @@ function calculateKDJ(data, period = 25, kPeriod = 3, dPeriod = 3) {
     let kdj = data.map((cur, index) => {
         if (index < period - 1) {
             // 在周期不足时，返回空值
-            return { k: null, d: null, j: null };
+            return {k: null, d: null, j: null};
         }
 
         // 获取指定周期内的最高价和最低价
-        let { min, max } = getMinMax(data.slice(index - period + 1, index + 1), period);
+        let {min, max} = getMinMax(data.slice(index - period + 1, index + 1), period);
         let rsv = ((cur.close - min) / (max - min)) * 100;
 
         // 使用RSV值计算K值和D值的EMA
@@ -39,7 +39,7 @@ function calculateKDJ(data, period = 25, kPeriod = 3, dPeriod = 3) {
         let j = 3 * k - 2 * d;
 
         // 返回包含K值、D值和J值的对象
-        return { k, d, j };
+        return {k, d, j};
     });
 
     return kdj[kdj.length - 1];
@@ -53,11 +53,11 @@ function calculateKDJs(data, period = 25, kPeriod = 3, dPeriod = 3) {
     let kdj = data.map((cur, index) => {
         if (index < period - 1) {
             // 在周期不足时，返回空值
-            return { k: null, d: null, j: null };
+            return {k: null, d: null, j: null};
         }
 
         // 获取指定周期内的最高价和最低价
-        let { min, max } = getMinMax(data.slice(index - period + 1, index + 1), period);
+        let {min, max} = getMinMax(data.slice(index - period + 1, index + 1), period);
         let rsv = ((cur.close - min) / (max - min)) * 100;
 
         // 使用RSV值计算K值和D值的EMA
@@ -68,7 +68,7 @@ function calculateKDJs(data, period = 25, kPeriod = 3, dPeriod = 3) {
         let j = 3 * k - 2 * d;
 
         // 返回包含K值、D值和J值的对象
-        return { k, d, j };
+        return {k, d, j};
     });
 
     return kdj;

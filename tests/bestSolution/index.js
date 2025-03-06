@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto"); // 引入 crypto 库，用于计算哈希值
 const GeneticAlgorithmConstructor = require("geneticalgorithm");
-const { evaluateStrategy } = require("../test-mading4-6.js");
+const {evaluateStrategy} = require("../test-mading4-6.js");
 
 const symbol = "1000pepeUSDT";
 
@@ -16,10 +16,10 @@ if (fs.existsSync(qualifiedSolutionsPath)) {
 
 // 参数范围对象
 const paramRangesObj = {
-    timeDis: { min: 1, max: 300 },
-    profit: { min: 0.1, max: 10 },
-    howManyCandleHeight: { min: 3, max: 10 },
-    howManyNumForAvarageCandleHight: { min: 6, max: 300 },
+    timeDis: {min: 1, max: 300},
+    profit: {min: 0.1, max: 10},
+    howManyCandleHeight: {min: 3, max: 10},
+    howManyNumForAvarageCandleHight: {min: 6, max: 300},
 };
 
 const paramRanges = [
@@ -67,7 +67,12 @@ function mutateValue(currentValue, range, mutationRate, index) {
 }
 
 function encodeParams(params) {
-    return [params.timeDis, params.profit, params.howManyCandleHeight, params.howManyNumForAvarageCandleHight];
+    return [
+        params.timeDis,
+        params.profit,
+        params.howManyCandleHeight,
+        params.howManyNumForAvarageCandleHight,
+    ];
 }
 
 function decodeParams(arr) {
@@ -115,7 +120,7 @@ function calculateDistance(params1, params2) {
 // 适应度函数
 function fitnessFunction(phenotype) {
     const params = decodeParams(phenotype);
-    const { maxMoney, minMoney, testMoney } = evaluateStrategy(params);
+    const {maxMoney, minMoney, testMoney} = evaluateStrategy(params);
 
     if (testMoney <= 0 || maxMoney <= 0) return 0;
 
@@ -128,7 +133,7 @@ function fitnessFunction(phenotype) {
 }
 function fitnessFunction(phenotype) {
     const params = decodeParams(phenotype);
-    const { maxMoney, minMoney, testMoney } = evaluateStrategy(params);
+    const {maxMoney, minMoney, testMoney} = evaluateStrategy(params);
 
     if (testMoney <= 0 || maxMoney <= 0) return 0;
 
@@ -145,7 +150,8 @@ function createGeneticAlgorithm(maxIterations) {
     let lastImprovement = 0;
 
     return GeneticAlgorithmConstructor({
-        mutationFunction: (phenotype) => mutationFunction(phenotype, lastImprovement, maxIterations),
+        mutationFunction: (phenotype) =>
+            mutationFunction(phenotype, lastImprovement, maxIterations),
         crossoverFunction: (parent1, parent2) => {
             return [
                 [parent1[0], parent2[1], (parent1[2] + parent2[2]) / 2, parent1[3]],
@@ -183,7 +189,7 @@ function createGeneticAlgorithm(maxIterations) {
 function validateOneMore(bestParams) {
     let finalRes = [];
     for (let targetTimeNum = 3; targetTimeNum <= 9; targetTimeNum++) {
-        const paramsWithTargetTimeNum = { ...bestParams, targetTimeNum };
+        const paramsWithTargetTimeNum = {...bestParams, targetTimeNum};
         const evaluation = evaluateStrategy(paramsWithTargetTimeNum);
 
         if (evaluation.testMoney <= 0) {
@@ -298,7 +304,7 @@ function saveQualifiedSolutions(newSolution) {
 
     // 去重：只保留不在 existingSolutions 中的解
     const alreadyExist = existingSolutions.some((existingSolution) =>
-        areParamsEqual(existingSolution.params, currentBestParams),
+        areParamsEqual(existingSolution.params, currentBestParams)
     );
 
     // 该解已经存在，直接返回
@@ -314,7 +320,7 @@ function saveQualifiedSolutions(newSolution) {
     const fileContent = `const qualifiedSolutions = ${JSON.stringify(
         updatedSolutions,
         null,
-        2,
+        2
     )};\nmodule.exports = { qualifiedSolutions };`;
     fs.writeFileSync(qualifiedSolutionsPath, fileContent, "utf8");
 

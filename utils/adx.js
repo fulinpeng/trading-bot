@@ -1,4 +1,4 @@
-const { calculateSimpleMovingAverage } = require("./ma.js");
+const {calculateSimpleMovingAverage} = require("./ma.js");
 // 计算ADX
 function calculateADX(data, period = 14) {
     let tr = [],
@@ -19,7 +19,7 @@ function calculateADX(data, period = 14) {
         let trueRange = Math.max(
             parseFloat(data[i].high) - parseFloat(data[i].low),
             Math.abs(parseFloat(data[i].high) - parseFloat(data[i - 1].close)),
-            Math.abs(parseFloat(data[i].low) - parseFloat(data[i - 1].close)),
+            Math.abs(parseFloat(data[i].low) - parseFloat(data[i - 1].close))
         );
 
         plusDM.push(plus);

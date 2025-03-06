@@ -22,7 +22,7 @@ function calculateCurrentStochasticOscillator(data, period = 14, dPeriod = 3) {
     }
     let d = kValues.reduce((acc, val) => acc + val, 0) / dPeriod;
 
-    return { k, d };
+    return {k, d};
 }
 
 function calculateStochasticOscillators(data, period = 14, dPeriod = 3) {
@@ -58,7 +58,8 @@ function calculateCurrentCCI(data, period = 20) {
     // 获取最近一个周期的数据
     let currentSlice = data.slice(-period);
     let typicalPrices = currentSlice.map(
-        (candle) => (parseFloat(candle.high) + parseFloat(candle.low) + parseFloat(candle.close)) / 3,
+        (candle) =>
+            (parseFloat(candle.high) + parseFloat(candle.low) + parseFloat(candle.close)) / 3
     );
     let sma = typicalPrices.reduce((acc, val) => acc + val, 0) / period;
     let meanDeviation = typicalPrices.reduce((acc, val) => acc + Math.abs(val - sma), 0) / period;
@@ -72,18 +73,18 @@ function calculateCCIs(data, period = 20) {
     for (let i = period - 1; i < data.length; i++) {
         let currentSlice = data.slice(i - period + 1, i + 1);
         let typicalPrices = currentSlice.map(
-            (candle) => (parseFloat(candle.high) + parseFloat(candle.low) + parseFloat(candle.close)) / 3,
+            (candle) =>
+                (parseFloat(candle.high) + parseFloat(candle.low) + parseFloat(candle.close)) / 3
         );
         let sma = typicalPrices.reduce((acc, val) => acc + val, 0) / period;
-        let meanDeviation = typicalPrices.reduce((acc, val) => acc + Math.abs(val - sma), 0) / period;
+        let meanDeviation =
+            typicalPrices.reduce((acc, val) => acc + Math.abs(val - sma), 0) / period;
         let cci = (typicalPrices[typicalPrices.length - 1] - sma) / (0.015 * meanDeviation);
         cciValues.push(cci);
     }
 
     return cciValues;
 }
-
-
 
 /**
 结合使用 Stochastic 和 CCI

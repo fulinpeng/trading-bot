@@ -178,7 +178,7 @@ const config = {
         diff: 2,
         profitRate: 10000,
         overNumberToRest: 12, // 多少次对冲后去休息
-        howManyNumForAvarageCandleHight:7, // 通过多少个k线来计算 candleHight
+        howManyNumForAvarageCandleHight: 7, // 通过多少个k线来计算 candleHight
         klineStage: 1, // k线级别
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         nextBig: false, // 下一次开大仓

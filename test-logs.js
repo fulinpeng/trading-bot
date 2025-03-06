@@ -1,5 +1,5 @@
 const fs = require("fs");
-const { getDate } = require("./utils/functions.js");
+const {getDate} = require("./utils/functions.js");
 
 let logStream = null;
 let originalConsoleLog = null;
@@ -42,7 +42,7 @@ const createLogs = () => {
                         return v;
                     }
                 })
-                .join("，")}\n`,
+                .join("，")}\n`
         );
     };
 };
@@ -56,14 +56,14 @@ const setLog = async (num) => {
         });
     }).then((num) => {
         console.log(getDate(undefined, true) + " ---- test da yin ...", num);
-        if (num===20000) console.log(getDate(undefined, true))
+        if (num === 20000) console.log(getDate(undefined, true));
     });
 };
 
 async function run() {
     while (num < 2000000) {
         if (num < 150000) {
-             setLog(num);
+            setLog(num);
         } else {
             setLog(num);
         }

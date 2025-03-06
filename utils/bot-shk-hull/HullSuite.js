@@ -15,106 +15,117 @@
  *                    - SHULL: Smoothed Hull MA value (2 steps back).
  */
 
-const defaultParams={
-	source: "close",
-	modeSwitch: "Hma",
-	length: 55,
-	lengthMult: 1.0,
-	useHtf: false,
-	htf: "240",
+const defaultParams = {
+    source: "close",
+    modeSwitch: "Hma",
+    length: 55,
+    lengthMult: 1.0,
+    useHtf: false,
+    htf: "240",
 };
 function calculateHullSuite(klineData, params) {
-	const {source, modeSwitch, length, lengthMult, useHtf}= {...defaultParams, ...params};
+    const {source, modeSwitch, length, lengthMult, useHtf} = {
+        ...defaultParams,
+        ...params,
+    };
 
-	// Helper functions
-	const wma=(data, length) => {
-		if (data.length<length) return [];
-		const wmaResults=[];
-		const divisor=(length*(length+1))/2;
+    // Helper functions
+    const wma = (data, length) => {
+        if (data.length < length) return [];
+        const wmaResults = [];
+        const divisor = (length * (length + 1)) / 2;
 
-		for (let i=0;i<=data.length-length;i++) {
-			let sum=0;
-			for (let j=0;j<length;j++) {
-				sum+=data[i+j]*(length-j);
-			}
-			wmaResults.push(sum/divisor);
-		}
+        for (let i = 0; i <= data.length - length; i++) {
+            let sum = 0;
+            for (let j = 0; j < length; j++) {
+                sum += data[i + j] * (length - j);
+            }
+            wmaResults.push(sum / divisor);
+        }
 
-		return Array(data.length-wmaResults.length).fill(null).concat(wmaResults);
-	};
+        return Array(data.length - wmaResults.length)
+            .fill(null)
+            .concat(wmaResults);
+    };
 
-	const ema=(data, length) => {
-		if (data.length<length) return [];
-		const emaResults=[];
-		const alpha=2/(length+1);
+    const ema = (data, length) => {
+        if (data.length < length) return [];
+        const emaResults = [];
+        const alpha = 2 / (length + 1);
 
-		emaResults[0]=data[0]; // Initialize with the first value
-		for (let i=1;i<data.length;i++) {
-			emaResults[i]=alpha*data[i]+(1-alpha)*emaResults[i-1];
-		}
+        emaResults[0] = data[0]; // Initialize with the first value
+        for (let i = 1; i < data.length; i++) {
+            emaResults[i] = alpha * data[i] + (1 - alpha) * emaResults[i - 1];
+        }
 
-		return emaResults;
-	};
+        return emaResults;
+    };
 
-	const HMA=(data, length) => {
-		const halfLength=Math.round(length/2);
-		const sqrtLength=Math.round(Math.sqrt(length));
-		const wma1=wma(data, halfLength);
-		const wma2=wma(data, length);
-		const diff=wma1.map((val, idx) => (val!==null&&wma2[idx]!==null? 2*val-wma2[idx]:null));
-		return wma(diff, sqrtLength);
-	};
+    const HMA = (data, length) => {
+        const halfLength = Math.round(length / 2);
+        const sqrtLength = Math.round(Math.sqrt(length));
+        const wma1 = wma(data, halfLength);
+        const wma2 = wma(data, length);
+        const diff = wma1.map((val, idx) =>
+            val !== null && wma2[idx] !== null ? 2 * val - wma2[idx] : null
+        );
+        return wma(diff, sqrtLength);
+    };
 
-	const EHMA=(data, length) => {
-		const halfLength=Math.round(length/2);
-		const sqrtLength=Math.round(Math.sqrt(length));
-		const ema1=ema(data, halfLength);
-		const ema2=ema(data, length);
-		const diff=ema1.map((val, idx) => (val!==null&&ema2[idx]!==null? 2*val-ema2[idx]:null));
-		return ema(diff, sqrtLength);
-	};
+    const EHMA = (data, length) => {
+        const halfLength = Math.round(length / 2);
+        const sqrtLength = Math.round(Math.sqrt(length));
+        const ema1 = ema(data, halfLength);
+        const ema2 = ema(data, length);
+        const diff = ema1.map((val, idx) =>
+            val !== null && ema2[idx] !== null ? 2 * val - ema2[idx] : null
+        );
+        return ema(diff, sqrtLength);
+    };
 
-	const THMA=(data, length) => {
-		const thirdLength=Math.round(length/3);
-		const halfLength=Math.round(length/2);
-		const wma1=wma(data, thirdLength);
-		const wma2=wma(data, halfLength);
-		const wma3=wma(data, length);
-		return wma1.map((val, idx) =>
-			val!==null&&wma2[idx]!==null&&wma3[idx]!==null? val*3-wma2[idx]-wma3[idx]:null
-		);
-	};
+    const THMA = (data, length) => {
+        const thirdLength = Math.round(length / 3);
+        const halfLength = Math.round(length / 2);
+        const wma1 = wma(data, thirdLength);
+        const wma2 = wma(data, halfLength);
+        const wma3 = wma(data, length);
+        return wma1.map((val, idx) =>
+            val !== null && wma2[idx] !== null && wma3[idx] !== null
+                ? val * 3 - wma2[idx] - wma3[idx]
+                : null
+        );
+    };
 
-	// Calculate Hull Suite
-	const srcData=klineData.map((kline) => kline[source]);
-	const adjustedLength=Math.round(length*lengthMult);
+    // Calculate Hull Suite
+    const srcData = klineData.map((kline) => kline[source]);
+    const adjustedLength = Math.round(length * lengthMult);
 
-	let HULL;
-	switch (modeSwitch) {
-		case "Ehma":
-			HULL=EHMA(srcData, adjustedLength);
-			break;
-		case "Thma":
-			HULL=THMA(srcData, adjustedLength/2);
-			break;
-		case "Hma":
-		default:
-			HULL=HMA(srcData, adjustedLength);
-			break;
-	}
+    let HULL;
+    switch (modeSwitch) {
+        case "Ehma":
+            HULL = EHMA(srcData, adjustedLength);
+            break;
+        case "Thma":
+            HULL = THMA(srcData, adjustedLength / 2);
+            break;
+        case "Hma":
+        default:
+            HULL = HMA(srcData, adjustedLength);
+            break;
+    }
 
-	// Optional higher timeframe handling (if `useHtf` is true, logic would depend on how you fetch HTF data)
-	if (useHtf) {
-		// Note: Implement your higher timeframe aggregation logic here.
-		throw new Error("Higher timeframe calculation is not implemented in this example.");
-	}
+    // Optional higher timeframe handling (if `useHtf` is true, logic would depend on how you fetch HTF data)
+    if (useHtf) {
+        // Note: Implement your higher timeframe aggregation logic here.
+        throw new Error("Higher timeframe calculation is not implemented in this example.");
+    }
 
-	// Prepare results
-	return klineData.map((kline, idx) => ({
-		time: kline.time,
-		MHULL: HULL[idx],
-		SHULL: idx>=2? HULL[idx-2]:null,
-	}));
+    // Prepare results
+    return klineData.map((kline, idx) => ({
+        time: kline.time,
+        MHULL: HULL[idx],
+        SHULL: idx >= 2 ? HULL[idx - 2] : null,
+    }));
 }
 
 // // Example usage:
@@ -139,7 +150,6 @@ function calculateHullSuite(klineData, params) {
 // const result=calculateHullSuite(klineData, params);
 // console.log(result);
 
-
-module.exports={
-	calculateHullSuite
+module.exports = {
+    calculateHullSuite,
 };

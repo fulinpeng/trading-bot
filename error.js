@@ -42,6 +42,8 @@ function saveGlobalVariables() {
         myVariable,
         SYMBOL,
     });
-    fs.writeFileSync(`data/${SYMBOL}.js`, `module.exports = ${data}`, { flag: "w" });
+    fs.writeFileSync(`data/${SYMBOL}.js`, `module.exports = ${data}`, {
+        flag: "w",
+    });
     console.log(`Global variables saved to data/${SYMBOL}.js`);
 }

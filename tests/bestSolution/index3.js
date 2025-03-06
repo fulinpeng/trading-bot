@@ -2,9 +2,9 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const GeneticAlgorithmConstructor = require("geneticalgorithm");
-const { fork } = require("child_process");
+const {fork} = require("child_process");
 const os = require("os");
-const { evaluateStrategy } = require("../test-mading4-6.js");
+const {evaluateStrategy} = require("../test-mading4-6.js");
 
 const symbol = "1000pepeUSDT";
 
@@ -19,10 +19,10 @@ if (fs.existsSync(qualifiedSolutionsPath)) {
 
 // 参数范围对象
 const paramRangesObj = {
-    timeDis: { min: 1, max: 300 },
-    profit: { min: 0.1, max: 10 },
-    howManyCandleHeight: { min: 3, max: 10 },
-    howManyNumForAvarageCandleHight: { min: 6, max: 300 },
+    timeDis: {min: 1, max: 300},
+    profit: {min: 0.1, max: 10},
+    howManyCandleHeight: {min: 3, max: 10},
+    howManyNumForAvarageCandleHight: {min: 6, max: 300},
 };
 
 const paramRanges = [
@@ -36,29 +36,38 @@ const paramRanges = [
 function generateRandomParams() {
     return {
         timeDis:
-            Math.floor(Math.random() * (paramRangesObj.timeDis.max - paramRangesObj.timeDis.min + 1)) +
-            paramRangesObj.timeDis.min,
+            Math.floor(
+                Math.random() * (paramRangesObj.timeDis.max - paramRangesObj.timeDis.min + 1)
+            ) + paramRangesObj.timeDis.min,
         profit: (
             Math.random() * (paramRangesObj.profit.max - paramRangesObj.profit.min) +
             paramRangesObj.profit.min
         ).toFixed(1),
         howManyCandleHeight:
             Math.floor(
-                Math.random() * (paramRangesObj.howManyCandleHeight.max - paramRangesObj.howManyCandleHeight.min + 1),
+                Math.random() *
+                    (paramRangesObj.howManyCandleHeight.max -
+                        paramRangesObj.howManyCandleHeight.min +
+                        1)
             ) + paramRangesObj.howManyCandleHeight.min,
         howManyNumForAvarageCandleHight:
             Math.floor(
                 Math.random() *
                     (paramRangesObj.howManyNumForAvarageCandleHight.max -
                         paramRangesObj.howManyNumForAvarageCandleHight.min +
-                        1),
+                        1)
             ) + paramRangesObj.howManyNumForAvarageCandleHight.min,
     };
 }
 
 // 将个体参数转换为数组，用于遗传算法
 function encodeParams(params) {
-    return [params.timeDis, params.profit, params.howManyCandleHeight, params.howManyNumForAvarageCandleHight];
+    return [
+        params.timeDis,
+        params.profit,
+        params.howManyCandleHeight,
+        params.howManyNumForAvarageCandleHight,
+    ];
 }
 
 // 将数组解码为参数对象
@@ -74,7 +83,7 @@ function decodeParams(arr) {
 // 计算适应度函数
 function fitnessFunction(phenotype) {
     const params = decodeParams(phenotype);
-    const { maxMoney, minMoney, testMoney } = evaluateStrategy(params);
+    const {maxMoney, minMoney, testMoney} = evaluateStrategy(params);
 
     if (testMoney <= 0 || maxMoney <= 0) return 0;
 
@@ -106,7 +115,7 @@ function createGeneticAlgorithm(maxIterations) {
     let lastImprovement = 0;
 
     // 随机生成一批新个体来增加初始种群的多样性
-    const randomPopulation = Array.from({ length: 20 }, () => encodeParams(generateRandomParams()));
+    const randomPopulation = Array.from({length: 20}, () => encodeParams(generateRandomParams()));
 
     // 如果有 defaultParams，加入其中作为种群的一部分
     const initialPopulation = defaultParams
@@ -114,7 +123,8 @@ function createGeneticAlgorithm(maxIterations) {
         : randomPopulation;
 
     return GeneticAlgorithmConstructor({
-        mutationFunction: (phenotype) => mutationFunction(phenotype, lastImprovement, maxIterations),
+        mutationFunction: (phenotype) =>
+            mutationFunction(phenotype, lastImprovement, maxIterations),
         crossoverFunction: (parent1, parent2) => {
             return [
                 [parent1[0], parent2[1], (parent1[2] + parent2[2]) / 2, parent1[3]],
@@ -164,10 +174,10 @@ function saveQualifiedSolutions(params) {
     const qualifiedSolutions = fs.existsSync(qualifiedSolutionsPath)
         ? require(qualifiedSolutionsPath).qualifiedSolutions
         : [];
-    qualifiedSolutions.push({ params });
+    qualifiedSolutions.push({params});
     fs.writeFileSync(
         qualifiedSolutionsPath,
-        `module.exports = { qualifiedSolutions: ${JSON.stringify(qualifiedSolutions)} }`,
+        `module.exports = { qualifiedSolutions: ${JSON.stringify(qualifiedSolutions)} }`
     );
 }
 
@@ -211,7 +221,11 @@ function processBestSolutions(bestSolution, triedSolutions) {
 
     for (let i = 0; i < cpuCount; i++) {
         const childProcess = fork(childPath); // 子进程文件
-        childProcess.send({ action: "evaluate", params: currentBestParams, symbol });
+        childProcess.send({
+            action: "evaluate",
+            params: currentBestParams,
+            symbol,
+        });
 
         childProcess.on("message", (message) => {
             if (message.qualified) {
@@ -225,10 +239,12 @@ function processBestSolutions(bestSolution, triedSolutions) {
     }
 
     // 等待所有子进程结束
-    Promise.all(childProcesses.map((p) => new Promise((resolve) => p.on("exit", resolve)))).then(() => {
-        console.log("所有子进程完成");
-        saveTriedSolutions(triedSolutions); // 最后保存尝试过的参数组合
-    });
+    Promise.all(childProcesses.map((p) => new Promise((resolve) => p.on("exit", resolve)))).then(
+        () => {
+            console.log("所有子进程完成");
+            saveTriedSolutions(triedSolutions); // 最后保存尝试过的参数组合
+        }
+    );
 }
 
 // 启动寻找合格解决方案的过程

@@ -14,7 +14,7 @@ function findVandAPoints(klineData, period = 30, tolerance = 0.01) {
 
     for (let i = 0; i <= recentData.length - period; i++) {
         const slice = recentData.slice(i, i + period);
-        const { vPoint, aPoint } = checkVandAPoint(slice, tolerance);
+        const {vPoint, aPoint} = checkVandAPoint(slice, tolerance);
         if (vPoint !== null && vPoint !== lastVPoint) {
             vPoints.push(vPoint);
             lastVPoint = vPoint;
@@ -61,7 +61,7 @@ function checkVandAPoint(slice, tolerance) {
             const rightSlope = Math.min(...rightSide);
             const priceDifference = (Math.max(...highs) - minClose) / currentPrice;
             if (priceDifference >= tolerance && leftSlope > minClose && rightSlope > minClose) {
-                return { vPoint: minClose, aPoint: null };
+                return {vPoint: minClose, aPoint: null};
             }
         }
     }
@@ -76,12 +76,12 @@ function checkVandAPoint(slice, tolerance) {
             const rightSlope = Math.max(...rightSide);
             const priceDifference = (maxClose - Math.min(...lows)) / currentPrice;
             if (priceDifference >= tolerance && leftSlope < maxClose && rightSlope < maxClose) {
-                return { vPoint: null, aPoint: maxClose };
+                return {vPoint: null, aPoint: maxClose};
             }
         }
     }
 
-    return { vPoint: null, aPoint: null };
+    return {vPoint: null, aPoint: null};
 }
 
 // 示例K线数据
@@ -108,6 +108,6 @@ const findMaxAndMin = (recentKlines) => {
         if (k.low < maxK.low) minK = k;
     });
 
-    return { minK, maxK };
+    return {minK, maxK};
 };
-module.exports = { findVandAPoints, findMaxAndMin };
+module.exports = {findVandAPoints, findMaxAndMin};

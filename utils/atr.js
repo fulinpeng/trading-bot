@@ -31,7 +31,8 @@ function calculateATR(kLines, period) {
         if (i >= period - 1) {
             if (i === period - 1) {
                 // 第一个 ATR 值为前 period 个 TR 值的简单平均
-                const initialATR = trValues.slice(0, period).reduce((acc, val) => acc + val, 0) / period;
+                const initialATR =
+                    trValues.slice(0, period).reduce((acc, val) => acc + val, 0) / period;
                 atrValues.push(initialATR);
             } else {
                 // 后续 ATR 值为前一个 ATR 值与当前 TR 值的加权平均

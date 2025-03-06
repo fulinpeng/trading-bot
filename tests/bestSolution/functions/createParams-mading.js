@@ -3,10 +3,10 @@ const path = require("path");
 
 // 动态参数范围对象
 const paramRangesObj = {
-    timeDis: { min: 1, max: 1, step: 1 },
-    profit: { min: 0.1, max: 10, step: 0.1 },
-    howManyCandleHeight: { min: 3, max: 10, step: 1 },
-    howManyNumForAvarageCandleHight: { min: 6, max: 120, step: 1 },
+    timeDis: {min: 1, max: 1, step: 1},
+    profit: {min: 0.1, max: 10, step: 0.1},
+    howManyCandleHeight: {min: 3, max: 10, step: 1},
+    howManyNumForAvarageCandleHight: {min: 6, max: 120, step: 1},
 };
 
 // 参数文件路径
@@ -46,7 +46,7 @@ function writeBatchToFile(writeStream, batch) {
 async function generateCombinationsAndSave(paramRangesObj) {
     const allKeys = Object.keys(paramRangesObj); // 获取参数对象的所有字段名
     const allParams = allKeys.map((key) =>
-        generateParams(paramRangesObj[key].min, paramRangesObj[key].max, paramRangesObj[key].step),
+        generateParams(paramRangesObj[key].min, paramRangesObj[key].max, paramRangesObj[key].step)
     ); // 根据每个字段的 min、max、step 生成相应的参数数组
 
     ensureParamsDirExists(); // 确保目录存在

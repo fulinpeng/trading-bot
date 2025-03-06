@@ -1,4 +1,4 @@
-const { exec } = require("child_process");
+const {exec} = require("child_process");
 
 // 提取文件路径参数
 const logFilePath = process.argv[2];
@@ -36,7 +36,9 @@ const start = async () => {
             const strs = content.split("--") || [];
             console.log(`\n 时间                        仓位方向             testMoney`);
             strs.forEach((str) => {
-                const matchRes = str.match(/(.*)\:\s止损(.*)\sgridPointClearTrading\s\~\stestMoney\:[，](-?\d+\.?\d+)/);
+                const matchRes = str.match(
+                    /(.*)\:\s止损(.*)\sgridPointClearTrading\s\~\stestMoney\:[，](-?\d+\.?\d+)/
+                );
                 const date = (matchRes && matchRes[1]) || "--";
                 const direction = (matchRes && matchRes[2]) || "--";
                 const testMoney = (matchRes && matchRes[3]) || "--";
