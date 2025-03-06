@@ -1,4 +1,4 @@
-const {getDate, getLastFromArr} = require("../utils/functions");
+const { getDate, getLastFromArr } = require("../utils/functions");
 const {
     calculateCandleHeight,
     isBigLine,
@@ -35,12 +35,12 @@ const {
     isAllDownTail,
     isAllUpTail,
 } = require("../utils/kLineTools");
-const {calculateSSL} = require("../utils/SSL_CMF_VO/SSLChannel.js");
-const {calculateCMF} = require("../utils/SSL_CMF_VO/CMF.js");
-const {calculateVO} = require("../utils/SSL_CMF_VO/volatilityOscillator.js");
+const { calculateSSL } = require("../utils/SSL_CMF_VO/SSLChannel.js");
+const { calculateCMF } = require("../utils/SSL_CMF_VO/CMF.js");
+const { calculateVO } = require("../utils/SSL_CMF_VO/volatilityOscillator.js");
 const fs = require("fs");
 const symbol = "dogeUSDT";
-let {kLineData} = require(`./source/${symbol}-1h.js`);
+let { kLineData } = require(`./source/${symbol}-1h.js`);
 
 const DefaultAvailableMoney = 10;
 let maxAvailableMoney = 0;
@@ -237,7 +237,7 @@ const start = (params) => {
         setEveryIndex([...curKLines]);
 
         const curkLine = _kLineData[idx];
-        const {open, close, openTime, closeTime, low, high} = curkLine;
+        const { open, close, openTime, closeTime, low, high } = curkLine;
 
         // let [emaMa1, emaMa2, emaMa3, emaMa4, emaMa5]=getLastFromArr(emaMaArr, 5);
         // let [rsi1, rsi2, rsi3, rsi4, rsi5]=getLastFromArr(rsiArr, 5);
@@ -395,7 +395,7 @@ const start = (params) => {
     if (hasOrder) {
         const len = _kLineData.length;
         const curkLine = _kLineData[len - 1];
-        const {close, openTime, closeTime, low, high} = curkLine;
+        const { close, openTime, closeTime, low, high } = curkLine;
         const [point1, point2] = gridPoints;
         if (hasOrder) {
             // 判断止损
@@ -541,7 +541,7 @@ const judgeAndTrading = (kLines, params) => {
     // 根据指标判断是否可以开单
     const [, , , , curkLine] = kLines;
     const trendInfo = calculateTradingSignal(kLines);
-    const {stopLoss, stopProfit} = trendInfo;
+    const { stopLoss, stopProfit } = trendInfo;
 
     // 开单
     switch (trendInfo.trend) {
@@ -573,7 +573,7 @@ const judgeAndTrading = (kLines, params) => {
 };
 const calculateTradingSignal = (kLines) => {
     const [kLine_fu1, kLine_0, kLine1, kLine2, kLine3] = kLines;
-    const {open, close, openTime, closeTime, low, high} = kLine3;
+    const { open, close, openTime, closeTime, low, high } = kLine3;
 
     const [ssl1, ssl2, ssl3, ssl4, ssl5] = getLastFromArr(SSL, 5);
     const [cmf1, cmf2, cmf3, cmf4, cmf5] = getLastFromArr(CMF, 5);

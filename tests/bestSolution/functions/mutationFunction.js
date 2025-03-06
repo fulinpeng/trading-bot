@@ -1,9 +1,9 @@
 // 给定的参数范围对象形式
 const paramRangesObj = {
-    timeDis: {min: 1, max: 300}, // 整数
-    profit: {min: 0.1, max: 10}, // 小数，保留一位
-    howManyCandleHeight: {min: 3, max: 10}, // 整数
-    howManyNumForAvarageCandleHight: {min: 6, max: 300}, // 整数
+    timeDis: { min: 1, max: 300 }, // 整数
+    profit: { min: 0.1, max: 10 }, // 小数，保留一位
+    howManyCandleHeight: { min: 3, max: 10 }, // 整数
+    howManyNumForAvarageCandleHight: { min: 6, max: 300 }, // 整数
 };
 
 // 转换为数组形式，按顺序存储每个参数的范围
@@ -59,4 +59,4 @@ function mutateValue(currentValue, range, mutationRate, index) {
     // 返回变异后的值
     return newValue;
 }
-module.exports = {mutationFunction, paramRanges};
+module.exports = { mutationFunction, paramRanges };

@@ -11,11 +11,11 @@ const path = require("path");
 // };
 
 const paramRangesObj = {
-    howManyCandle: {min: 1, max: 10, step: 1},
-    invalidNumber: {min: 5, max: 150, step: 5},
-    isProfitRun: {min: 0, max: 1, step: 1},
-    profitProtectRate: {min: 0.5, max: 0.9, step: 0.1},
-    howManyCandleForProfitRun: {min: 0.5, max: 5, step: 0.5},
+    howManyCandle: { min: 1, max: 10, step: 1 },
+    invalidNumber: { min: 5, max: 150, step: 5 },
+    isProfitRun: { min: 0, max: 1, step: 1 },
+    profitProtectRate: { min: 0.5, max: 0.9, step: 0.1 },
+    howManyCandleForProfitRun: { min: 0.5, max: 5, step: 0.5 },
 };
 
 // 参数文件路径

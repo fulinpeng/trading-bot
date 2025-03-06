@@ -19,7 +19,7 @@ function calculateCMF(klineData, length = 20) {
 
     // 计算每根 K 线的 Accumulation/Distribution (A/D) 值
     const adValues = klineData.map((kline) => {
-        const {high, low, close, volume} = kline;
+        const { high, low, close, volume } = kline;
         if (high === low) {
             return 0; // 避免除以零
         }

@@ -1,4 +1,4 @@
-const {convertToRenko} = require("../../utils/renko.js");
+const { convertToRenko } = require("../../utils/renko.js");
 const fs = require("fs");
 
 let symbol = process.argv[2];
@@ -19,11 +19,11 @@ if (!brickSize) {
     process.exit(1);
 }
 
-let {kLineData: originLineData} = require(`../../tests/source/${symbol}-${time}.js`);
+let { kLineData: originLineData } = require(`../../tests/source/${symbol}-${time}.js`);
 let kLineData = [];
 let lastRenkoClose = null;
 originLineData.forEach((v) => {
-    const {renkoData, newLastRenkoClose} = convertToRenko({
+    const { renkoData, newLastRenkoClose } = convertToRenko({
         klineData: v,
         brickSize,
         lastRenkoClose,

@@ -50,7 +50,7 @@ function jsonString(obj) {
 // 加载 AMD 规范模块
 function loadAMDModule(filePath) {
     const content = fs.readFileSync(filePath, "utf-8");
-    const module = {exports: {}};
+    const module = { exports: {} };
     eval(content); // 注入到 `module.exports`
     return module.exports;
 }
@@ -64,7 +64,7 @@ function loadGlobalModule(filePath) {
 // 加载 CMD 规范模块
 function loadCMDModule(filePath) {
     const content = fs.readFileSync(filePath, "utf-8");
-    const module = {exports: {}};
+    const module = { exports: {} };
     const require = (moduleName) => {
         const resolvedPath = resolveModulePath(moduleName, filePath);
         return loadCMDModule(resolvedPath);

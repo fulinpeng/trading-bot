@@ -32,7 +32,7 @@ const axiosInstance = axios.create({
 // 签名请求
 const signRequest = (params) => {
     const timestamp = Date.now();
-    const queryString = Object.entries({...params, timestamp})
+    const queryString = Object.entries({ ...params, timestamp })
         .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
         .join("&");
     const signature = crypto.createHmac("sha256", secretKey).update(queryString).digest("hex");

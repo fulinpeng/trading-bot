@@ -104,7 +104,7 @@ function createStochRSICalculator(smoothK = 3, smoothD = 3, lengthRSI = 14, leng
     }
 
     // 返回接口
-    return {update, reset};
+    return { update, reset };
 }
 
 // // ===== 使用示例 =====

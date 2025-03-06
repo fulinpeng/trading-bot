@@ -7,12 +7,12 @@
     3. 采用子线程并行
 */
 
-const {fork} = require("child_process");
+const { fork } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
 const readline = require("readline");
-const {pipeline} = require("stream");
+const { pipeline } = require("stream");
 
 const symbol = "solUSDT";
 const qualifiedSolutionsPath = path.join(__dirname, `qualifiedSolutions/vegas-${symbol}.js`);
@@ -28,11 +28,11 @@ const batchSize = parseInt(os.cpus().length); // 每次处理cpus个参数组合
 //     howManyCandleForProfitRun: { min: 0.5, max: 5, step: 0.5 },
 // };
 const paramRangesObj = {
-    howManyCandle: {min: 1, max: 10, step: 1},
-    invalidNumber: {min: 5, max: 144, step: 1},
-    isProfitRun: {min: 0, max: 1, step: 1},
-    profitProtectRate: {min: 0.5, max: 1, step: 0.1},
-    howManyCandleForProfitRun: {min: 0.5, max: 5, step: 0.5},
+    howManyCandle: { min: 1, max: 10, step: 1 },
+    invalidNumber: { min: 5, max: 144, step: 1 },
+    isProfitRun: { min: 0, max: 1, step: 1 },
+    profitProtectRate: { min: 0.5, max: 1, step: 0.1 },
+    howManyCandleForProfitRun: { min: 0.5, max: 5, step: 0.5 },
 };
 
 const allKeys = Object.keys(paramRangesObj);
@@ -192,7 +192,7 @@ function processBatch(batch) {
                 });
                 // 给子进程分配一个参数组合
                 const params = convertToCombinationObject(allKeys, batch[i]);
-                child.send({action: "evaluate", params: {symbol, params, childId}}); // 发送子进程ID
+                child.send({ action: "evaluate", params: { symbol, params, childId } }); // 发送子进程ID
             })
         );
     }

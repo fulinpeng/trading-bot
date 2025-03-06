@@ -4,9 +4,9 @@
  * @param {Object} params - 指标参数，格式为 { keyValue, atrPeriod, heikinAshi }
  * @returns {Array} - 包含每根K线对应的计算结果数组，每个元素为 { buy, sell, atrTrailingStop, position }
  */
-const defaultParams = {keyValue: 1, atrPeriod: 10, heikinAshi: false};
+const defaultParams = { keyValue: 1, atrPeriod: 10, heikinAshi: false };
 function calculateUTBot(candles, params) {
-    const {keyValue = 1, atrPeriod = 10, heikinAshi = false} = {...defaultParams, ...params};
+    const { keyValue = 1, atrPeriod = 10, heikinAshi = false } = { ...defaultParams, ...params };
 
     // 工具函数：计算移动平均
     const calculateEMA = (data, length) => {

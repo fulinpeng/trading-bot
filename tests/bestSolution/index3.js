@@ -2,9 +2,9 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const GeneticAlgorithmConstructor = require("geneticalgorithm");
-const {fork} = require("child_process");
+const { fork } = require("child_process");
 const os = require("os");
-const {evaluateStrategy} = require("../test-mading4-6.js");
+const { evaluateStrategy } = require("../test-mading4-6.js");
 
 const symbol = "1000pepeUSDT";
 
@@ -19,10 +19,10 @@ if (fs.existsSync(qualifiedSolutionsPath)) {
 
 // 参数范围对象
 const paramRangesObj = {
-    timeDis: {min: 1, max: 300},
-    profit: {min: 0.1, max: 10},
-    howManyCandleHeight: {min: 3, max: 10},
-    howManyNumForAvarageCandleHight: {min: 6, max: 300},
+    timeDis: { min: 1, max: 300 },
+    profit: { min: 0.1, max: 10 },
+    howManyCandleHeight: { min: 3, max: 10 },
+    howManyNumForAvarageCandleHight: { min: 6, max: 300 },
 };
 
 const paramRanges = [
@@ -83,7 +83,7 @@ function decodeParams(arr) {
 // 计算适应度函数
 function fitnessFunction(phenotype) {
     const params = decodeParams(phenotype);
-    const {maxMoney, minMoney, testMoney} = evaluateStrategy(params);
+    const { maxMoney, minMoney, testMoney } = evaluateStrategy(params);
 
     if (testMoney <= 0 || maxMoney <= 0) return 0;
 
@@ -115,7 +115,7 @@ function createGeneticAlgorithm(maxIterations) {
     let lastImprovement = 0;
 
     // 随机生成一批新个体来增加初始种群的多样性
-    const randomPopulation = Array.from({length: 20}, () => encodeParams(generateRandomParams()));
+    const randomPopulation = Array.from({ length: 20 }, () => encodeParams(generateRandomParams()));
 
     // 如果有 defaultParams，加入其中作为种群的一部分
     const initialPopulation = defaultParams
@@ -174,7 +174,7 @@ function saveQualifiedSolutions(params) {
     const qualifiedSolutions = fs.existsSync(qualifiedSolutionsPath)
         ? require(qualifiedSolutionsPath).qualifiedSolutions
         : [];
-    qualifiedSolutions.push({params});
+    qualifiedSolutions.push({ params });
     fs.writeFileSync(
         qualifiedSolutionsPath,
         `module.exports = { qualifiedSolutions: ${JSON.stringify(qualifiedSolutions)} }`

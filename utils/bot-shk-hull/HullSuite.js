@@ -24,7 +24,7 @@ const defaultParams = {
     htf: "240",
 };
 function calculateHullSuite(klineData, params) {
-    const {source, modeSwitch, length, lengthMult, useHtf} = {
+    const { source, modeSwitch, length, lengthMult, useHtf } = {
         ...defaultParams,
         ...params,
     };

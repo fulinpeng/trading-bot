@@ -1,9 +1,9 @@
-const {evaluateStrategy} = require("../../test-mading4-6.js");
-const {getDate} = require("../../../utils/functions.js");
+const { evaluateStrategy } = require("../../test-mading4-6.js");
+const { getDate } = require("../../../utils/functions.js");
 
 process.on("message", (message) => {
     if (message.action === "evaluate") {
-        const {params, symbol, childId} = message.params || {}; // 接收 symbol, params 和 childId 参数
+        const { params, symbol, childId } = message.params || {}; // 接收 symbol, params 和 childId 参数
         // const result = evaluateStrategy(params, true); // 使用 symbol 和 params 调用 evaluateStrategy
 
         // 假设 testMoney > 0 表示初步合格
@@ -17,16 +17,16 @@ process.on("message", (message) => {
                 // 只在合格时发送一次结果，并附带 childId
                 process.send({
                     qualified: true,
-                    solution: {params, result: validationResults},
+                    solution: { params, result: validationResults },
                     childId,
                 });
             } else {
                 // 如果进一步验证不合格，也只发送一次不合格的结果，并附带 childId
-                process.send({qualified: false, childId});
+                process.send({ qualified: false, childId });
             }
         } else {
             // 初步验证不通过，发送一次不合格的结果，并附带 childId
-            process.send({qualified: false, childId});
+            process.send({ qualified: false, childId });
         }
     }
 });
@@ -43,7 +43,7 @@ function validateOneMore(bestParams) {
     let day = 24 * 60 * 60 * 1000;
     for (let i = 1; i <= last; i++) {
         let targetTime = getDate(timeStamp + day * i * 5);
-        const paramsWithTargetTimeDis = {...bestParams, targetTime};
+        const paramsWithTargetTimeDis = { ...bestParams, targetTime };
         const evaluation = evaluateStrategy(paramsWithTargetTimeDis);
 
         // || Math.abs(evaluation.minMoney) > evaluation.maxMoney

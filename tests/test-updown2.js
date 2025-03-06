@@ -1,4 +1,4 @@
-const {getDate, getSequenceArr, getLastFromArr} = require("../utils/functions");
+const { getDate, getSequenceArr, getLastFromArr } = require("../utils/functions");
 const {
     calculateCandleHeight,
     isBigLine,
@@ -35,12 +35,12 @@ const {
     isAllDownTail,
     isAllUpTail,
 } = require("../utils/kLineTools");
-const {calculateATR} = require("../utils/atr.js");
-const {calculateRSI} = require("../utils/rsi.js");
-const {emaMacrossover} = require("../utils/ema_ma_crossover.js");
+const { calculateATR } = require("../utils/atr.js");
+const { calculateRSI } = require("../utils/rsi.js");
+const { emaMacrossover } = require("../utils/ema_ma_crossover.js");
 const fs = require("fs");
 const symbol = "dogeUSDT";
-let {kLineData} = require(`./source/${symbol}-1h.js`);
+let { kLineData } = require(`./source/${symbol}-1h.js`);
 
 // const DefaultAvailableMoney=10
 // const times=getSequenceArr(diff, 100);
@@ -122,16 +122,16 @@ function getMarketData(candles) {
         const maxHigh = Math.max(...highs);
         const minLow = Math.min(...lows);
 
-        return {maxHigh, minLow};
+        return { maxHigh, minLow };
     } catch (error) {
         console.error("Error fetching market data:", error);
-        return {maxHigh: null, minLow: null};
+        return { maxHigh: null, minLow: null };
     }
 }
 
 // 计算浮动盈亏
 function calcLongPositionsProfit(currentPrice, longPositions) {
-    return longPositions.reduce((sum, {price: orderPrice, quantity}) => {
+    return longPositions.reduce((sum, { price: orderPrice, quantity }) => {
         return (
             sum +
             (currentPrice - orderPrice) * quantity -
@@ -140,7 +140,7 @@ function calcLongPositionsProfit(currentPrice, longPositions) {
     }, 0);
 }
 function calcShortPositionsProfit(currentPrice, shortPositions) {
-    return shortPositions.reduce((sum, {price: orderPrice, quantity}) => {
+    return shortPositions.reduce((sum, { price: orderPrice, quantity }) => {
         return (
             sum +
             (orderPrice - currentPrice) * quantity -
@@ -168,7 +168,7 @@ function closeShortPositions(currentPrice, time, totalProfit) {
 // 执行交易：开仓、加仓、平仓
 function executeTrade(_candles, curkLine) {
     try {
-        const {open, close, openTime, closeTime, low, high} = curkLine;
+        const { open, close, openTime, closeTime, low, high } = curkLine;
         const price = close;
         let candles = getLastFromArr(_candles.slice(0, -1), n);
 
@@ -370,7 +370,7 @@ const start = (params) => {
 
     // 平仓最后一次
     const curkLine = _kLineData[_kLineData.length - 1];
-    const {close, openTime, closeTime, low, high} = curkLine;
+    const { close, openTime, closeTime, low, high } = curkLine;
     const longProfit = calcLongPositionsProfit(high, longPositions);
     const shortProfit = calcShortPositionsProfit(low, shortPositions);
 

@@ -3,10 +3,10 @@ const path = require("path");
 
 // 动态参数范围对象
 const paramRangesObj = {
-    timeDis: {min: 1, max: 1, step: 1},
-    profit: {min: 0.1, max: 10, step: 0.1},
-    howManyCandleHeight: {min: 3, max: 10, step: 1},
-    howManyNumForAvarageCandleHight: {min: 6, max: 120, step: 1},
+    timeDis: { min: 1, max: 1, step: 1 },
+    profit: { min: 0.1, max: 10, step: 0.1 },
+    howManyCandleHeight: { min: 3, max: 10, step: 1 },
+    howManyNumForAvarageCandleHight: { min: 6, max: 120, step: 1 },
 };
 
 // 参数文件路径

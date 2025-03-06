@@ -1,4 +1,4 @@
-const {exec} = require("child_process");
+const { exec } = require("child_process");
 
 // 提取文件路径参数
 const logFilePath = process.argv[2];

@@ -1,5 +1,5 @@
 const fs = require("fs");
-const {getDate} = require("./utils/functions.js");
+const { getDate } = require("./utils/functions.js");
 
 let logStream = null;
 let originalConsoleLog = null;

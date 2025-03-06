@@ -1,4 +1,4 @@
-const {calculateSimpleMovingAverage} = require("./ma.js");
+const { calculateSimpleMovingAverage } = require("./ma.js");
 // 计算ADX
 function calculateADX(data, period = 14) {
     let tr = [],

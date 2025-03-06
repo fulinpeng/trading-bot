@@ -6,8 +6,8 @@
  * @param {number} params.smaLength - 平滑 RSI 的 SMA 周期长度（默认值：5）
  * @returns {Object} - 当前 K 线的 RSI 和平滑 RSI 值
  */
-function calculateRSI(prices, params = {rsiLength: 14, smaLength: 5}) {
-    const {rsiLength, smaLength} = params;
+function calculateRSI(prices, params = { rsiLength: 14, smaLength: 5 }) {
+    const { rsiLength, smaLength } = params;
 
     // 辅助函数：计算 RMA（平滑移动平均线）
     const rma = (values, length) => {

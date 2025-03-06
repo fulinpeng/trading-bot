@@ -1,4 +1,4 @@
-const {exec} = require("child_process");
+const { exec } = require("child_process");
 
 // 提取起始数字和文件路径参数
 const startNumber = parseInt(process.argv[2]);

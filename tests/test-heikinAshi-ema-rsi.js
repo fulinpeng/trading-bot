@@ -1,4 +1,4 @@
-const {getDate, getSequenceArr, getLastFromArr} = require("../utils/functions");
+const { getDate, getSequenceArr, getLastFromArr } = require("../utils/functions");
 const {
     calculateCandleHeight,
     isBigLine,
@@ -35,14 +35,14 @@ const {
     isAllDownTail,
     isAllUpTail,
 } = require("../utils/kLineTools");
-const {calculateATR} = require("../utils/atr.js");
-const {calculateEMA} = require("../utils/ma.js");
-const {convertToHeikinAshiArr} = require("../utils/heikinAshi.js");
-const {createStochRSICalculator} = require("../utils/smoothRsi.js");
+const { calculateATR } = require("../utils/atr.js");
+const { calculateEMA } = require("../utils/ma.js");
+const { convertToHeikinAshiArr } = require("../utils/heikinAshi.js");
+const { createStochRSICalculator } = require("../utils/smoothRsi.js");
 const fs = require("fs");
 const symbol = "dogeUSDT";
-let {kLineData} = require(`./source/${symbol}-1m.js`);
-let {kLineData: heikinAshiKLineData} = require(`./source/heikinAshi-${symbol}-1m.js`);
+let { kLineData } = require(`./source/${symbol}-1m.js`);
+let { kLineData: heikinAshiKLineData } = require(`./source/heikinAshi-${symbol}-1m.js`);
 
 const DefaultAvailableMoney = 10;
 let maxAvailableMoney = 0;
@@ -277,7 +277,7 @@ const start = (params) => {
         setEveryIndex(heikinAshiCurKLines);
 
         const curkLine = _kLineData[idx];
-        const {open, close, openTime, closeTime, low, high} = curkLine;
+        const { open, close, openTime, closeTime, low, high } = curkLine;
 
         const [ema1, ema2, ema3] = getLastFromArr(emaArr, 3);
         const [rsi1, rsi2, rsi3] = getLastFromArr(rsiArr, 3);
@@ -433,7 +433,7 @@ const start = (params) => {
     if (hasOrder) {
         const len = _kLineData.length;
         const curkLine = _kLineData[len - 1];
-        const {close, openTime, closeTime, low, high} = curkLine;
+        const { close, openTime, closeTime, low, high } = curkLine;
         const [point1, point2] = gridPoints;
         if (hasOrder) {
             // 判断止损
@@ -504,7 +504,7 @@ const reset = () => {
 const judgeTradingDirection = (kLines) => {
     const [, , kLine1, kLine2, kLine3] = kLines;
 
-    const {close, low, high, openTime} = kLine3;
+    const { close, low, high, openTime } = kLine3;
 
     const [ema1, ema2, ema3] = getLastFromArr(emaArr, 3);
     const [rsi1, rsi2, rsi3] = getLastFromArr(rsiArr, 3);
@@ -530,7 +530,7 @@ const judgeBreakTradingDirection = (kLines) => {
     const [, , kLine1, kLine2, kLine3] = kLines;
     const [ema1, ema2, ema3] = getLastFromArr(emaArr, 3);
 
-    const {latestClose, demaShort, demaLong, emaArr} = ema3;
+    const { latestClose, demaShort, demaLong, emaArr } = ema3;
 
     // buySignal and (bar_index - buySignalBar >= lookaheadBars or (dema_short < dema_log) or (trend == -1))
     const upTerm1 = ema3.emaArr === 1;
@@ -573,7 +573,7 @@ const judgeAndTrading = (kLines, params) => {
     // 根据指标判断是否可以开单
     const [, , , , curkLine] = kLines;
     const trendInfo = calculateTradingSignal(kLines);
-    const {stopLoss, stopProfit} = trendInfo;
+    const { stopLoss, stopProfit } = trendInfo;
 
     // 开单
     switch (trendInfo.trend) {
@@ -603,7 +603,7 @@ const judgeAndTrading = (kLines, params) => {
 };
 const calculateTradingSignal = (kLines) => {
     const [kLine_fu1, kLine_0, kLine1, kLine2, kLine3] = kLines;
-    const {open, close, openTime, closeTime, low, high} = kLine3;
+    const { open, close, openTime, closeTime, low, high } = kLine3;
 
     // 计算ATR
     const atr = calculateATR(curKLines.slice(-20), atrPeriod).atr;

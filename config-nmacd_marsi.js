@@ -22,8 +22,8 @@ const config = {
         invalidSigleStopRate: 0.1, // 止损在10%，不开单
         double: 1, // 是否损失后加倍开仓
         maxLossCount: 20, // 损失后加倍开仓，最大倍数
-        NMACD_PARAMS: {sma: 13, lma: 21, tsp: 9, np: 50, type: 1},
-        MA_RSI_PARAMS: {rsiLength: 21, smaLength: 55},
+        NMACD_PARAMS: { sma: 13, lma: 21, tsp: 9, np: 50, type: 1 },
+        MA_RSI_PARAMS: { rsiLength: 21, smaLength: 55 },
         SMA_PERIOD: 15,
     },
 };

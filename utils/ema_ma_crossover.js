@@ -1,4 +1,4 @@
-const {calculateSimpleMovingAverage, calculateEMA} = require("../utils/ma.js");
+const { calculateSimpleMovingAverage, calculateEMA } = require("../utils/ma.js");
 
 function emaMacrossover(closePrices, LengthMA = 10, LengthEMA = 10) {
     // Validate input length

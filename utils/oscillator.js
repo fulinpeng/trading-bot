@@ -22,7 +22,7 @@ function calculateCurrentStochasticOscillator(data, period = 14, dPeriod = 3) {
     }
     let d = kValues.reduce((acc, val) => acc + val, 0) / dPeriod;
 
-    return {k, d};
+    return { k, d };
 }
 
 function calculateStochasticOscillators(data, period = 14, dPeriod = 3) {

@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto"); // 引入 crypto 库，用于计算哈希值
 const GeneticAlgorithmConstructor = require("geneticalgorithm");
-const {evaluateStrategy} = require("../test-mading4-6.js");
+const { evaluateStrategy } = require("../test-mading4-6.js");
 
 const symbol = "1000pepeUSDT";
 
@@ -16,10 +16,10 @@ if (fs.existsSync(qualifiedSolutionsPath)) {
 
 // 参数范围对象
 const paramRangesObj = {
-    timeDis: {min: 1, max: 300},
-    profit: {min: 0.1, max: 10},
-    howManyCandleHeight: {min: 3, max: 10},
-    howManyNumForAvarageCandleHight: {min: 6, max: 300},
+    timeDis: { min: 1, max: 300 },
+    profit: { min: 0.1, max: 10 },
+    howManyCandleHeight: { min: 3, max: 10 },
+    howManyNumForAvarageCandleHight: { min: 6, max: 300 },
 };
 
 const paramRanges = [
@@ -120,7 +120,7 @@ function calculateDistance(params1, params2) {
 // 适应度函数
 function fitnessFunction(phenotype) {
     const params = decodeParams(phenotype);
-    const {maxMoney, minMoney, testMoney} = evaluateStrategy(params);
+    const { maxMoney, minMoney, testMoney } = evaluateStrategy(params);
 
     if (testMoney <= 0 || maxMoney <= 0) return 0;
 
@@ -133,7 +133,7 @@ function fitnessFunction(phenotype) {
 }
 function fitnessFunction(phenotype) {
     const params = decodeParams(phenotype);
-    const {maxMoney, minMoney, testMoney} = evaluateStrategy(params);
+    const { maxMoney, minMoney, testMoney } = evaluateStrategy(params);
 
     if (testMoney <= 0 || maxMoney <= 0) return 0;
 
@@ -189,7 +189,7 @@ function createGeneticAlgorithm(maxIterations) {
 function validateOneMore(bestParams) {
     let finalRes = [];
     for (let targetTimeNum = 3; targetTimeNum <= 9; targetTimeNum++) {
-        const paramsWithTargetTimeNum = {...bestParams, targetTimeNum};
+        const paramsWithTargetTimeNum = { ...bestParams, targetTimeNum };
         const evaluation = evaluateStrategy(paramsWithTargetTimeNum);
 
         if (evaluation.testMoney <= 0) {

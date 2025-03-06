@@ -1,9 +1,9 @@
-const {getDate, hasUpDownVal, calculateAverage} = require("./functions.js");
+const { getDate, hasUpDownVal, calculateAverage } = require("./functions.js");
 
 const calculateCandleHeight = (klines, shadowBodyRate = 2) => {
     let selected = [];
     for (let curKline of klines) {
-        const {open, close, high, low} = curKline;
+        const { open, close, high, low } = curKline;
         const body = Math.abs(open - close);
         const totalKlineH = Math.abs(high - low);
         if (
@@ -24,7 +24,7 @@ const calculateCandleHeight = (klines, shadowBodyRate = 2) => {
 };
 
 // 是否 标准
-function isBigLine({open, close, high, low}, thresholdRatio = 0.6) {
+function isBigLine({ open, close, high, low }, thresholdRatio = 0.6) {
     // 计算开盘价和收盘价之间的差值
     const bodyRange = Math.abs(open - close);
 
@@ -75,7 +75,7 @@ function isBreakPreLow(min) {
     return res;
 }
 // 是否十字星
-function isCross({open, close, high, low}, thresholdRatio = 0.35) {
+function isCross({ open, close, high, low }, thresholdRatio = 0.35) {
     // 定义一个阈值比例，用于判断开盘价和收盘价的接近程度
 
     // 计算开盘价和收盘价之间的差值
@@ -93,7 +93,7 @@ function isCross({open, close, high, low}, thresholdRatio = 0.35) {
 function isUpCross(kLine, ratio) {
     let res = false;
     if (isCross(kLine, ratio)) {
-        const {open, close, high, low} = kLine;
+        const { open, close, high, low } = kLine;
         // 上引线
         let upTail = high - Math.max(open, close);
         // 下引线
@@ -109,7 +109,7 @@ function isUpCross(kLine, ratio) {
 function isDownCross(kLine, ratio) {
     let res = false;
     if (isCross(kLine, ratio)) {
-        const {open, close, high, low} = kLine;
+        const { open, close, high, low } = kLine;
         // 上引线
         let upTail = high - Math.max(open, close);
         // 下引线

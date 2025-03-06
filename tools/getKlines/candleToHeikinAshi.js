@@ -1,4 +1,4 @@
-const {convertToHeikinAshiArr} = require("../../utils/heikinAshi.js");
+const { convertToHeikinAshiArr } = require("../../utils/heikinAshi.js");
 const fs = require("fs");
 
 let symbol = process.argv[2];
@@ -14,7 +14,7 @@ if (!time) {
     process.exit(1);
 }
 
-let {kLineData: originLineData} = require(`../../tests/source/${symbol}-${time}.js`);
+let { kLineData: originLineData } = require(`../../tests/source/${symbol}-${time}.js`);
 let kLineData = convertToHeikinAshiArr(originLineData);
 
 writeInFile(`./tests/source/heikinAshi-${symbol}-${time}.js`, {

@@ -13,12 +13,12 @@ const config = {
 
         brickSize: 0.0005, // 砖块大小
 
-        B2Period: 11, // boll周期
+        B2Period: 10, // boll周期
         B2mult: 1.5, // boll倍数
         howManyCandle: 3, // 初始止盈，盈亏比
         firstStopProfitRate: 2, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
         firstProtectProfitRate: 0.6, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
-        firstStopLossRate: 0.2, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
+        firstStopLossRate: 0.3, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
         isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
         profitProtectRate: 0.4, //isProfitRun === 1 时生效，保留多少利润
         howManyCandleForProfitRun: 0.5,

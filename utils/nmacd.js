@@ -14,7 +14,7 @@ const ema = (prices, period) => {
 
 // 计算 WMA（加权移动平均线）
 const wma = (prices, period) => {
-    const weights = Array.from({length: period}, (_, i) => i + 1);
+    const weights = Array.from({ length: period }, (_, i) => i + 1);
     const wmaValues = [];
     for (let i = period - 1; i < prices.length; i++) {
         const window = prices.slice(i - period + 1, i + 1);
@@ -66,8 +66,8 @@ const lowest = (values, period) => {
  * @param {number} params.type - 移动平均线类型（1 = EMA, 2 = WMA, 3 = SMA）
  * @returns {Object} - 返回 { macNorm, trigger, hist } 对应于当前 K 线的值
  */
-function calculateNormalizedMACD(prices, params = {sma: 12, lma: 21, tsp: 9, np: 50, type: 1}) {
-    const {sma: fastMA, lma: slowMA, tsp: triggerPeriod, np: normalizePeriod, type} = params;
+function calculateNormalizedMACD(prices, params = { sma: 12, lma: 21, tsp: 9, np: 50, type: 1 }) {
+    const { sma: fastMA, lma: slowMA, tsp: triggerPeriod, np: normalizePeriod, type } = params;
 
     if (prices.length < Math.max(fastMA, slowMA, normalizePeriod)) {
         throw new Error("价格数据长度不足，无法计算指标");

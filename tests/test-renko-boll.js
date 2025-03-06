@@ -1,4 +1,4 @@
-const {getDate, getLastFromArr} = require("../utils/functions");
+const { getDate, getLastFromArr } = require("../utils/functions");
 const {
     calculateCandleHeight,
     isBigLine,
@@ -39,13 +39,14 @@ const {
 } = require("../utils/kLineTools");
 const calculateNormalizedMACD = require("../utils/boll");
 const calculateRSI = require("../utils/rsi_marsi");
-const {calculateBoll} = require("../utils/boll.js");
-const {calculateSimpleMovingAverage} = require("../utils/ma.js");
-const {calculateATR} = require("../utils/atr.js");
+const { calculateBoll } = require("../utils/boll.js");
+const { calculateSimpleMovingAverage } = require("../utils/ma.js");
+const { calculateATR } = require("../utils/atr.js");
 const fs = require("fs");
 const symbol = "dogeUSDT";
 
-let {kLineData} = require(`./source/renko-${symbol}-1m.js`);
+let { kLineData } = require(`./source/renko-${symbol}-1m.js`);
+// let {kLineData} = require(`./doge.js`);
 
 let lastRenkoClose = null;
 // let brickSize=0.00002; // 1000pepeUSDT 65.630%         740.376747382438
@@ -127,7 +128,7 @@ let candleHeight = 0;
 
 let bollArr = [];
 let rsiArr = [];
-const MA_RSI = {rsiLength: 14, smaLength: 20};
+const MA_RSI = { rsiLength: 14, smaLength: 20 };
 
 const setProfit = (orderPrice, currentPrice, time) => {
     let curTestMoney = 0;
@@ -192,7 +193,7 @@ const setEveryIndex = (historyClosePrices) => {
 };
 const setBollArr = (historyClosePrices) => {
     bollArr.length >= 10 && bollArr.shift();
-    const {B2basis, B2upper, B2lower} = calculateBoll(historyClosePrices, B2Period, B2mult);
+    const { B2basis, B2upper, B2lower } = calculateBoll(historyClosePrices, B2Period, B2mult);
     bollArr.push({
         B2basis: B2basis[B2basis.length - 1],
         B2upper: B2upper[B2upper.length - 1],
@@ -283,10 +284,10 @@ const start = (params) => {
         setEveryIndex([...historyClosePrices]);
 
         const curkLine = _kLineData[idx];
-        const {open, close, openTime, closeTime, low, high} = curkLine;
+        const { open, close, openTime, closeTime, low, high } = curkLine;
 
         let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
-        let {B2basis, B2upper, B2lower} = boll5;
+        let { B2basis, B2upper, B2lower } = boll5;
         // console.log("🚀 ~ start ~ B2basis, B2upper, B2lower:", B2basis, B2upper, B2lower)
 
         // 准备开仓
@@ -484,7 +485,7 @@ const start = (params) => {
     if (hasOrder) {
         const len = _kLineData.length;
         const curkLine = _kLineData[len - 1];
-        const {close, closeTime, openTime, low, high} = curkLine;
+        const { close, closeTime, openTime, low, high } = curkLine;
         const [point1, point2] = gridPoints;
         if (hasOrder) {
             // 判断止损
@@ -535,9 +536,9 @@ const judgeTradingDirection = (kLines) => {
     let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
     // let [rsi1, rsi2, rsi3, rsi4, rsi5]=getLastFromArr(rsiArr, 5);
 
-    let {openTime, high, low, close} = kLine3;
+    let { openTime, high, low, close } = kLine3;
 
-    let {B2basis, B2upper, B2lower} = boll5;
+    let { B2basis, B2upper, B2lower } = boll5;
 
     // 多头行情
     // 准备条件: 三个k形成底分
@@ -573,9 +574,9 @@ const judgeBreakTradingDirection = (kLines) => {
     let [, , kLine1, kLine2, kLine3] = kLines;
     let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
 
-    let {openTime, high, low, close} = kLine3;
+    let { openTime, high, low, close } = kLine3;
 
-    let {B2basis, B2upper, B2lower} = boll5;
+    let { B2basis, B2upper, B2lower } = boll5;
 
     if (readyTradingDirection === "up") {
         // 多头被破坏
@@ -619,7 +620,7 @@ const judgeAndTrading = (kLines, params) => {
     // 根据指标判断是否可以开单
     const curkLine = kLines[kLines.length - 1];
     const trendInfo = calculateTradingSignal(kLines);
-    const {stopLoss, stopProfit} = trendInfo;
+    const { stopLoss, stopProfit } = trendInfo;
 
     // 开单
     switch (trendInfo.trend) {
@@ -651,9 +652,9 @@ const calculateTradingSignal = (kLines) => {
     let [kLine1, kLine2, kLine3] = getLastFromArr(kLines, 3);
     let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
 
-    let {openTime, high, low, open, close} = kLine3;
+    let { openTime, high, low, open, close } = kLine3;
 
-    let {B2basis, B2upper, B2lower} = boll5;
+    let { B2basis, B2upper, B2lower } = boll5;
 
     let max = Math.max(kLine1.high, kLine2.high, kLine3.high);
     let min = Math.min(kLine1.low, kLine2.low, kLine3.low);
@@ -697,13 +698,13 @@ const calculateTradingSignal = (kLines) => {
         trend: "hold",
     };
 };
-function writeInFile(fileName, str) {
+function writeInFile (fileName, str) {
     fs.writeFileSync(fileName, str, {
         flag: "w",
     });
 }
 
-function run(params) {
+function run (params) {
     start(params);
     const result = {
         ...params,

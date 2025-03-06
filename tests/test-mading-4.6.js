@@ -20,14 +20,14 @@
 	isScale = false  ⭐️⭐️⭐️⭐️
  */
 
-const {getLastFromArr, getSequenceArr} = require("../utils/functions");
-const {calculateCandleHeight} = require("../utils/kLineTools");
-const {calculateSimpleMovingAverage} = require("../utils/ma.js");
+const { getLastFromArr, getSequenceArr } = require("../utils/functions");
+const { calculateCandleHeight } = require("../utils/kLineTools");
+const { calculateSimpleMovingAverage } = require("../utils/ma.js");
 const fs = require("fs");
-const {calculateBBKeltnerSqueeze} = require("../utils/BBKeltner.js");
+const { calculateBBKeltnerSqueeze } = require("../utils/BBKeltner.js");
 // let { kLineData } = require("./source/bomeUSDT-1m.js");
 // let { kLineData } = require("./source/zkUSDT-1m.js");
-let {kLineData} = require("./source/dogeUSDT-1m.js");
+let { kLineData } = require("./source/dogeUSDT-1m.js");
 // let { kLineData } = require("./source/1000pepeUSDT-1m.js");
 // let { kLineData } = require("./source/peopleUSDT-1m.js");
 // let { kLineData } = require("./source/bigtimeUSDT-1m.js");
@@ -245,7 +245,7 @@ const start = (params, withAllDatas) => {
         ];
         curkLine = _kLineData[idx];
         if (judgeByBBK) {
-            let {B2basis, B2upper, B2lower, Kma, Kupper, Klower, squeeze} =
+            let { B2basis, B2upper, B2lower, Kma, Kupper, Klower, squeeze } =
                 calculateBBKeltnerSqueeze(curKLines, BBK_PERIOD, B2mult, Kmult);
 
             curB2upper = getLastFromArr(B2upper, 1)[0];
@@ -282,7 +282,7 @@ const start = (params, withAllDatas) => {
                 }
             }
             if (readyTradingDirection !== "hold") {
-                judgeAndTrading({maArr, curkLine});
+                judgeAndTrading({ maArr, curkLine });
                 s_count = 0;
                 s_prePrice = curkLine.close;
                 needContinue = true;
@@ -444,7 +444,7 @@ const beforStartRunGrid = (curkLine, profit) => {
 let overGrid = 0;
 const startRunGrid = (curkLine) => {
     let _currentPointIndex = -1;
-    const {low, high} = curkLine;
+    const { low, high } = curkLine;
     for (let index = 0; index < gridPoints.length; index++) {
         const point = gridPoints[index];
         if (low <= gridPoints[1] && high >= gridPoints[2]) {
@@ -499,7 +499,7 @@ const setHistoryEntryPoints = (point) => {
     historyEntryPoints.push(point);
 };
 // 判断+交易
-const judgeAndTrading = ({maArr, curkLine}) => {
+const judgeAndTrading = ({ maArr, curkLine }) => {
     // 开单
     switch (readyTradingDirection) {
         case "up":

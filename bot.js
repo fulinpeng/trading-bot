@@ -33,7 +33,7 @@ binance.balance((error, balances) => {
 });
 
 // 下单示例
-binance.buy("BTCUSDT", 1, 30000, {type: "LIMIT"}, (error, response) => {
+binance.buy("BTCUSDT", 1, 30000, { type: "LIMIT" }, (error, response) => {
     if (error) {
         console.error("Error placing order:", error.body);
         return;

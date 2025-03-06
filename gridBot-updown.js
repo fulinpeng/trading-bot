@@ -7,10 +7,10 @@ const WebSocket = require("ws"); // WebSocket库
 // const { HttpsProxyAgent } = require("https-proxy-agent");
 // const { SocksProxyAgent } = require("socks-proxy-agent");
 const fs = require("fs");
-const {getDate, hasUpDownVal, getLastFromArr, getSequenceArr} = require("./utils/functions.js");
+const { getDate, hasUpDownVal, getLastFromArr, getSequenceArr } = require("./utils/functions.js");
 // const {calculateSimpleMovingAverage}=require("./utils/ma.js");
-const {calculateATR} = require("./utils/atr.js");
-const {calculateIndicators} = require("./utils/superTrend");
+const { calculateATR } = require("./utils/atr.js");
+const { calculateIndicators } = require("./utils/superTrend");
 const config = require("./config-updown.js");
 const {
     calculateCandleHeight,
@@ -148,16 +148,16 @@ function getMarketData(candles) {
         const maxHigh = Math.max(...highs);
         const minLow = Math.min(...lows);
 
-        return {maxHigh, minLow};
+        return { maxHigh, minLow };
     } catch (error) {
         console.error("Error fetching market data:", error);
-        return {maxHigh: null, minLow: null};
+        return { maxHigh: null, minLow: null };
     }
 }
 
 // 计算浮动盈亏
 function calcLongPositionsProfit(currentPrice, longPositions) {
-    return longPositions.reduce((sum, {price: orderPrice, quantity}) => {
+    return longPositions.reduce((sum, { price: orderPrice, quantity }) => {
         return (
             sum +
             (currentPrice - orderPrice) * quantity -
@@ -166,7 +166,7 @@ function calcLongPositionsProfit(currentPrice, longPositions) {
     }, 0);
 }
 function calcShortPositionsProfit(currentPrice, shortPositions) {
-    return shortPositions.reduce((sum, {price: orderPrice, quantity}) => {
+    return shortPositions.reduce((sum, { price: orderPrice, quantity }) => {
         return (
             sum +
             (orderPrice - currentPrice) * quantity -
@@ -176,7 +176,7 @@ function calcShortPositionsProfit(currentPrice, shortPositions) {
 }
 // 平多单
 async function closeLongPositions(currentPrice, totalProfit) {
-    let totalQuantity = longPositions.reduce((sum, {quantity}) => {
+    let totalQuantity = longPositions.reduce((sum, { quantity }) => {
         return sum + quantity;
     }, 0);
     await closeOrder("SELL", totalQuantity, () => {
@@ -192,7 +192,7 @@ async function closeLongPositions(currentPrice, totalProfit) {
 }
 // 平空单
 async function closeShortPositions(currentPrice, totalProfit) {
-    let totalQuantity = shortPositions.reduce((sum, {quantity}) => {
+    let totalQuantity = shortPositions.reduce((sum, { quantity }) => {
         return sum + quantity;
     }, 0);
     await closeOrder("BUY", totalQuantity, () => {
@@ -358,7 +358,7 @@ const getServerTimeOffset = async () => {
 // 签名请求
 const signRequest = (params) => {
     const timestamp = Date.now() + serverTimeOffset;
-    const queryString = Object.entries({...params, timestamp})
+    const queryString = Object.entries({ ...params, timestamp })
         .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
         .join("&");
     const signature = crypto.createHmac("sha256", secretKey).update(queryString).digest("hex");
@@ -623,7 +623,7 @@ const placeOrder = async (side, quantity) => {
         );
         // 如果 下单（开多操作/开空操作） 成功需要更新PurchaseInfo
         if (response && response.data && response.data.orderId) {
-            const {origQty} = response.data;
+            const { origQty } = response.data;
             const trend = side === "BUY" ? "up" : "down";
 
             saveGlobalVariables();
@@ -1012,7 +1012,7 @@ const createLogs = () => {
     // 重定向 console.error 到文件
     errorStream = fs.createWriteStream(
         `${errorsFolder}/${isTest ? "test" : "prod"}-${strategyType}-${SYMBOL}-${getDate()}.error`,
-        {flags: "a"}
+        { flags: "a" }
     );
     // 保存原始的 console.error 函数
     const originalConsoleError = console.error;

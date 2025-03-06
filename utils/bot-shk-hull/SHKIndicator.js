@@ -17,7 +17,7 @@ const defaultParams = {
     smoothingFactor: 0.5, // EMA的平滑因子
 };
 function calculateSHK(klineData, params) {
-    const {stcLength, fastLength, slowLength, smoothingFactor} = {
+    const { stcLength, fastLength, slowLength, smoothingFactor } = {
         ...defaultParams,
         ...params,
     };

@@ -1,4 +1,4 @@
-const {getDate, getLastFromArr} = require("../utils/functions");
+const { getDate, getLastFromArr } = require("../utils/functions");
 const {
     calculateCandleHeight,
     isBigLine,
@@ -35,12 +35,12 @@ const {
     isAllDownTail,
     isAllUpTail,
 } = require("../utils/kLineTools");
-const {calculateHullSuite} = require("../utils/bot-shk-hull/HullSuite.js");
-const {calculateSHK} = require("../utils/bot-shk-hull/SHKIndicator.js");
-const {calculateUTBot} = require("../utils/bot-shk-hull/UTBotStrategy.js");
+const { calculateHullSuite } = require("../utils/bot-shk-hull/HullSuite.js");
+const { calculateSHK } = require("../utils/bot-shk-hull/SHKIndicator.js");
+const { calculateUTBot } = require("../utils/bot-shk-hull/UTBotStrategy.js");
 const fs = require("fs");
 const symbol = "dogeUSDT";
-let {kLineData} = require(`./source/${symbol}-5m.js`);
+let { kLineData } = require(`./source/${symbol}-5m.js`);
 
 const DefaultAvailableMoney = 10;
 let maxAvailableMoney = 0;
@@ -144,9 +144,9 @@ const initEveryIndex = (curKLines) => {
 };
 
 const setEveryIndex = (curKLines) => {
-    UTBot = calculateUTBot(curKLines, {keyValue, atrPeriod});
-    SHK = calculateSHK(curKLines, {stcLength, fastLength, slowLength});
-    HullSuite = calculateHullSuite(curKLines, {length: hullLength});
+    UTBot = calculateUTBot(curKLines, { keyValue, atrPeriod });
+    SHK = calculateSHK(curKLines, { stcLength, fastLength, slowLength });
+    HullSuite = calculateHullSuite(curKLines, { length: hullLength });
 };
 
 const resetInit = () => {
@@ -236,7 +236,7 @@ const start = (params) => {
         setEveryIndex([...curKLines]);
 
         const curkLine = _kLineData[idx];
-        const {open, close, openTime, closeTime, low, high} = curkLine;
+        const { open, close, openTime, closeTime, low, high } = curkLine;
 
         // let [emaMa1, emaMa2, emaMa3, emaMa4, emaMa5]=getLastFromArr(emaMaArr, 5);
         // let [rsi1, rsi2, rsi3, rsi4, rsi5]=getLastFromArr(rsiArr, 5);
@@ -394,7 +394,7 @@ const start = (params) => {
     if (hasOrder) {
         const len = _kLineData.length;
         const curkLine = _kLineData[len - 1];
-        const {close, openTime, closeTime, low, high} = curkLine;
+        const { close, openTime, closeTime, low, high } = curkLine;
         const [point1, point2] = gridPoints;
         if (hasOrder) {
             // 判断止损
@@ -469,7 +469,7 @@ const reset = () => {
 // 指标判断方向 / 交易
 const judgeTradingDirection = (kLines) => {
     // const [, , kLine1, kLine2, kLine3]=kLines;
-    const {buy, sell} = UTBot[UTBot.length - 1];
+    const { buy, sell } = UTBot[UTBot.length - 1];
     const shk = SHK[SHK.length - 1];
     // const { MHULL, SHULL } = HullSuite[HullSuite.length-1];
 
@@ -526,7 +526,7 @@ const judgeAndTrading = (kLines, params) => {
     // 根据指标判断是否可以开单
     const [, , , , curkLine] = kLines;
     const trendInfo = calculateTradingSignal(kLines);
-    const {stopLoss, stopProfit} = trendInfo;
+    const { stopLoss, stopProfit } = trendInfo;
 
     // 开单
     switch (trendInfo.trend) {
@@ -558,11 +558,11 @@ const judgeAndTrading = (kLines, params) => {
 };
 const calculateTradingSignal = (kLines) => {
     const [kLine_fu1, kLine_0, kLine1, kLine2, kLine3] = kLines;
-    const {open, close, openTime, closeTime, low, high} = kLine3;
+    const { open, close, openTime, closeTime, low, high } = kLine3;
 
-    const {buy, sell} = UTBot[UTBot.length - 1];
+    const { buy, sell } = UTBot[UTBot.length - 1];
     const shk = SHK[SHK.length - 1];
-    const {MHULL, SHULL} = HullSuite[HullSuite.length - 1];
+    const { MHULL, SHULL } = HullSuite[HullSuite.length - 1];
 
     let max = Math.max(kLine1.high, kLine2.high, kLine3.high);
     let min = Math.min(kLine1.low, kLine2.low, kLine3.low);

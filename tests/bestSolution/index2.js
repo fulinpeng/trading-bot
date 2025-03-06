@@ -7,7 +7,7 @@
     3. 采用子线程并行
 */
 
-const {fork} = require("child_process");
+const { fork } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 const readline = require("readline");
@@ -18,10 +18,10 @@ const qualifiedSolutionsPath = path.join(__dirname, `qualifiedSolutions/${symbol
 
 // 动态参数范围对象
 const paramRangesObj = {
-    timeDis: {min: 1, max: 300, step: 1}, // step 为 1
-    profit: {min: 0.1, max: 10, step: 0.1}, // step 为 0.1
-    howManyCandleHeight: {min: 3, max: 10, step: 1}, // step 为 1
-    howManyNumForAvarageCandleHight: {min: 6, max: 300, step: 1}, // step 为 1
+    timeDis: { min: 1, max: 300, step: 1 }, // step 为 1
+    profit: { min: 0.1, max: 10, step: 0.1 }, // step 为 0.1
+    howManyCandleHeight: { min: 3, max: 10, step: 1 }, // step 为 1
+    howManyNumForAvarageCandleHight: { min: 6, max: 300, step: 1 }, // step 为 1
 };
 const allKeys = Object.keys(paramRangesObj);
 // 参数路径
@@ -178,7 +178,7 @@ function processBatch(batch) {
                 });
                 // 给子进程分配一个参数组合
                 const params = convertToCombinationObject(allKeys, batch[i]);
-                child.send({action: "evaluate", params: {symbol, params, childId}}); // 发送子进程ID
+                child.send({ action: "evaluate", params: { symbol, params, childId } }); // 发送子进程ID
             })
         );
     }

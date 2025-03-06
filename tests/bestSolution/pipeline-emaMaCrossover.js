@@ -7,12 +7,12 @@
 	3. 采用子线程并行
 */
 
-const {fork} = require("child_process");
+const { fork } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
 const readline = require("readline");
-const {pipeline} = require("stream");
+const { pipeline } = require("stream");
 
 const symbol = "1000pepeUSDT";
 const qualifiedSolutionsPath = path.join(
@@ -24,19 +24,19 @@ const batchSize = parseInt(os.cpus().length); // 每次处理cpus个参数组合
 
 // 动态参数范围对象
 const paramRangesObj = {
-    howManyCandle: {min: 1, max: 10, step: 1},
-    isProfitRun: {min: 1, max: 1, step: 1},
-    firstStopProfitRate: {min: 1, max: 10, step: 0.5},
-    firstStopLossRate: {min: 0.3, max: 0.9, step: 0.1},
-    profitProtectRate: {min: 0.3, max: 0.9, step: 0.1},
-    howManyCandleForProfitRun: {min: 0.3, max: 2, step: 0.1},
-    maxStopLossRate: {min: 0.02, max: 0.05, step: 0.01},
-    invalidSigleStopRate: {min: 0.1, max: 0.1, step: 0.01},
-    double: {min: 1, max: 1, step: 1},
-    maxLossCount: {min: 20, max: 20, step: 1},
-    emaPeriod: {min: 10, max: 10, step: 1},
-    smaPeriod: {min: 10, max: 10, step: 1},
-    rsiPeriod: {min: 14, max: 14, step: 1},
+    howManyCandle: { min: 1, max: 10, step: 1 },
+    isProfitRun: { min: 1, max: 1, step: 1 },
+    firstStopProfitRate: { min: 1, max: 10, step: 0.5 },
+    firstStopLossRate: { min: 0.3, max: 0.9, step: 0.1 },
+    profitProtectRate: { min: 0.3, max: 0.9, step: 0.1 },
+    howManyCandleForProfitRun: { min: 0.3, max: 2, step: 0.1 },
+    maxStopLossRate: { min: 0.02, max: 0.05, step: 0.01 },
+    invalidSigleStopRate: { min: 0.1, max: 0.1, step: 0.01 },
+    double: { min: 1, max: 1, step: 1 },
+    maxLossCount: { min: 20, max: 20, step: 1 },
+    emaPeriod: { min: 10, max: 10, step: 1 },
+    smaPeriod: { min: 10, max: 10, step: 1 },
+    rsiPeriod: { min: 14, max: 14, step: 1 },
 };
 
 const allKeys = Object.keys(paramRangesObj);
@@ -204,7 +204,7 @@ function processBatch(batch) {
                 });
                 // 给子进程分配一个参数组合
                 const params = convertToCombinationObject(allKeys, batch[i]);
-                child.send({action: "evaluate", params: {symbol, params, childId}}); // 发送子进程ID
+                child.send({ action: "evaluate", params: { symbol, params, childId } }); // 发送子进程ID
             })
         );
     }

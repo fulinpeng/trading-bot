@@ -1,4 +1,4 @@
-const {getDate, getSequenceArr, getLastFromArr} = require("../utils/functions");
+const { getDate, getSequenceArr, getLastFromArr } = require("../utils/functions");
 const {
     calculateCandleHeight,
     isBigLine,
@@ -35,11 +35,11 @@ const {
     isAllDownTail,
     isAllUpTail,
 } = require("../utils/kLineTools");
-const {calculateRSI} = require("../utils/rsi.js");
-const {calculateHalfTrend} = require("../utils/halfTrend.js");
+const { calculateRSI } = require("../utils/rsi.js");
+const { calculateHalfTrend } = require("../utils/halfTrend.js");
 const fs = require("fs");
 const symbol = "dogeUSDT";
-let {kLineData} = require(`./source/${symbol}-1h.js`);
+let { kLineData } = require(`./source/${symbol}-1h.js`);
 
 const diff = 2;
 const DefaultAvailableMoney = 10;
@@ -248,7 +248,7 @@ const start = (params) => {
         setEveryIndex([...curKLines], [...historyClosePrices]);
 
         const curkLine = _kLineData[idx];
-        const {open, close, openTime, closeTime, low, high} = curkLine;
+        const { open, close, openTime, closeTime, low, high } = curkLine;
         ht.push(HalfTrend[HalfTrend.length - 1].ht);
 
         // 准备开仓
@@ -398,7 +398,7 @@ const start = (params) => {
     if (hasOrder) {
         const len = _kLineData.length;
         const curkLine = _kLineData[len - 1];
-        const {close, openTime, closeTime, low, high} = curkLine;
+        const { close, openTime, closeTime, low, high } = curkLine;
         const [point1, point2] = gridPoints;
         if (hasOrder) {
             // 判断止损
@@ -470,7 +470,7 @@ const reset = () => {
 // 指标判断方向 / 交易
 const judgeTradingDirection = (kLines) => {
     const [, , kLine1, kLine2, kLine3] = kLines;
-    const {open, close, openTime, closeTime, low, high, volume} = kLine3;
+    const { open, close, openTime, closeTime, low, high, volume } = kLine3;
     const [rsi1, rsi2, rsi3, rsi4, rsi5] = getLastFromArr(RSI, 5);
     const [halfTrend1, halfTrend2, halfTrend3, halfTrend4, halfTrend5] = getLastFromArr(
         HalfTrend,
@@ -506,7 +506,7 @@ const judgeTradingDirection = (kLines) => {
 };
 const judgeBreakTradingDirection = (kLines) => {
     const [, , kLine1, kLine2, kLine3] = kLines;
-    const {open, close, openTime, closeTime, low, high, volume} = kLine3;
+    const { open, close, openTime, closeTime, low, high, volume } = kLine3;
     const [rsi1, rsi2, rsi3, rsi4, rsi5] = getLastFromArr(RSI, 5);
     const [halfTrend1, halfTrend2, halfTrend3, halfTrend4, halfTrend5] = getLastFromArr(
         HalfTrend,
@@ -559,7 +559,7 @@ const judgeAndTrading = (kLines, params) => {
     // 根据指标判断是否可以开单
     const [, , , , curkLine] = kLines;
     const trendInfo = calculateTradingSignal(kLines);
-    const {stopLoss, stopProfit} = trendInfo;
+    const { stopLoss, stopProfit } = trendInfo;
 
     // 开单
     switch (trendInfo.trend) {
@@ -591,7 +591,7 @@ const judgeAndTrading = (kLines, params) => {
 };
 const calculateTradingSignal = (kLines) => {
     const [kLine_fu1, kLine_0, kLine1, kLine2, kLine3] = kLines;
-    const {open, close, openTime, closeTime, low, high} = kLine3;
+    const { open, close, openTime, closeTime, low, high } = kLine3;
 
     const [rsi1, rsi2, rsi3, rsi4, rsi5] = getLastFromArr(RSI, 5);
     const [halfTrend1, halfTrend2, halfTrend3, halfTrend4, halfTrend5] = getLastFromArr(
@@ -599,7 +599,7 @@ const calculateTradingSignal = (kLines) => {
         5
     );
 
-    let {up, down, ht: curHt, atrHigh, atrLow} = halfTrend5;
+    let { up, down, ht: curHt, atrHigh, atrLow } = halfTrend5;
 
     let max = high < curHt ? curHt : high; // Math.max(kLine1.high, kLine2.high, kLine3.high);
     max = max > atrHigh ? atrHigh : max;

@@ -7,10 +7,10 @@ const WebSocket = require("ws"); // WebSocket库
 // const { HttpsProxyAgent } = require("https-proxy-agent");
 // const { SocksProxyAgent } = require("socks-proxy-agent");
 const fs = require("fs");
-const {getDate, hasUpDownVal, getLastFromArr} = require("./utils/functions.js");
+const { getDate, hasUpDownVal, getLastFromArr } = require("./utils/functions.js");
 const calculateNormalizedMACD = require("./utils/nmacd");
 const calculateRSI = require("./utils/rsi_marsi");
-const {calculateSimpleMovingAverage} = require("./utils/ma.js");
+const { calculateSimpleMovingAverage } = require("./utils/ma.js");
 const config = require("./config-nmacd_marsi.js");
 const {
     calculateCandleHeight,
@@ -244,7 +244,7 @@ const getServerTimeOffset = async () => {
 // 签名请求
 const signRequest = (params) => {
     const timestamp = Date.now() + serverTimeOffset;
-    const queryString = Object.entries({...params, timestamp})
+    const queryString = Object.entries({ ...params, timestamp })
         .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
         .join("&");
     const signature = crypto.createHmac("sha256", secretKey).update(queryString).digest("hex");
@@ -391,9 +391,9 @@ const kaiDanDaJi = async () => {
 const judgeFirstProtectProfit = async () => {
     isJudgeFirstProfit = true;
     const [kLine1, kLine2, kLine3] = getLastFromArr(kLineData, 3);
-    const {trend, orderPrice} = tradingInfo;
+    const { trend, orderPrice } = tradingInfo;
     const [point1, point2] = gridPoints;
-    const {open, close, openTime, closeTime, low, high} = kLine3;
+    const { open, close, openTime, closeTime, low, high } = kLine3;
     let [sma1, sma2, sma3, sma4, sma5] = getLastFromArr(smaArr, 5);
 
     if (trend === "up") {
@@ -511,7 +511,7 @@ const judgeTradingDirection2 = () => {
     let [nmacd1, nmacd2, nmacd3, nmacd4, nmacd5] = getLastFromArr(nmacdArr, 5);
     let [marsi1, marsi2, marsi3, marsi4, marsi5] = getLastFromArr(rsiArr, 5);
 
-    let {openTime, high, low, close} = kLine3;
+    let { openTime, high, low, close } = kLine3;
 
     // 多头行情
     // 准备条件一: marsi金叉
@@ -534,7 +534,7 @@ const judgeTradingDirection2 = () => {
 };
 const judgeBreakTradingDirection = () => {
     const [kLine1, kLine2, kLine3] = getLastFromArr(kLineData, 3);
-    let {high, low, close} = kLine3;
+    let { high, low, close } = kLine3;
     let [nmacd1, nmacd2, nmacd3, nmacd4, nmacd5] = getLastFromArr(nmacdArr, 5);
     let [marsi1, marsi2, marsi3, marsi4, marsi5] = getLastFromArr(rsiArr, 5);
 
@@ -573,7 +573,7 @@ const judgeAndTrading = async () => {
     loadingTrading = true;
 
     // 根据指标判断是否可以开单
-    const {trend, stopLoss, stopProfit} = calculateTradingSignal();
+    const { trend, stopLoss, stopProfit } = calculateTradingSignal();
     console.log("预备开仓信息： Trading trend, stopLoss, stopProfit:", trend, stopLoss, stopProfit);
     // 开单
     switch (trend) {
@@ -598,7 +598,7 @@ const judgeAndTrading = async () => {
 
 const calculateTradingSignal = () => {
     const [kLine1, kLine2, kLine3] = getLastFromArr(kLineData, 3);
-    const {open, close, openTime, closeTime, low, high} = kLine3;
+    const { open, close, openTime, closeTime, low, high } = kLine3;
     let [nmacd1, nmacd2, nmacd3, nmacd4, nmacd5] = getLastFromArr(nmacdArr, 5);
     let [marsi1, marsi2, marsi3, marsi4, marsi5] = getLastFromArr(rsiArr, 5);
     let [sma1, sma2, sma3, sma4, sma5] = getLastFromArr(smaArr, 5);
@@ -860,7 +860,7 @@ const placeOrder = async (side, quantity) => {
         );
         // 如果 下单（开多操作/开空操作） 成功需要更新PurchaseInfo
         if (response && response.data && response.data.orderId) {
-            const {origQty} = response.data;
+            const { origQty } = response.data;
             const trend = side === "BUY" ? "up" : "down";
             await recordRradingInfo({
                 trend,
@@ -1073,7 +1073,7 @@ const recoverHistoryData = async (historyDatas) => {
     firstStopLossRate = __firstStopLossRate;
     lossCount = __lossCount;
 };
-const recoverHistoryDataByPosition = async (historyDatas, {up, down}) => {
+const recoverHistoryDataByPosition = async (historyDatas, { up, down }) => {
     //
     // 从数据库拿出上次的数据，并且与现在的比较，如果数据和的上就用以前的，数据和不上就解析出
     loadingInit = true;
@@ -1110,16 +1110,16 @@ const recoverHistoryDataByPosition = async (historyDatas, {up, down}) => {
         console.log("上次停止程序时处于利润奔跑模式，当前重启后继续奔跑");
         // await closeOrder(tradingInfo.side, tradingInfo.quantity);
     } else {
-        await checkOverGrid({up, down});
+        await checkOverGrid({ up, down });
     }
     loadingInit = false;
 };
 
-const checkOverGrid = async ({up, down}) => {
+const checkOverGrid = async ({ up, down }) => {
     await getCurrentPrice();
     if (currentPrice <= gridPoints[0] || currentPrice >= gridPoints[1]) {
         console.log(`初始化时，价格超出网格区间，重置仓位（盈利）`);
-        await closeAllOrders({up, down});
+        await closeAllOrders({ up, down });
 
         prePrice = currentPrice; // 记录当前价格的前一个
         readyTradingDirection = "hold"; // 是否准备开单
@@ -1267,7 +1267,7 @@ const getQuantity = () => {
     return Math.round(availableMoney / currentPrice);
 };
 
-const closeAllOrders = async ({up, down}) => {
+const closeAllOrders = async ({ up, down }) => {
     let promises = [];
     if (up) {
         // 平多
@@ -1409,9 +1409,9 @@ const closeDown = async () => {
 const gridPointClearTrading = async (_currentPrice) => {
     onGridPoint = true;
     const [point1, point2] = gridPoints;
-    const {trend, orderPrice, quantity} = tradingInfo;
+    const { trend, orderPrice, quantity } = tradingInfo;
     const curkLine = kLineData[kLineData.length - 1];
-    const {open, close, openTime, closeTime, low, high} = curkLine;
+    const { open, close, openTime, closeTime, low, high } = curkLine;
 
     // 判断止损
     if (trend) {
@@ -1688,7 +1688,7 @@ const createLogs = () => {
     // 重定向 console.error 到文件
     errorStream = fs.createWriteStream(
         `${errorsFolder}/${isTest ? "test" : "prod"}-${strategyType}-${SYMBOL}-${getDate()}.error`,
-        {flags: "a"}
+        { flags: "a" }
     );
     // 保存原始的 console.error 函数
     const originalConsoleError = console.error;
@@ -1715,7 +1715,7 @@ const createLogs = () => {
             subject: `❌❌❌ ${B_SYMBOL}仓位发生错误，请手动处理`,
             text: JSON.stringify({
                 currentPrice,
-                tradingInfo: {...tradingInfo},
+                tradingInfo: { ...tradingInfo },
                 gridPoints: [...gridPoints],
             }),
         });

@@ -47,7 +47,7 @@ function calculateSSLChannel(klineData, len = 20) {
     const sslUp = hlv < 0 ? smaLow : smaHigh;
 
     // 返回最新 K 线对应的 SSL 通道值
-    return {sslDown, sslUp};
+    return { sslDown, sslUp };
 }
 
 // // 示例调用

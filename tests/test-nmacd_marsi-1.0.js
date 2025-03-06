@@ -1,4 +1,4 @@
-const {getDate, getLastFromArr} = require("../utils/functions");
+const { getDate, getLastFromArr } = require("../utils/functions");
 const {
     calculateCandleHeight,
     isBigLine,
@@ -37,10 +37,10 @@ const {
 } = require("../utils/kLineTools");
 const calculateNormalizedMACD = require("../utils/nmacd");
 const calculateRSI = require("../utils/rsi_marsi");
-const {calculateSimpleMovingAverage} = require("../utils/ma.js");
+const { calculateSimpleMovingAverage } = require("../utils/ma.js");
 const fs = require("fs");
 const symbol = "dogeUSDT";
-let {kLineData} = require(`./source/${symbol}-2h.js`);
+let { kLineData } = require(`./source/${symbol}-2h.js`);
 
 const DefaultAvailableMoney = 10;
 let maxAvailableMoney = 0;
@@ -91,8 +91,8 @@ let rsiArr = [];
 let nmacdArr = [];
 let smaArr = [];
 
-let NMACD_PARAMS = {sma: 13, lma: 21, tsp: 9, np: 50, type: 1};
-let MA_RSI_PARAMS = {rsiLength: 21, smaLength: 55};
+let NMACD_PARAMS = { sma: 13, lma: 21, tsp: 9, np: 50, type: 1 };
+let MA_RSI_PARAMS = { rsiLength: 21, smaLength: 55 };
 let SMA_PERIOD = 13;
 
 const setProfit = (orderPrice, currentPrice, time) => {
@@ -206,8 +206,8 @@ const resetInit = () => {
     ema144 = [];
     ema169 = [];
     targetTime = null;
-    NMACD_PARAMS = {sma: 13, lma: 21, tsp: 9, np: 50, type: 1};
-    MA_RSI_PARAMS = {rsiLength: 21, smaLength: 55};
+    NMACD_PARAMS = { sma: 13, lma: 21, tsp: 9, np: 50, type: 1 };
+    MA_RSI_PARAMS = { rsiLength: 21, smaLength: 55 };
     SMA_PERIOD = 13;
 };
 const start = (params) => {
@@ -247,7 +247,7 @@ const start = (params) => {
         setEveryIndex([...historyClosePrices]);
 
         const curkLine = _kLineData[idx];
-        const {open, close, openTime, closeTime, low, high} = curkLine;
+        const { open, close, openTime, closeTime, low, high } = curkLine;
 
         let [sma1, sma2, sma3, sma4, sma5] = getLastFromArr(smaArr, 5);
 
@@ -391,7 +391,7 @@ const start = (params) => {
     if (hasOrder) {
         const len = _kLineData.length;
         const curkLine = _kLineData[len - 1];
-        const {close, closeTime, openTime, low, high} = curkLine;
+        const { close, closeTime, openTime, low, high } = curkLine;
         const [point1, point2] = gridPoints;
         if (hasOrder) {
             // 判断止损
@@ -444,7 +444,7 @@ const judgeTradingDirection = (kLines) => {
     let [nmacd1, nmacd2, nmacd3, nmacd4, nmacd5] = getLastFromArr(nmacdArr, 5);
     let [marsi1, marsi2, marsi3, marsi4, marsi5] = getLastFromArr(rsiArr, 5);
 
-    let {openTime, high, low, close} = kLine3;
+    let { openTime, high, low, close } = kLine3;
 
     // 多头行情
     // 准备条件一: nmacd金叉
@@ -470,7 +470,7 @@ const judgeTradingDirection2 = (kLines) => {
     let [nmacd1, nmacd2, nmacd3, nmacd4, nmacd5] = getLastFromArr(nmacdArr, 5);
     let [marsi1, marsi2, marsi3, marsi4, marsi5] = getLastFromArr(rsiArr, 5);
 
-    let {openTime, high, low, close} = kLine3;
+    let { openTime, high, low, close } = kLine3;
 
     // 多头行情
     // 准备条件一: marsi金叉
@@ -496,7 +496,7 @@ const judgeBreakTradingDirection = (kLines) => {
     let [nmacd1, nmacd2, nmacd3, nmacd4, nmacd5] = getLastFromArr(nmacdArr, 5);
     let [marsi1, marsi2, marsi3, marsi4, marsi5] = getLastFromArr(rsiArr, 5);
 
-    let {high, low, close} = kLine3;
+    let { high, low, close } = kLine3;
 
     if (readyTradingDirection === "up") {
         // 多头被破坏
@@ -552,7 +552,7 @@ const judgeAndTrading = (kLines, params) => {
     // 根据指标判断是否可以开单
     const [, , , , curkLine] = kLines;
     const trendInfo = calculateTradingSignal(kLines);
-    const {stopLoss, stopProfit} = trendInfo;
+    const { stopLoss, stopProfit } = trendInfo;
 
     // 开单
     switch (trendInfo.trend) {
@@ -584,7 +584,7 @@ const judgeAndTrading = (kLines, params) => {
 };
 const calculateTradingSignal = (kLines) => {
     const [, , kLine1, kLine2, kLine3] = kLines;
-    const {open, close, openTime, closeTime, low, high} = kLine3;
+    const { open, close, openTime, closeTime, low, high } = kLine3;
     let [nmacd1, nmacd2, nmacd3, nmacd4, nmacd5] = getLastFromArr(nmacdArr, 5);
     let [marsi1, marsi2, marsi3, marsi4, marsi5] = getLastFromArr(rsiArr, 5);
     let [sma1, sma2, sma3, sma4, sma5] = getLastFromArr(smaArr, 5);
@@ -778,8 +778,8 @@ run({
     double: 1, // 是否损失后加倍开仓
     maxLossCount: 20, // 损失后加倍开仓，最大倍数
     // targetTime: "2024-09-01_00-00-00",
-    NMACD_PARAMS: {sma: 13, lma: 21, tsp: 9, np: 50, type: 1},
-    MA_RSI_PARAMS: {rsiLength: 21, smaLength: 55},
+    NMACD_PARAMS: { sma: 13, lma: 21, tsp: 9, np: 50, type: 1 },
+    MA_RSI_PARAMS: { rsiLength: 21, smaLength: 55 },
     SMA_PERIOD: 15,
 });
 module.exports = {

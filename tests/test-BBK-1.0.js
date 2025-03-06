@@ -1,4 +1,4 @@
-const {getDate, getLastFromArr} = require("../utils/functions");
+const { getDate, getLastFromArr } = require("../utils/functions");
 const {
     calculateCandleHeight,
     isBigLine,
@@ -35,11 +35,11 @@ const {
     isAllDownTail,
     isAllUpTail,
 } = require("../utils/kLineTools");
-const {calculateKDJs} = require("../utils/KDJ");
-const {calculateBBKeltnerSqueeze} = require("../utils/BBKeltner");
+const { calculateKDJs } = require("../utils/KDJ");
+const { calculateBBKeltnerSqueeze } = require("../utils/BBKeltner");
 const fs = require("fs");
 const symbol = "dogeUSDT";
-let {kLineData} = require(`./source/${symbol}-2h.js`);
+let { kLineData } = require(`./source/${symbol}-2h.js`);
 
 const DefaultAvailableMoney = 100;
 let maxAvailableMoney = 0;
@@ -221,10 +221,10 @@ const start = (params) => {
         setEveryIndex([...historyClosePrices], curKLines);
 
         const curkLine = _kLineData[idx];
-        const {open, close, openTime, closeTime, low, high} = curkLine;
+        const { open, close, openTime, closeTime, low, high } = curkLine;
 
         const kdj = kdjs[kdjs.length - 1];
-        const {B2basis, B2upper, B2lower, Kma, Kupper, Klower, squeeze} = bbkRes;
+        const { B2basis, B2upper, B2lower, Kma, Kupper, Klower, squeeze } = bbkRes;
         const len = B2basis.length;
         const curB2basis = B2basis[len - 1];
         const curB2upper = B2upper[len - 1];
@@ -398,7 +398,7 @@ const start = (params) => {
     if (hasOrder) {
         const len = _kLineData.length;
         const curkLine = _kLineData[len - 1];
-        const {close, closeTime, low, high} = curkLine;
+        const { close, closeTime, low, high } = curkLine;
         const [point1, point2] = gridPoints;
         if (hasOrder) {
             // 判断止损
@@ -458,7 +458,7 @@ const judgeTradingDirection = (
     isSqueeze,
     kdj
 ) => {
-    let {high, low, close} = curkLine;
+    let { high, low, close } = curkLine;
 
     // 第一, 挤压
     // 第二, 在挤压的范围内收盘在布林通道的下线, 并且KDJ小于20以下
@@ -492,7 +492,7 @@ const judgeBreakTradingDirection = (
     isSqueeze,
     kdj
 ) => {
-    let {high, low, close} = curkLine;
+    let { high, low, close } = curkLine;
 
     // 多头被破坏
     const upTerm1 = close > curB2lower;
@@ -549,7 +549,7 @@ const judgeAndTrading = (
         kdj,
         curKLines
     );
-    const {stopLoss, stopProfit} = trendInfo;
+    const { stopLoss, stopProfit } = trendInfo;
 
     // 开单
     switch (trendInfo.trend) {
@@ -591,7 +591,7 @@ const calculateTradingSignal = (
 ) => {
     const [a, b, kLine1, kLine2, kLine3] = curKLines;
 
-    const {open, close, openTime, closeTime, low, high} = kLine3;
+    const { open, close, openTime, closeTime, low, high } = kLine3;
 
     let max = Math.max(a.high, b.high, kLine1.high, kLine2.high, kLine3.high);
     let min = Math.min(a.low, b.low, kLine1.low, kLine2.low, kLine3.low);

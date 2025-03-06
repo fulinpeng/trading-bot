@@ -1,11 +1,11 @@
 // https://fapi.binance.com/fapi/v1/klines?symbol=zkUSDT&interval=1m&limit=1440&startTime=1721836800000
 
 const axios = require("axios"); // HTTP请求库
-const {getDate} = require("./utils/functions.js");
+const { getDate } = require("./utils/functions.js");
 const fs = require("fs");
 const fapi = "https://fapi.binance.com/fapi";
-const {HttpsProxyAgent} = require("https-proxy-agent");
-const {SocksProxyAgent} = require("socks-proxy-agent");
+const { HttpsProxyAgent } = require("https-proxy-agent");
+const { SocksProxyAgent } = require("socks-proxy-agent");
 // const symbol = "1000flokiUSDT";
 
 console.log("🚀process.argv:", process.argv);

@@ -1,9 +1,9 @@
 const fs = require("fs");
 const path = require("path");
 const GeneticAlgorithmConstructor = require("geneticalgorithm");
-const {evaluateStrategy} = require("../test-mading4-6.js");
+const { evaluateStrategy } = require("../test-mading4-6.js");
 // const { evaluateStrategy } = require("./strategies/test-demo");
-const {mutationFunction} = require("./functions/mutationFunction");
+const { mutationFunction } = require("./functions/mutationFunction");
 
 // const symbol = "bigtimeUSDT";
 const symbol = "1000pepeUSDT";
@@ -38,7 +38,7 @@ function decodeParams(arr) {
 // 定义适应度函数，目标是最大化 maxMoney 和 maxMoney/minMoney 比值的绝对值，并最小化 minMoney 的绝对值，同时优先确保 testMoney > 0
 function fitnessFunction(phenotype) {
     const params = decodeParams(phenotype);
-    const {maxMoney, minMoney, testMoney} = evaluateStrategy(symbol, params);
+    const { maxMoney, minMoney, testMoney } = evaluateStrategy(symbol, params);
 
     // 优先确保 testMoney > 0，如果不满足，适应度为 0
     if (testMoney <= 0) return 0;
@@ -94,7 +94,7 @@ function createGeneticAlgorithm() {
 function validateWithTargetTimeNum(bestParams) {
     let finalRes = [];
     for (let targetTimeNum = 3; targetTimeNum <= 9; targetTimeNum++) {
-        const paramsWithTargetTimeNum = {...bestParams, targetTimeNum};
+        const paramsWithTargetTimeNum = { ...bestParams, targetTimeNum };
         const evaluation = evaluateStrategy(paramsWithTargetTimeNum);
 
         if (evaluation.testMoney <= 0) {

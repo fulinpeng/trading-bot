@@ -7,11 +7,11 @@ const WebSocket = require("ws"); // WebSocket库
 // const { HttpsProxyAgent } = require("https-proxy-agent");
 // const { SocksProxyAgent } = require("socks-proxy-agent");
 const fs = require("fs");
-const {getDate, hasUpDownVal, calculateAverage, getSequenceArr} = require("./utils/functions.js");
-const {calculateCandleHeight} = require("./utils/kLineTools.js");
+const { getDate, hasUpDownVal, calculateAverage, getSequenceArr } = require("./utils/functions.js");
+const { calculateCandleHeight } = require("./utils/kLineTools.js");
 const config = require("./config-mading-speed-small.js");
-const {calculateBBKeltnerSqueeze} = require("./utils/BBKeltner.js");
-const {calculateSimpleMovingAverage} = require("./utils/ma.js");
+const { calculateBBKeltnerSqueeze } = require("./utils/BBKeltner.js");
+const { calculateSimpleMovingAverage } = require("./utils/ma.js");
 
 let testMoney = 0;
 let testMoneyArr = [];
@@ -222,7 +222,7 @@ const getServerTimeOffset = async () => {
 // 签名请求
 const signRequest = (params) => {
     const timestamp = Date.now() + serverTimeOffset;
-    const queryString = Object.entries({...params, timestamp})
+    const queryString = Object.entries({ ...params, timestamp })
         .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
         .join("&");
     const signature = crypto.createHmac("sha256", secretKey).update(queryString).digest("hex");
@@ -365,7 +365,7 @@ const setEma = () => {
     ];
 };
 const setBBK = (curKLine) => {
-    const {B2basis, B2upper, B2lower, Kma, Kupper, Klower, squeeze} = calculateBBKeltnerSqueeze(
+    const { B2basis, B2upper, B2lower, Kma, Kupper, Klower, squeeze } = calculateBBKeltnerSqueeze(
         [...kLineData],
         BBK_PERIOD,
         B2mult,
@@ -646,7 +646,7 @@ const placeOrder = async (side, quantity, resetTradingDatas) => {
         );
         // 如果 下单（开多操作/开空操作） 成功需要更新PurchaseInfo
         if (response && response.data && response.data.orderId) {
-            const {origQty} = response.data;
+            const { origQty } = response.data;
             const trend = side === "BUY" ? "up" : "down";
             const index = side === "BUY" ? 2 : 1;
             if (resetTradingDatas) {
@@ -796,11 +796,11 @@ const recordTradingDatas = async (index, trend, info) => {
                 ...info,
             };
         } else {
-            tradingDatas[index][trend] = {...info};
+            tradingDatas[index][trend] = { ...info };
         }
     } else {
         tradingDatas[index] = {
-            [trend]: {...info},
+            [trend]: { ...info },
         };
     }
     console.log("Purchase Info Updated:", tradingDatas);
@@ -865,7 +865,7 @@ const getHistoryData = () => {
         return null;
     }
 };
-const recoverHistoryDataByPosition = async (historyDatas, {up, down}) => {
+const recoverHistoryDataByPosition = async (historyDatas, { up, down }) => {
     //
     // 从数据库拿出上次的数据，并且与现在的比较，如果数据和的上就用以前的，数据和不上就解析出
     loadingInit = true;
@@ -916,8 +916,8 @@ const recoverHistoryDataByPosition = async (historyDatas, {up, down}) => {
 
     // 休息中但🈶️仓位，说明上次平仓失败，这里补起
     if (isResting) {
-        up && (await closeAllOrders({up}));
-        down && (await closeAllOrders({down}));
+        up && (await closeAllOrders({ up }));
+        down && (await closeAllOrders({ down }));
     }
 
     // 兼容 currentPointIndex === 0 或者 currentPointIndex === 3 的情况
@@ -950,7 +950,7 @@ const recoverHistoryDataByPosition = async (historyDatas, {up, down}) => {
             historyEntryPoints,
             tradingDatas
         );
-        await closeAllOrders({up});
+        await closeAllOrders({ up });
         prePrice = currentPrice; // 记录当前价格的前一个
         currentPointIndex = -1; // 当前网格
         isProfitRun = false;
@@ -965,7 +965,7 @@ const recoverHistoryDataByPosition = async (historyDatas, {up, down}) => {
             historyEntryPoints,
             tradingDatas
         );
-        await closeAllOrders({down});
+        await closeAllOrders({ down });
         prePrice = currentPrice; // 记录当前价格的前一个
         currentPointIndex = -1; // 当前网格
         isProfitRun = false;
@@ -974,7 +974,7 @@ const recoverHistoryDataByPosition = async (historyDatas, {up, down}) => {
     }
 
     if (up || down) {
-        await checkOverGrid({up, down});
+        await checkOverGrid({ up, down });
         console.log(
             `有仓位时，初始化数据完成 currentPointIndex historyEntryPoints tradingDatas:`,
             currentPointIndex,
@@ -1014,11 +1014,11 @@ const recoverHistoryDataByPosition = async (historyDatas, {up, down}) => {
     loadingInit = false;
 };
 
-const checkOverGrid = async ({up, down}) => {
+const checkOverGrid = async ({ up, down }) => {
     await getCurrentPrice();
     if (currentPrice <= gridPoints[0] && down) {
         console.log(`初始化时，价格超出网格区间，重置仓位（盈利），当前价格小于gridPoints[0]`);
-        await closeAllOrders({down});
+        await closeAllOrders({ down });
 
         prePrice = currentPrice; // 记录当前价格的前一个
         currentPointIndex = -1; // 当前网格
@@ -1028,7 +1028,7 @@ const checkOverGrid = async ({up, down}) => {
     }
     if (currentPrice >= gridPoints[3] && up) {
         console.log(`初始化时，价格超出网格区间，重置仓位（盈利），当前价格大于gridPoints[3]`);
-        await closeAllOrders({up});
+        await closeAllOrders({ up });
 
         prePrice = currentPrice; // 记录当前价格的前一个
         currentPointIndex = -1; // 当前网格
@@ -1180,7 +1180,7 @@ const closePointOrders = async (pointIndex) => {
         (tradingDatas[pointIndex].up || tradingDatas[pointIndex].down)
     ) {
         if (tradingDatas[pointIndex].up) {
-            const {quantity, orderPrice} = tradingDatas[pointIndex].up;
+            const { quantity, orderPrice } = tradingDatas[pointIndex].up;
             // 平多
             await closeOrder("SELL", quantity, () => {
                 let dis =
@@ -1204,7 +1204,7 @@ const closePointOrders = async (pointIndex) => {
             });
         }
         if (tradingDatas[pointIndex].down) {
-            const {quantity, orderPrice} = tradingDatas[pointIndex].down;
+            const { quantity, orderPrice } = tradingDatas[pointIndex].down;
             // 平空
             await closeOrder("BUY", quantity, () => {
                 let dis =
@@ -1244,7 +1244,7 @@ const closeOtherPointAllOrders = async (pointIndexHistory, curIndex) => {
     await Promise.all(promises);
 };
 
-const closeAllOrders = async ({up, down}) => {
+const closeAllOrders = async ({ up, down }) => {
     let promises = [];
     if (up) {
         // 平多
@@ -1488,7 +1488,7 @@ const beforStartRunGrid = async (profit) => {
     const orderInfo = tradingDatas[currentPointIndex];
     let trend = "hold";
     if (orderInfo && ((!orderInfo.up && orderInfo.down) || (orderInfo.up && !orderInfo.down))) {
-        const {up, down} = orderInfo;
+        const { up, down } = orderInfo;
         if (up) {
             trend = "up";
             orderPrice = up.orderPrice;
@@ -1721,7 +1721,7 @@ const createLogs = () => {
     // 重定向 console.error 到文件
     errorStream = fs.createWriteStream(
         `${errorsFolder}/${isTest ? "test" : "prod"}-mading-${SYMBOL}-${getDate()}.error`,
-        {flags: "a"}
+        { flags: "a" }
     );
     // 保存原始的 console.error 函数
     const originalConsoleError = console.error;
@@ -1748,7 +1748,7 @@ const createLogs = () => {
             subject: `❌❌❌ ${B_SYMBOL}仓位发生错误，请手动处理`,
             text: JSON.stringify({
                 currentPrice,
-                tradingInfo: {...tradingInfo},
+                tradingInfo: { ...tradingInfo },
                 gridPoints: [...gridPoints],
             }),
         });

@@ -59,4 +59,4 @@ function calculateATRRatio(klineData, length = 1, smoothing = "RMA") {
     return aatrr;
 }
 
-module.exports = {calculateATRRatio};
+module.exports = { calculateATRRatio };

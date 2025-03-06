@@ -1,11 +1,11 @@
 const fs = require("fs");
 var log4js = require("log4js");
-const {getDate} = require("./utils/functions.js");
+const { getDate } = require("./utils/functions.js");
 
 log4js.configure({
     appenders: [
-        {type: "console"},
-        {type: "file", filename: "test-cheese.log", category: "cheese"},
+        { type: "console" },
+        { type: "file", filename: "test-cheese.log", category: "cheese" },
         // { type: "file", filename: "cheese1.log", category: "cheese" },
     ],
     levels: {

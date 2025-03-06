@@ -1,4 +1,4 @@
-const {getDate, getLastFromArr, getSequenceArr, calculateHighLow} = require("../utils/functions");
+const { getDate, getLastFromArr, getSequenceArr, calculateHighLow } = require("../utils/functions");
 const {
     calculateCandleHeight,
     isBigLine,
@@ -35,10 +35,10 @@ const {
     isAllDownTail,
     isAllUpTail,
 } = require("../utils/kLineTools");
-const {calculateSimpleMovingAverage} = require("../utils/ma.js");
+const { calculateSimpleMovingAverage } = require("../utils/ma.js");
 const fs = require("fs");
 const symbol = "dogeUSDT";
-let {kLineData} = require(`./source/${symbol}-2h.js`);
+let { kLineData } = require(`./source/${symbol}-2h.js`);
 
 const diff = 2;
 const DefaultAvailableMoney = 10;
@@ -238,7 +238,7 @@ const start = (params) => {
         setEveryIndex([...historyClosePrices], curKLines);
 
         const curkLine = _kLineData[idx];
-        const {open, close, openTime, closeTime, low, high} = curkLine;
+        const { open, close, openTime, closeTime, low, high } = curkLine;
 
         let [ema1, ema2, ema3, ema4, ema5] = getLastFromArr(emaArr, 5);
 
@@ -376,7 +376,7 @@ const start = (params) => {
     if (hasOrder) {
         const len = _kLineData.length;
         const curkLine = _kLineData[len - 1];
-        const {close, closeTime, low, high} = curkLine;
+        const { close, closeTime, low, high } = curkLine;
         const [point1, point2] = gridPoints;
         if (hasOrder) {
             // 判断止损
@@ -427,7 +427,7 @@ const judgeTradingDirection = (kLines) => {
     let [, , kLine1, kLine2, kLine3] = kLines;
     let [ema1, ema2, ema3, ema4, ema5] = getLastFromArr(emaArr, 5);
 
-    let {high, low, open, close} = kLine3;
+    let { high, low, open, close } = kLine3;
 
     // 多头行情
     // 准备条件一：均线上升趋势
@@ -448,7 +448,7 @@ const judgeBreakTradingDirection = (kLines) => {
     let [, , kLine1, kLine2, kLine3] = kLines;
     let [ema1, ema2, ema3, ema4, ema5] = getLastFromArr(emaArr, 5);
 
-    let {high, low, close} = kLine3;
+    let { high, low, close } = kLine3;
 
     // 多头被破坏
     const upTerm1 = ema3 < ema4 && ema4 < ema5;
@@ -487,7 +487,7 @@ const judgeAndTrading = (kLines, params) => {
     // 根据指标判断是否可以开单
     const curkLine = kLines[kLines.length - 1];
     const trendInfo = calculateTradingSignal(kLines);
-    const {stopLoss, stopProfit} = trendInfo;
+    const { stopLoss, stopProfit } = trendInfo;
 
     // 开单
     switch (trendInfo.trend) {
@@ -520,7 +520,7 @@ const judgeAndTrading = (kLines, params) => {
 const calculateTradingSignal = (kLines) => {
     // const [kLine_fu1, kLine_0, kLine1, kLine2, kLine3] = kLines;
     const curLkine = kLines[kLines.length - 1];
-    const {open, close, openTime, closeTime, low, high} = curLkine;
+    const { open, close, openTime, closeTime, low, high } = curLkine;
     // let [ema1, ema2, ema3, ema4, ema5] = getLastFromArr(emaArr, 5);
 
     // let max = Math.max(kLine1.high, kLine2.high, kLine3.high);

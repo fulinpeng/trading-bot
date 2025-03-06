@@ -4,7 +4,7 @@ function convertToHeikinAshiArr(kLineData) {
     let previousHaClose = kLineData[0].close; // 初始 HA 收盘价
 
     for (let i = 0; i < kLineData.length; i++) {
-        let {openTime, closeTime, open, high, low, close, volume} = kLineData[i];
+        let { openTime, closeTime, open, high, low, close, volume } = kLineData[i];
 
         // 计算 HA 收盘价
         let haClose = (open + high + low + close) / 4;
@@ -35,7 +35,7 @@ function convertToHeikinAshiArr(kLineData) {
     return haKlineData;
 }
 function convertToHeikinAshi(kLine, previousHaOpen, previousHaClose) {
-    let {openTime, closeTime, open, high, low, close, volume} = kLine;
+    let { openTime, closeTime, open, high, low, close, volume } = kLine;
 
     // 计算 HA 收盘价
     let haClose = (open + high + low + close) / 4;

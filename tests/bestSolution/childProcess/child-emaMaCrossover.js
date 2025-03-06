@@ -1,9 +1,9 @@
-const {evaluateStrategy} = require("../../test-emaMaCrossover-1.0.js");
-const {getDate} = require("../../../utils/functions.js");
+const { evaluateStrategy } = require("../../test-emaMaCrossover-1.0.js");
+const { getDate } = require("../../../utils/functions.js");
 
 process.on("message", (message) => {
     if (message.action === "evaluate") {
-        const {params, symbol, childId} = message.params || {}; // 接收 symbol, params 和 childId 参数
+        const { params, symbol, childId } = message.params || {}; // 接收 symbol, params 和 childId 参数
         const result = evaluateStrategy(params, true); // 使用 symbol 和 params 调用 evaluateStrategy
 
         // if (result.testMoney>0) {
@@ -22,16 +22,16 @@ process.on("message", (message) => {
                 // 进一步验证，通过
                 process.send({
                     qualified: true,
-                    solution: {params, results},
+                    solution: { params, results },
                     childId,
                 });
             } else {
                 // 进一步验证，验证不合格
-                process.send({qualified: false, childId});
+                process.send({ qualified: false, childId });
             }
         } else {
             // 验证不合格
-            process.send({qualified: false, childId});
+            process.send({ qualified: false, childId });
         }
     }
 });
@@ -47,7 +47,7 @@ function validateOneMore(bestParams) {
     // 到这来会高效一些，递减时间戳
     for (let i = 0; i <= total; i++) {
         let targetTime = getDate(timeStamp - week * i); // 每次递增一周
-        const paramsWithTargetTimeDis = {...bestParams, targetTime};
+        const paramsWithTargetTimeDis = { ...bestParams, targetTime };
         const evaluation = evaluateStrategy(paramsWithTargetTimeDis);
 
         // Math.abs(evaluation.minMoney) > evaluation.testMoney

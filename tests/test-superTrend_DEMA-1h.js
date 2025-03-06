@@ -1,4 +1,4 @@
-const {getDate, getSequenceArr, getLastFromArr} = require("../utils/functions");
+const { getDate, getSequenceArr, getLastFromArr } = require("../utils/functions");
 const {
     calculateCandleHeight,
     isBigLine,
@@ -35,11 +35,11 @@ const {
     isAllDownTail,
     isAllUpTail,
 } = require("../utils/kLineTools");
-const {calculateATR} = require("../utils/atr.js");
-const {calculateIndicators} = require("../utils/superTrend");
+const { calculateATR } = require("../utils/atr.js");
+const { calculateIndicators } = require("../utils/superTrend");
 const fs = require("fs");
 const symbol = "dogeUSDT";
-let {kLineData} = require(`./source/${symbol}-1h.js`);
+let { kLineData } = require(`./source/${symbol}-1h.js`);
 
 const DefaultAvailableMoney = 10;
 let maxAvailableMoney = 0;
@@ -242,11 +242,11 @@ const start = (params) => {
         setEveryIndex([...curKLines]);
 
         const curkLine = _kLineData[idx];
-        const {open, close, openTime, closeTime, low, high} = curkLine;
+        const { open, close, openTime, closeTime, low, high } = curkLine;
 
         const [superTrend1, superTrend2, superTrend3] = getLastFromArr(superTrendArr, 3);
 
-        const {latestClose, demaShort, demaLong, superTrend} = superTrend3;
+        const { latestClose, demaShort, demaLong, superTrend } = superTrend3;
 
         // 准备开仓
         // 判断趋势
@@ -405,7 +405,7 @@ const start = (params) => {
     if (hasOrder) {
         const len = _kLineData.length;
         const curkLine = _kLineData[len - 1];
-        const {close, openTime, closeTime, low, high} = curkLine;
+        const { close, openTime, closeTime, low, high } = curkLine;
         const [point1, point2] = gridPoints;
         if (hasOrder) {
             // 判断止损
@@ -478,7 +478,7 @@ const judgeTradingDirection = (kLines) => {
 
     const [superTrend1, superTrend2, superTrend3] = getLastFromArr(superTrendArr, 3);
 
-    const {latestClose, demaShort, demaLong, superTrend} = superTrend3;
+    const { latestClose, demaShort, demaLong, superTrend } = superTrend3;
 
     const upTerm1 = superTrend3.superTrend === 1 && superTrend1.superTrend === -1;
     const upTerm2 = demaShort > demaLong;
@@ -501,7 +501,7 @@ const judgeBreakTradingDirection = (kLines) => {
     // const [, , kLine1, kLine2, kLine3]=kLines;
     const [superTrend1, superTrend2, superTrend3] = getLastFromArr(superTrendArr, 3);
 
-    const {latestClose, demaShort, demaLong, superTrend} = superTrend3;
+    const { latestClose, demaShort, demaLong, superTrend } = superTrend3;
 
     const upTerm1 = superTrend3.superTrend === 1;
     const upTerm2 = demaShort > demaLong;
@@ -543,7 +543,7 @@ const judgeAndTrading = (kLines, params) => {
     // 根据指标判断是否可以开单
     const [, , , , curkLine] = kLines;
     const trendInfo = calculateTradingSignal(kLines);
-    const {stopLoss, stopProfit} = trendInfo;
+    const { stopLoss, stopProfit } = trendInfo;
 
     // 开单
     switch (trendInfo.trend) {
@@ -573,11 +573,11 @@ const judgeAndTrading = (kLines, params) => {
 };
 const calculateTradingSignal = (kLines) => {
     const [kLine_fu1, kLine_0, kLine1, kLine2, kLine3] = kLines;
-    const {open, close, openTime, closeTime, low, high} = kLine3;
+    const { open, close, openTime, closeTime, low, high } = kLine3;
 
     const [superTrend1, superTrend2, superTrend3] = getLastFromArr(superTrendArr, 3);
 
-    const {latestClose, demaShort, demaLong, superTrend} = superTrend3;
+    const { latestClose, demaShort, demaLong, superTrend } = superTrend3;
     // console.log("🚀 ~ judgeTradingDirection:", superTrend3.superTrend, kLine3.openTime, kLine3.closeTime)
 
     // 计算ATR

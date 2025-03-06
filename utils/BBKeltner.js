@@ -1,4 +1,4 @@
-const {calculateSmaArr: sma, calculateEmaArr: ema} = require("./ma.js");
+const { calculateSmaArr: sma, calculateEmaArr: ema } = require("./ma.js");
 // 计算标准差 (Standard Deviation)
 function stdev(values, length) {
     return values.map((val, idx, arr) => {
