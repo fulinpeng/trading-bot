@@ -1,15 +1,1 @@
-module.exports = {
-    currentPrice: 0.20843,
-    prePrice: 0.20839,
-    tradingInfo: { trend: "up", side: "BUY", orderPrice: 0.20843, quantity: 1919, times: 0 },
-    candleHeight: 0.0005890000000000007,
-    testMoney: 6.414100723000016,
-    hasOrder: true,
-    isProfitRun: 1,
-    TP_SL: [0.20712276063763255, 0.21223171808710237],
-    readyTradingDirection: "up",
-    availableMoney: 400,
-    firstStopProfitRate: 2,
-    firstStopLossRate: 0.2,
-    lossCount: 3,
-};
+module.exports = {"currentPrice":0.20028,"prePrice":0.20029,"tradingInfo":{"trend":"","side":"","orderPrice":0,"quantity":0,"times":0},"candleHeight":0.000514999999999996,"testMoney":-0.764595225999982,"hasOrder":false,"isProfitRun":1,"TP_SL":[],"readyTradingDirection":"hold","availableMoney":200,"firstStopProfitRate":3,"firstStopLossRate":0.5,"lossCount":2}

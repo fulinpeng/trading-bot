@@ -12,6 +12,7 @@ const { getDate, hasUpDownVal, getLastFromArr } = require("./utils/functions.js"
 const { calculateATR } = require("./utils/atr.js");
 const { calculateBoll } = require("./utils/boll.js");
 const { convertToRenko } = require("./utils/renko.js");
+// const calculateRSI = require("./utils/rsi_marsi");
 const config = require("./config-boll.js");
 const {
     calculateCandleHeight,
@@ -81,6 +82,8 @@ let {
     double, // 是否损失后加倍开仓
     maxLossCount, // 损失后加倍开仓，最大倍数
 } = config["doge"];
+
+const MA_RSI = { rsiLength: 14, smaLength: 20 };
 
 let availableMoney = DefaultAvailableMoney;
 let firstStopProfitRate = DefaultFirstStopProfitRate;
@@ -189,6 +192,7 @@ let serverTimeOffset = 0; // 服务器时间偏移
 let allPositionDetail = {}; // 当前仓位信息
 
 let bollArr = [];
+let rsiArr = [];
 
 const maxKLinelen = 1000; // 储存kLine最大数量
 // 日志
@@ -339,6 +343,7 @@ const initEveryIndex = (historyClosePrices) => {
 };
 const setEveryIndex = (historyClosePrices) => {
     setBollArr(historyClosePrices);
+    // setRsiArr(historyClosePrices);
 };
 const setBollArr = (historyClosePrices) => {
     bollArr.length >= 10 && bollArr.shift();
@@ -349,6 +354,10 @@ const setBollArr = (historyClosePrices) => {
         B2lower: B2lower[B2lower.length - 1],
     });
 };
+const setRsiArr = (historyClosePrices) => {
+    rsiArr.length >= 10 && rsiArr.shift();
+    rsiArr.push(calculateRSI(historyClosePrices, MA_RSI));
+};
 
 // 更新kLine信息
 const setKLinesTemp = (curKLine) => {
@@ -357,6 +366,12 @@ const setKLinesTemp = (curKLine) => {
 
     kLineData.push(curKLine);
     historyClosePrices.push(curKLine.close);
+
+    console.log(
+        "更新kLine信息:kLineData.length, historyClosePrices.length",
+        kLineData.length,
+        historyClosePrices.length
+    );
 };
 const refreshKLineAndIndex = (curKLine) => {
     // 更新kLine信息
@@ -383,7 +398,7 @@ const kaiDanDaJi = async () => {
         console.log("🚀 ~ judgeTradingDirection ~ 判断趋势:", readyTradingDirection);
     } else {
         // 趋势是否被破坏
-        judgeBreakTradingDirection();
+        // judgeBreakTradingDirection();
     }
     // 没有仓位，准备开仓
     if (!hasOrder) {
@@ -544,12 +559,14 @@ const judgeProfitRunOrProfit = async (currentPrice) => {
 const judgeIndexProfit = async (currentPrice) => {
     if (!hasOrder) return;
     isJudgeIndexProfit = true;
+    const { open, close, openTime, closeTime, low, high } = kLineData[kLineData.length - 1];
     const { B2upper, B2lower } = bollArr[bollArr.length - 1];
     const { trend, orderPrice } = tradingInfo;
     if (
         hasOrder &&
         trend === "up" &&
-        (currentPrice >= B2upper || readyTradingDirection === "down")
+        (currentPrice < B2lower || low < B2lower) //  || isYin(kLine1) && isYin(kLine2) && isYin(kLine3)
+        // 这里是否需要判断 low 和 close 是否小于 B2lower
     ) {
         // 平多
         console.log("🚀 ~ 指标止盈:平多");
@@ -560,7 +577,8 @@ const judgeIndexProfit = async (currentPrice) => {
     if (
         hasOrder &&
         trend === "down" &&
-        (currentPrice <= B2lower || readyTradingDirection === "up")
+        (currentPrice > B2upper || high > B2upper) //  || (isYang(kLine1) && isYang(kLine2) && isYang(kLine3))
+        // 这里是否需要判断 high 和 close 是否大于 B2upper
     ) {
         // 平空
         console.log("🚀 ~ 指标止盈:平空");
@@ -578,6 +596,8 @@ const judgeTradingDirection = () => {
     const { close, low, high } = kLine3;
 
     let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
+    // let [rsi1, rsi2, rsi3, rsi4, rsi5] = getLastFromArr(rsiArr, 5);
+
     let { B2basis, B2upper, B2lower } = boll5;
 
     // 多头行情
@@ -585,11 +605,11 @@ const judgeTradingDirection = () => {
     // 准备条件: 最低值小于boll下沿
     // 准备条件: 当前close大于boll下沿，并且小于中线
     const upTerm1 = isYin(kLine1) && isYin(kLine2) && isYang(kLine3);
-    const upTerm2 = Math.min(kLine1.low, kLine2.low, kLine3.low) < B2lower;
+    const upTerm2 = kLine1.low < boll3.B2lower || kLine2.low < boll4.B2lower || kLine3.low < boll5.B2lower;
     const upTerm3 = close > B2lower && close < B2basis;
-    const upTerm4 = true; // rsi5.rsi>60||rsi5.rsi>rsi5.smoothedRsi
+    // const upTerm4 = (rsi5.rsi < 70 && isYang(kLine3)) && close > B2upper;
 
-    if (upTerm1 && upTerm2 && upTerm3 && upTerm4) {
+    if ((upTerm1 && upTerm2 && upTerm3)) {// || upTerm4
         // console.log("🚀 ~ judgeTradingDirection up ~ rsi5.rsi:", rsi5.rsi)
         readyTradingDirection = "up";
         return;
@@ -599,11 +619,11 @@ const judgeTradingDirection = () => {
     // 准备条件: 最高值大于boll上沿
     // 准备条件: 当前close小于boll上沿，并且大于中线
     const downTerm1 = isYang(kLine1) && isYang(kLine2) && isYin(kLine3);
-    const downTerm2 = Math.max(kLine1.high, kLine2.high, kLine3.high) > B2upper;
+    const downTerm2 = kLine1.high > boll3.B2upper || kLine2.high > boll4.B2upper || kLine3.high > boll5.B2upper;
     const downTerm3 = close < B2upper && close > B2basis;
-    const downTerm4 = true; // rsi5.rsi<40||rsi5.rsi<rsi5.smoothedRsi
+    // const downTerm4 = (rsi5.rsi > 30 && isYin(kLine3)) && close < B2lower;
 
-    if (downTerm1 && downTerm2 && downTerm3 && downTerm4) {
+    if ((downTerm1 && downTerm2 && downTerm3)) {// || downTerm4
         // console.log("🚀 ~ judgeTradingDirection down ~ rsi5.rsi:", rsi5.rsi)
         readyTradingDirection = "down";
         return;
@@ -1298,7 +1318,7 @@ const closeUp = async () => {
                 tradingInfo.quantity * tradingInfo.orderPrice -
                 (tradingInfo.quantity * currentPrice +
                     tradingInfo.quantity * tradingInfo.orderPrice) *
-                    0.0007;
+                0.0007;
 
             testMoney += curTestMoney;
             setLossCount(curTestMoney);
@@ -1340,7 +1360,7 @@ const closeDown = async () => {
                 tradingInfo.quantity * currentPrice -
                 (tradingInfo.quantity * tradingInfo.orderPrice +
                     tradingInfo.quantity * currentPrice) *
-                    0.0007;
+                0.0007;
 
             testMoney += curTestMoney;
             setLossCount(curTestMoney);
@@ -1425,8 +1445,8 @@ const startWebSocket = async () => {
         currentPrice = Number(close) || 0;
 
         const curKLine = {
-            openTime, // 这根K线的起始时间
-            closeTime, // 这根K线的结束时间
+            openTime: getDate(openTime), // 这根K线的起始时间
+            closeTime: getDate(closeTime), // 这根K线的结束时间
             open: Number(open), // 这根K线期间第一笔成交价
             close: Number(close), // 这根K线期间末一笔成交价
             high: Number(high), // 这根K线期间最高成交价
@@ -1443,13 +1463,17 @@ const startWebSocket = async () => {
         });
         lastRenkoClose = newLastRenkoClose;
         // renkoData 这个值可能大于1，是插针，一般不会??????
+        // renko 不怕插针，但是怕流动性不足，会导致不成单
         if (renkoData.length) {
             console.log("🚀 ~ ws.on ~ renkoData:", renkoData);
-            for (const line of renkoData) {
+            for (let i = 0; i < renkoData.length; i++) {
+                const line = renkoData[i];
                 // 更新k线和指标数据
                 refreshKLineAndIndex(line);
-                // 开单
-                await kaiDanDaJi();
+                // 最后一个开单
+                if (i === renkoData.length - 1) {
+                    await kaiDanDaJi();
+                }
             }
         }
         // 相等的话直接退出，因为它到不了任何交易点，继续执行也没有意义
@@ -1457,6 +1481,7 @@ const startWebSocket = async () => {
         if (isLoading() || prePrice === currentPrice) {
             return;
         } else {
+            // renko所以没有滞后得说法????
             // TP/SL模式止盈/止损
             hasOrder && (await gridPointClearTrading(currentPrice)); // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
         }
