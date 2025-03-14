@@ -66,27 +66,67 @@
                 }
                 var sum = 0;
                 for (var j = 0; j < dayCount; j++) {
-                    sum += +data0.values[i - j][1];
+                    sum += +data0.values[i - j][2];
                 }
                 result.push(sum / dayCount);
             }
             return result;
         }
 
+        function calculateEMA(dayCount, kLineData=data0.values) {
+            if (!Array.isArray(kLineData) || kLineData.length === 0) {
+                throw new Error("Invalid K-line data");
+            }
+
+            let result = [];
+            let alpha = 2 / (dayCount + 1); // 计算平滑因子
+            let emaPrev = null; // 记录上一根K线的EMA
+
+            for (let i = 0; i < kLineData.length; i++) {
+                let closePrice = +kLineData[i][2]; // 取 close 价格
+
+                if (i < dayCount - 1) {
+                    result.push(null); // 数据不足，返回 null
+                } else if (i === dayCount - 1) {
+                    // 初始EMA设为前 `dayCount` 天的SMA（简单移动平均）
+                    let sum = 0;
+                    for (let j = 0; j < dayCount; j++) {
+                        sum += +kLineData[j][2]; // 取 close 价格
+                    }
+                    emaPrev = sum / dayCount;
+                    result.push(emaPrev);
+                } else {
+                    // 正常计算 EMA
+                    emaPrev = alpha * closePrice + (1 - alpha) * emaPrev;
+                    result.push(emaPrev);
+                }
+            }
+
+            return result;
+        }
+
 
         // 计算标准差 (Standard Deviation)
         function stdev(values, length) {
-            return values.map((val, idx, arr) => {
+            let basies = [];
+            let dev = [];
+             values.map((val, idx, arr) => {
                 // 如果当前索引小于长度，返回 null，因为还无法计算标准差
-                if (idx < length - 1) return null;
+                if (idx < length - 1) {
+                    basies.push(null)
+                    dev.push(null)
+                    return;
+                };
                 // 计算均值
                 const slice = arr.slice(idx - length + 1, idx + 1);
                 const mean = slice.reduce((a, b) => a + b, 0) / length;
+                basies.push(mean)
                 // 计算方差
                 const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / length;
                 // 返回标准差
-                return Math.sqrt(variance);
+                dev.push(Math.sqrt(variance));
             });
+            return [basies, dev]
         }
 
         let data0 = splitData(kLineData.map(v => [v.openTime, v.open, v.close, v.low, v.high, v.closeTime]));
@@ -96,10 +136,11 @@
         const length = 10;
         const B2mult = 1.5;
 
-        const B2basis = calculateMA(length);
+        // const B2basis = calculateMA(length);
 
         const closePrices = kLineData.map((v) => v.close);
-        const B2dev = stdev(closePrices, length).map((val) => val * B2mult); // 上下轨为均值 ± 2倍标准差
+        const [B2basis, dev] = stdev(closePrices, length)
+        const B2dev = dev.map((val) => val * B2mult); // 上下轨为均值 ± 2倍标准差
         const B2upper = B2basis.map((val, idx) => val + B2dev[idx]); // 上轨
         const B2lower = B2basis.map((val, idx) => val - B2dev[idx]); // 下轨
 
@@ -168,6 +209,7 @@
             },
             legend: {
                 data: [timeLevel, "UP", "MA20", "DN", "EMASHORT", "EMALONG"],
+                // data: [timeLevel, "SMA", "EMA"],
             },
             grid: {
                 left: "10%",
@@ -241,6 +283,26 @@
                         data: markLineData,
                     },
                 },
+                // {
+                //     name: "SMA",
+                //     type: "line",
+                //     data: calculateMA(10),
+                //     smooth: true,
+                //     symbol: 'none',
+                //     lineStyle: {
+                //         opacity: 0.5,
+                //     },
+                // },
+                // {
+                //     name: "EMA",
+                //     type: "line",
+                //     data: calculateEMA(100),
+                //     smooth: true,
+                //     symbol: 'none',
+                //     lineStyle: {
+                //         opacity: 0.5,
+                //     },
+                // },
                 {
                     name: "UP",
                     type: "line",

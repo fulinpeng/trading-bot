@@ -1,6 +1,6 @@
 // 砖型图数据转换函数
 function convertToRenko(params) {
-    let { klineData, brickSize, lastRenkoClose } = params;
+    let { klineData, brickSize, lastRenkoClose, preRenkoData } = params;
     let renkoData = [];
     // 解析 K 线数据
     const {
@@ -45,10 +45,21 @@ function convertToRenko(params) {
                 // 更新上一个砖型图的收盘价
                 lastRenkoClose = newClose;
             }
+        } else {
+            if (preRenkoData) {
+                // 更新 volume high low closeTime
+                preRenkoData = {
+                    ...preRenkoData,
+                    high: Math.max(preRenkoData.high, high),
+                    low: Math.min(preRenkoData.low, low),
+                    volume: preRenkoData.volume + volume,
+                    closeTime,
+                }
+            }
         }
     }
 
-    return { renkoData, newLastRenkoClose: lastRenkoClose };
+    return { renkoData, newLastRenkoClose: lastRenkoClose, preRenkoData };
 }
 module.exports = {
     convertToRenko,

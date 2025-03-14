@@ -141,7 +141,8 @@ function calculateNormalizedMACD(prices, params = { sma: 12, lma: 21, tsp: 9, np
     return {
         macNorm: macNorm[macNorm.length - 1],
         trigger: trigger[trigger.length - 1],
-        hist: hist2[hist2.length - 1],
+        hist: hist[hist.length - 1],
+        hist2: hist2[hist2.length - 1],
     };
 }
 

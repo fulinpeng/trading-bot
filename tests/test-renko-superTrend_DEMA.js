@@ -597,10 +597,10 @@ const calculateTradingSignal = (kLines) => {
     const { latestClose, demaShort, demaLong, superTrend } = superTrend3;
 
     // 计算ATR
-    const atr = calculateATR(curKLines, atrPeriod).atr;
+    const atr = brickSize // calculateATR(curKLines, atrPeriod).atr;
 
-    let max = Math.max(kLine1.high, kLine2.high, kLine3.high);
-    let min = Math.min(kLine1.low, kLine2.low, kLine3.low);
+    let max = Math.max(kLine1.close, kLine2.close, kLine3.close, kLine1.open, kLine2.open, kLine3.open);
+    let min = Math.min(kLine1.close, kLine2.close, kLine3.close, kLine1.open, kLine2.open, kLine3.open);
     // let maxBody=Math.max(kLine1.open, kLine1.close, kLine2.open, kLine2.close, kLine3.open, kLine3.close);
     // let minBody=Math.min(kLine1.open, kLine1.close, kLine2.open, kLine2.close, kLine3.open, kLine3.close);
 

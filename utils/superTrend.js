@@ -30,7 +30,9 @@ function calculateEMA(data, period) {
  */
 function calculateDEMA(data, period) {
     let ema1 = calculateEMA(data, period);
-    let ema2 = calculateEMA(ema1.slice(period - 1), period); // 第二次 EMA 计算
+    // let ema2 = calculateEMA(ema1.slice(period - 1), period); // 第二次 EMA 计算
+    let ema2 = calculateEMA(ema1.filter(v => !!v), period); // 第二次 EMA 计算
+    !ema2[ema2.length - 1] && console.log("🚀 ~ calculateDEMA ~ ema2:", ema2[ema2.length - 1], ema1.filter(v => !!v).length)
     let dema = [];
 
     for (let i = 0; i < ema2.length; i++) {
@@ -143,9 +145,50 @@ function calculateIndicators(
         dn: superTrend.dn,
     };
 }
+function calculateDema(
+    klineData,
+    demaShortPeriod = 144,
+    demaLongPeriod = 169,
+    demaSource = "close"
+) {
+    let closePrices =
+        demaSource === "hl2"
+            ? klineData.map((k) => (k.high + k.low) / 2)
+            : klineData.map((k) => k.close);
+
+    let demaShort = calculateDEMA(closePrices, demaShortPeriod);
+    let demaLong = calculateDEMA(closePrices, demaLongPeriod);
+
+    return {
+        demaShort: demaShort[demaShort.length - 1],
+        demaLong: demaLong[demaLong.length - 1],
+    };
+}
+function calculateCloseDema(
+    closePrices,
+    demaShortPeriod = 144,
+    demaLongPeriod = 169
+) {
+
+    let demaShorts = calculateDEMA(closePrices, demaShortPeriod);
+    let demaLongs = calculateDEMA(closePrices, demaLongPeriod);
+
+
+    let demaShort=  demaShorts[demaShorts.length - 1];
+    let demaLong=demaLongs[demaLongs.length - 1];
+    // demaLong && console.log("🚀 ~ demaShortPeriod:", demaShort, demaLong)
+
+    return {
+        demaShort: demaShort[demaShort.length - 1],
+        demaLong: demaLong[demaLong.length - 1],
+        hist: demaShort - demaLong,
+    };
+}
 
 module.exports = {
     calculateIndicators,
     calculateSuperTrend,
     calculateATR,
+    calculateDema,
+    calculateCloseDema,
 };

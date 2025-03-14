@@ -31,6 +31,45 @@ function calculateBoll(closePrices, length = 20, B2mult = 2.0) {
         B2lower,
     };
 }
+
+/**
+ * 计算布林带指标
+ * @param {number[]} closePrices 收盘价数组（时间顺序由旧到新）
+ * @param {number} [period=20] 计算周期，默认20
+ * @param {number} [multiplier=2] 标准差乘数，默认2
+ * @returns {Object|null} 返回最新K线的布林带值 { basis, upper, lower } 或 null
+ */
+function calculateBollingerBands(closePrices, period = 20, multiplier = 2) {
+    // 参数校验
+    if (closePrices.length < period) {
+        console.log('closePrices.length < period!!!!!!!!!!!!!!!!!!!!', closePrices.length, period)
+        return null;
+    }
+
+    // 获取最近period个收盘价（倒序截取）
+    const recentCloses = closePrices.slice(-period);
+
+    // 计算移动平均线(SMA)
+    const sum = recentCloses.reduce((acc, val) => acc + val, 0);
+    const basis = sum / period;
+
+    // 计算标准差
+    const variance = recentCloses.reduce((acc, val) => {
+        return acc + Math.pow(val - basis, 2);
+    }, 0) / period;
+    const stdDev = Math.sqrt(variance);
+
+    // 计算上下轨
+    const upper = basis + (stdDev * multiplier);
+    const lower = basis - (stdDev * multiplier);
+
+    return {
+        B2basis: basis,  // 保留8位小数
+        B2upper: upper,
+        B2lower: lower
+    };
+}
 module.exports = {
     calculateBoll,
+    calculateBollingerBands,
 };
