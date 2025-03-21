@@ -1,43 +1,9 @@
-const { getDate, getLastFromArr, getSequenceArr } = require("../utils/functions");
+const { getDate, getLastFromArr, getSequenceArr } = require("../utils/functions.js");
 const {
-    calculateCandleHeight,
-    isBigLine,
-    isBigAndYang,
-    isBigAndYin,
-    isBreakPreHigh,
-    isBreakPreLow,
-    isCross,
-    isUpCross,
-    isDownCross,
-    isTopFractal,
-    isBottomFractal,
-    isDownLinesGroup2,
-    isUpLinesGroup2,
-    isDownLinesGroup3,
-    isUpLinesGroup3,
-    isDownSwallow,
-    isUpSwallow,
-    isBreakDown,
-    isBreakUp,
-    isDownStar,
-    isUpStar,
-    isHigherHigh,
-    isLowerLow,
-    isK1Swallow,
-    isFourUp,
-    isFourDown,
-    downPao,
-    upPao,
-    isDownMa,
-    isUpMa,
-    isUpMacd,
-    isDownMacd,
-    isAllDownTail,
-    isAllUpTail,
     isYang,
     isYin,
-} = require("../utils/kLineTools");
-const calculateRSI = require("../utils/rsi_marsi");
+} = require("../utils/kLineTools.js");
+const calculateRSI = require("../utils/rsi_marsi.js");
 const { calculateBollingerBands } = require("../utils/boll.js");
 const { calculateSimpleMovingAverage, calculateEMA } = require("../utils/ma.js");
 const { calculateTSI } = require("../utils/tsi.js");
@@ -73,8 +39,8 @@ let invalidSigleStopRate = 0.05;
 let slAtrPeriod = 14;
 let closeLastOrder = false;
 
-let curStopLoss = 0;
-let curStopProfit = 0;
+let curStopLoss = 0; // 如果达到最终止损就计数一次,每次开单后重置未当前止损点
+let curStopProfit = 0; // 如果达到最终止盈就计数一次,每次开单后重置未当前止盈点
 
 let stopLoss = 0;
 let maxLoss = {};
@@ -116,7 +82,6 @@ let maxStopLossMoney = 0;
 let curTestMoneyHistory = [];
 let readyTradingDirection = "hold";
 let hasOrder = false;
-let candleHeight = 0;
 
 let bollArr = [];
 let rsiArr = [];
@@ -128,8 +93,19 @@ const MA_RSI = { rsiLength: 14, smaLength: 20 };
 let EMA_SHORT = 3;
 let EMA_LONG = 9;
 
+let highArr = [];
+let lowArr = [];
+// 指标趋势
+let indexTrend = 'hold'; // up down breakAndUp breakAndDown hold
+const MOD_HIGH = 'MOD_HIGH';
+const MOD_LOW = 'MOD_LOW';
+let preAction = '';
+
 let isUpOpen = false;
 let isDownOpen = false;
+
+const highLowTimes = [];
+const highLowPrices = [];
 
 const setProfit = (orderPrice, currentPrice, time) => {
     let curTestMoney = 0;
@@ -151,10 +127,10 @@ const setProfit = (orderPrice, currentPrice, time) => {
             lossCount = 0;
         }
     }
-    if (curTestMoney < -0.01) {
+    if (curTestMoney < 0) {
         failNum++;
     }
-    if (curTestMoney > 0.01) {
+    if (curTestMoney > 0) {
         winNum++;
     }
     if (testMoney > maxMoney) maxMoney = testMoney;
@@ -190,12 +166,12 @@ const setMinMoney = (orderPrice, currentPrice, closeTime) => {
 const initEveryIndex = (historyClosePrices, klines) => {
     const len = historyClosePrices.length;
     for (let i = len - 10; i <= len; i++) {
-        setEveryIndex(historyClosePrices.slice(i-20, i), klines.slice(i-20, i)); // 其他策略，这里也有问题??????对比一下
+        setEveryIndex(historyClosePrices.slice(i - 20, i), klines.slice(i - 20, i)); // 其他策略，这里也有问题??????对比一下
     }
 };
 const setEveryIndex = (historyClosePrices, klines) => {
     // 计算 boll
-    setBollArr(historyClosePrices);
+    setBollArr(historyClosePrices, klines);
     // 计算 rsi
     setRsiArr(historyClosePrices);
     // 计算 ema
@@ -205,14 +181,69 @@ const setEveryIndex = (historyClosePrices, klines) => {
     // 计算vol
     // setVolArr(klines);
 };
-const setBollArr = (historyClosePrices) => {
+const setBollArr = (historyClosePrices, klines) => {
     bollArr.length >= 10 && bollArr.shift();
-    const { B2basis, B2upper, B2lower } = calculateBollingerBands(historyClosePrices, B2Period, B2mult);
-    bollArr.push({
-        B2basis,
-        B2upper,
-        B2lower,
-    });
+    const boll = calculateBollingerBands(historyClosePrices, B2Period, B2mult);
+    bollArr.push(boll);
+
+    // 计算高低点
+    // setHighLowArr(boll, klines[klines.length - 1]);
+};
+// 储存高低点
+const setHighLowArr = (boll, curKline) => {
+    const { B2basis, B2upper, B2lower } = boll;
+    const { close, openTime } = curKline;
+    const preHigh = highArr[highArr.length - 1] || close; // 可能不合适，后续修改
+    const preLow = lowArr[lowArr.length - 1] || close; // 可能不合适，后续修改
+    if (close >= B2upper) {
+        // 本次创了高点，但是上一次操作是更新低点，认为是新的高点
+        if (preAction !== MOD_HIGH) {
+            highArr.push(close);
+            // ---------highLowTimes/highLowPrices-------------start
+            highLowTimes.push(openTime);
+            highLowPrices.push(['high', close]);
+            // ---------highLowTimes/highLowPrices-------------end
+            preAction = MOD_HIGH;
+            return;
+        }
+    }
+
+    // 和上次一样的操作，认为是调整高点
+    if (preAction === MOD_HIGH) {
+        if (close > preHigh) {
+            highArr[highArr.length - 1] = close;
+            // ---------highLowTimes/highLowPrices-------------start
+            highLowTimes[highLowTimes.length - 1] = openTime;
+            highLowPrices[highLowPrices.length - 1] = ['high', close];
+            // ---------highLowTimes/highLowPrices-------------end
+            preAction = MOD_HIGH;
+            return;
+        }
+    }
+    if (close <= B2lower) {
+        // 本次创了低点，但是上一次操作是更新高点，认为是新的低点
+        if (preAction !== MOD_LOW) {
+            lowArr.push(close);
+            // ---------highLowTimes/highLowPrices-------------start
+            highLowTimes.push(openTime);
+            highLowPrices.push(['low', close]);
+            // ---------highLowTimes/highLowPrices-------------end
+            preAction = MOD_LOW;
+            return;
+        }
+    }
+    // 和上次一样的操作，认为是调整低点
+    if (preAction === MOD_LOW) {
+        if (close < preLow) {
+            lowArr[lowArr.length - 1] = close;
+            // ---------highLowTimes/highLowPrices-------------start
+            highLowTimes[highLowTimes.length - 1] = openTime;
+            highLowPrices[highLowPrices.length - 1] = ['low', close];
+            // ---------highLowTimes/highLowPrices-------------end
+            preAction = MOD_LOW;
+            return;
+        }
+    }
 };
 const setRsiArr = (historyClosePrices) => {
     rsiArr.length >= 10 && rsiArr.shift();
@@ -224,7 +255,7 @@ const setTsiArr = (historyClosePrices) => {
     tsiArr.push(tsis[tsis.length - 1]);
 };
 const setVolArr = (klines) => {
-    const volumes = klines.map(v => v.volume)
+    const volumes = klines.map(v => v.volume);
     volArr.length >= 10 && volArr.shift();
     // 计算成交量均值
     const volMA = calculateSimpleMovingAverage(volumes, 5);
@@ -269,7 +300,6 @@ const resetInit = () => {
     testMoneyHistory = [];
     readyTradingDirection = "hold";
     hasOrder = false;
-    candleHeight = 0;
     ema144 = [];
     ema169 = [];
     targetTime = null;
@@ -316,8 +346,6 @@ const start = (params) => {
         const curKLines = _kLineData.slice(idx - 30, idx);
         const historyClosePrices = curKLines.map((v) => v.close);
 
-        candleHeight = brickSize; // calculateCandleHeight(_kLineData.slice(idx - 12, idx));
-
         // 设置各种指标
         setEveryIndex([...historyClosePrices], [...curKLines]);
 
@@ -331,9 +359,12 @@ const start = (params) => {
 
         // 准备开仓
         if (readyTradingDirection === "hold") {
-            // 判断趋势
+            // 初略判断趋势
             judgeTradingDirection(getLastFromArr(curKLines, 5));
-        } else {
+            // 指标判断趋势
+            // judgeTradingDirectionByIndex(getLastFromArr(curKLines, 5));
+        }
+        if (!hasOrder && readyTradingDirection !== "hold") {
             // 趋势是否被破坏
             // judgeBreakTradingDirection(getLastFromArr(curKLines, 5));
         }
@@ -349,25 +380,25 @@ const start = (params) => {
         else {
 
             const [point1, point2] = TP_SL;
-            
+
             //////////////////////////// 指标止损 /////////////////////////// start
-            // trend === "up" 时，close超出上轨，就移动到开仓价
+            // trend === "up" 时，close超出上轨，就移动止损点
             if (
                 hasOrder &&
                 trend === "up" &&
                 firstStopLossRate &&
-                (close >= B2upper) //  || (isYin(kLine0) && isYin(kLine1) && isYin(kLine2) && isYin(kLine3))
+                (close >= B2upper) // || (isYin(kLine0) && isYin(kLine1) && isYin(kLine2) && isYin(kLine3))
             ) {
                 TP_SL[0] = orderPrice - brickSize * 1.5;
                 firstStopLossRate = 0;
                 continue;
             }
-            // trend === "down" ，close超出下轨，就移动到开仓价
+            // trend === "down" ，close超出下轨，就移动止损点
             if (
                 hasOrder &&
                 trend === "down" &&
                 firstStopLossRate &&
-                (close <= B2lower) // ||  (isYang(kLine0) && isYang(kLine1) && isYang(kLine2) && isYang(kLine3))
+                (close <= B2lower) // || (isYang(kLine0) && isYang(kLine1) && isYang(kLine2) && isYang(kLine3))
             ) {
                 TP_SL[1] = orderPrice + brickSize * 1.5;
                 firstStopLossRate = 0;
@@ -465,51 +496,49 @@ const start = (params) => {
                     if (trend === "up" && close >= point2) {
                         TP_SL = [
                             orderPrice + Math.abs(point2 - orderPrice) * profitProtectRate,
-                            point2 + candleHeight * howManyCandleForProfitRun,
+                            point2 + brickSize * howManyCandleForProfitRun,
                         ];
+                        // -------------辅助统计------------start
                         if (curStopProfit && close >= curStopProfit) {
                             curStopProfit = 0;
                             curStopLoss = 0;
                             if (!isArriveLastStopProfit) {
                                 arriveLastStopProfit++;
                                 isArriveLastStopProfit = true;
-                                // setProfit(orderPrice, close, openTime);
-                                // reset();
-                                // continue;
                             }
                         }
+                        // -------------辅助统计------------end
                         continue;
                     }
                     // 上面没有被止损，那看是否能止盈，low 小于 point1 就止盈利，否则继续持有
                     if (trend === "down" && close <= point1) {
                         TP_SL = [
-                            point1 - candleHeight * howManyCandleForProfitRun,
+                            point1 - brickSize * howManyCandleForProfitRun,
                             orderPrice - Math.abs(orderPrice - point1) * profitProtectRate,
                         ];
+                        // -------------辅助统计------------start
                         if (curStopProfit && close <= curStopProfit) {
                             curStopProfit = 0;
                             curStopLoss = 0;
                             if (!isArriveLastStopProfit) {
                                 arriveLastStopProfit++;
                                 isArriveLastStopProfit = true;
-                                // setProfit(orderPrice, close, openTime);
-                                // reset();
-                                // continue;
                             }
                         }
+                        // -------------辅助统计------------end
                         continue;
                     }
                 } else {
                     // 判断止盈：上面没有被止损，也没被止盈，那看下面是否能止盈，high 大于 point2 就止盈利，否则继续持有
                     if (trend === "up" && close >= point2) {
-                        setProfit(orderPrice, point2, openTime);
+                        setProfit(orderPrice, close, openTime);
                         reset();
                         arriveLastStopProfit++;
                         continue;
                     }
                     // 上面没有被止损，那看是否能止盈，low 小于 point1 就止盈利，否则继续持有
                     if (hasOrder && trend === "down" && close <= point1) {
-                        setProfit(orderPrice, point1, openTime);
+                        setProfit(orderPrice, close, openTime);
                         reset();
                         arriveLastStopProfit++;
                         continue;
@@ -568,8 +597,8 @@ const reset = () => {
 const judgeTradingDirection = (kLines) => {
     let [kLine1, kLine2, kLine3, kLine4, kLine5] = kLines;
     let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
-    let [emaShort1, emaShort2, emaShort3, emaShort4, emaShort5] = getLastFromArr(emaShortArr, 5);
-    let [tsi1, tsi2, tsi3, tsi4, tsi5] = getLastFromArr(tsiArr, 5);
+    let [high1, high2, high3, high4, high5] = getLastFromArr(highArr, 5);
+    let [low1, low2, low3, low4, low5] = getLastFromArr(lowArr, 5);
 
     let { openTime, high, low, close } = kLine5;
 
@@ -580,11 +609,12 @@ const judgeTradingDirection = (kLines) => {
     // 准备条件: 最低值小于boll下沿
     // 准备条件: 当前close大于boll下沿，并且小于中线
     const upTerm1 = isYin(kLine3) && isYin(kLine4) && isYang(kLine5); // isYin(kLine1) && isYin(kLine2) && 
-    // (可能于briksize有关，有的koken不一定适合开启该条件)
-    const upTerm2 =  true//!(isYin(kLine1) && isYin(kLine2) && isYin(kLine3) && isYin(kLine4) && kLine2.open > (boll2.B2upper + boll2.B2basis)/2 && kLine4.close < boll4.B2lower && boll1.B2basis < boll4.B2basis) // 背离 排除反转后的回调
-    const upTerm3 = true// tsi3 > tsi4 && tsi4 < tsi5 && Math.min(tsi1, tsi2, tsi3, tsi4, tsi5) < -25; // kLine3.close < boll3.B2lower || kLine4.close < kLine4.B2lower || kLine5.open < kLine5.B2lower
+    // 位于前前个低点，+-brickSize，开空
+    const upTerm2 = true; // low4 - brickSize <= close && close <= low4 + brickSize
+    // 位于前前个高点，+-brickSize，开空
+    const upTerm3 = true; // high4 - brickSize <= close && close <= high4 + brickSize
 
-    if (isUpOpen && (upTerm1 && upTerm2 && upTerm3)) { // || (upTerm3 && upTerm4 && upTerm5)
+    if (isUpOpen && upTerm1 && (upTerm2 || upTerm3)) { // || (upTerm3 && upTerm4 && upTerm5)
         // console.log("🚀 ~ judgeTradingDirection up ~ rsi5.rsi:", rsi5.rsi)
         readyTradingDirection = "up";
         // if (upTerm3 && upTerm4) {
@@ -599,11 +629,12 @@ const judgeTradingDirection = (kLines) => {
     // 准备条件: 最高值大于boll上沿
     // 准备条件: 当前close小于boll上沿，并且大于中线
     const downTerm1 = isYang(kLine3) && isYang(kLine4) && isYin(kLine5); // isYang(kLine1) && isYang(kLine2) && 
-    // (可能于briksize有关，有的koken不一定适合开启该条件)
-    const downTerm2 = true//!(isYang(kLine1) && isYang(kLine2) && isYang(kLine3) && isYang(kLine4) && kLine2.open < (boll2.B2lower + boll2.B2basis)/2 && kLine4.close > boll4.B2upper && boll1.B2basis >  boll4.B2basis) // 背离 排除后的回调
-    const downTerm3 = true// tsi3 < tsi4 && tsi4 > tsi5 && Math.max(tsi1, tsi2, tsi3, tsi4, tsi5) > 25; // kLine3.close > boll3.B2upper || kLine4.close > kLine4.B2upper || kLine5.open > kLine5.B2upper;
+    // 位于前前个低点，+-brickSize，开空
+    const downTerm2 = true; // low4 - brickSize <= close && close <= low4 + brickSize
+    // 位于前前个高点，+-brickSize，开空
+    const downTerm3 = true; // high4 - brickSize <= close && close <= high4 + brickSize
 
-    if (isDownOpen && (downTerm1 && downTerm2 && downTerm3)) { //  || (downTerm3 && downTerm4 && downTerm5)
+    if (isDownOpen && downTerm1 && (downTerm2 || downTerm3)) { //  || (downTerm3 && downTerm4 && downTerm5)
         // console.log("🚀 ~ judgeTradingDirection down ~ rsi5.rsi:", rsi5.rsi)
         readyTradingDirection = "down";
         // if (downTerm3 && downTerm4 && downTerm5) {
@@ -616,27 +647,133 @@ const judgeTradingDirection = (kLines) => {
     }
     readyTradingDirection = "hold";
 };
-const judgeBreakTradingDirection = (kLines) => {
-    let [, , kLine1, kLine2, kLine3] = kLines;
+// 指标确认趋势
+const judgeTradingDirectionByIndex = (kLines) => {
+    let [kLine1, kLine2, kLine3, kLine4, kLine5] = kLines;
     let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
 
-    let { openTime, high, low, close } = kLine3;
-
+    let { openTime, high, low, close } = kLine5;
     let { B2basis, B2upper, B2lower } = boll5;
 
+    const max = Math.max(kLine5.open, kLine5.close, kLine4.open, kLine4.close, kLine3.open, kLine3.close, kLine2.open, kLine2.close, kLine1.open, kLine1.close);
+    const min = Math.min(kLine5.open, kLine5.close, kLine4.open, kLine4.close, kLine3.open, kLine3.close, kLine2.open, kLine2.close, kLine1.open, kLine1.close);
+
+    const [high1, high2, high3, high4, high5] = getLastFromArr(highArr, 5);
+    const [low1, low2, low3, low4, low5] = getLastFromArr(lowArr, 5);
+    // 可能high/low还没有形成
+    if (isYin(kLine4) && isYang(kLine5)) {
+
+        // 价格结构为顶顶高+底底高 ==> 多头
+        if (
+            max >= high5 && high5 > high4 && // 顶顶高
+            close > low5 && low5 > low4 // 底底高 low5不能下破low4
+        ) {
+            readyTradingDirection = "up";
+            return;
+        }
+        // 横盘-已经有最新高点的突破单(右侧交易，要确认)
+        if (
+            high5 > high4 && Math.abs(high5 - high4) > brickSize * 3 && // 突破
+            Math.abs(high3 - high4) <= brickSize * 3 && // 顶 high3,high4 接近 (确认横盘)
+            Math.abs(low5 - low4) <= brickSize * 3 && // 低 low5,ow4 接近 (确认横盘)
+            Math.abs(min - high4) <= brickSize * 3 && // 没有下破前高，支撑有效
+            close >= high4 // 确认突破
+        ) {
+            readyTradingDirection = "up";
+            return;
+        }
+        // 横盘-没有最新高点的突破单(右侧交易，要确认)
+        if (
+            max >= high5 && Math.abs(high5 - high4) > brickSize * 3 && // 突破
+            Math.abs(high3 - high4) <= brickSize * 3 && // 顶 high3,high4 接近 (确认横盘)
+            Math.abs(low5 - low4) <= brickSize * 3 && // 低 low5,ow4 接近 (确认横盘)
+            Math.abs(min - high4) <= brickSize * 3 && // 没有下破前高，支撑有效
+            close >= high4 // 确认突破
+        ) {
+            readyTradingDirection = "up";
+            return;
+        }
+        // W底(左侧交易，不用确认)
+        if(
+            Math.abs(low5 - low4) <= brickSize*2 && // 底底高/w底
+            close >= low5
+        ) {
+            readyTradingDirection = "up";
+            return;
+        }
+    }
+
+    if (isYang(kLine3) && isYang(kLine4) && isYin(kLine5)) {
+
+        // 价格结构为顶顶低+底底低 ==> 空头
+        if (
+            high3 > high4 && high4 > high5 && // 顶顶低
+            low3 > low4 && low4 > low3 && // 顶顶低
+            Math.abs(high4 - high3) > brickSize * 3 && // 高点高度差要大一点
+            Math.abs(high5 - high4) > brickSize * 3 &&
+            Math.abs(low5 - low4) > brickSize * 3 && // 低点高度差要大一点
+            Math.abs(low4 - low3) > brickSize * 3
+        ) {
+            readyTradingDirection = "down";
+            return;
+        }
+
+        // 价格结构为突破顶顶高+底底高 ==> 多转空
+        // high4 high5 可以相等（M顶）
+        if (
+            low1 > low2 && low2 > low3 && low3 && // low1,low2,low3底底低
+            high1 > high2 && high2 > high3 && // high1,high2,high3顶顶低
+            Math.abs(low1 - low2) > brickSize * 3 && // 高点高度差要大一点
+            Math.abs(low2 - low3) > brickSize * 3 &&
+            Math.abs(high1 - high2) > brickSize * 3 && // 低点高度差要大一点
+            Math.abs(high2 - high3) > brickSize * 3 &&
+            Math.abs(low5 - high4) <= brickSize * 3 && // low5和high4要接近
+            high5 > high4 && Math.abs(high5 - high4) >= brickSize * 2 // high5要突破前高high4
+        ) {
+            readyTradingDirection = "down";
+            return;
+        }
+        // 头肩底
+        if ((high2 > high3 && high2 > high4 && high5 > high4 && high5 > high3) && (low3 < Math.min(high3, high4) && low5 < Math.min(high3, high4) && low4 < Math.min(low3, low5)) && high5 < high2 && low2 > low5 && low2 > low3) {
+            readyTradingDirection = "down";
+            return;
+        }
+    }
+
+    readyTradingDirection = "hold";
+};
+const judgeBreakTradingDirection = (kLines) => {
+    let [kLine1, kLine2, kLine3, kLine4, kLine5] = kLines;
+    let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
+
+    let { openTime, high, low, close } = kLine5;
+    let { B2basis, B2upper, B2lower } = boll5;
+
+    const max = Math.max(kLine5.open, kLine5.close, kLine4.open, kLine4.close, kLine3.open, kLine3.close, kLine2.open, kLine2.close, kLine1.open, kLine1.close);
+    const min = Math.min(kLine5.open, kLine5.close, kLine4.open, kLine4.close, kLine3.open, kLine3.close, kLine2.open, kLine2.close, kLine1.open, kLine1.close);
+
+    const [high1, high2, high3, high4, high5] = getLastFromArr(highArr, 5);
+    const [low1, low2, low3, low4, low5] = getLastFromArr(lowArr, 5);
+
     if (readyTradingDirection === "up") {
-        // 多头被破坏
-        const upTerm1 = close > B2basis;
-        if (upTerm1) {
+        // 不能买在成本区，要买在溢价区(分割线是斐波拉契中间位置)，只做深度回调
+        const upTerm1 = max >= high5 && high5 > high4 && close > low5 && low5 > low4 // 底底高
+        // 均线向下
+        const upTerm2 = boll5.B2basis < boll4.B2basis && boll4.B2basis < boll3.B2basis;
+        // M顶看空，不能做多
+        const upTerm3 = Math.abs(high4 - high5) <= brickSize * 3 && close < low4;
+        if ((upTerm1 || upTerm2)) {
             readyTradingDirection = "hold";
             return;
         }
     }
     if (readyTradingDirection === "down") {
-        // 空头被破坏
-        const downTerm1 = close < B2basis;
+        // 不能买在成本区，要买在溢价区(分割线是斐波拉契中间位置)，只做深度回调
+        const downTerm1 = Math.abs(low5 - low4) <= brickSize*2 && close >= low5 // w底
+        const downTerm2 = max >= high5 && high5 > high4 && close > low5 && low5 > low4 // 底底高
+        const downTerm3 = false;
 
-        if (downTerm1) {
+        if (downTerm1 || downTerm2 || downTerm3) {
             readyTradingDirection = "hold";
             return;
         }
@@ -715,9 +852,10 @@ const calculateTradingSignal = (kLines) => {
     // console.log("🚀 ~ calculateTradingSignal ~ atr:", atr)
 
     const signalUpTerm0 = readyTradingDirection === "up" && close > open;
+    const signalUpTerm1 = false; // indexTrend === "down" || indexTrend == "breakAndDown";
 
-    if (signalUpTerm0) {
-        min = min - atr // stopLoss ? stopLoss : min - atr;
+    if (signalUpTerm0 && !signalUpTerm1) {
+        min = min - atr; // stopLoss ? stopLoss : min - atr;
         if (min < close * (1 - invalidSigleStopRate)) {
             return {
                 trend: "hold",
@@ -732,8 +870,9 @@ const calculateTradingSignal = (kLines) => {
     }
 
     const signalDownTerm0 = readyTradingDirection === "down" && close < open;
-    if (signalDownTerm0) {
-        max = max + atr // stopLoss ? stopLoss : max + atr;
+    const signalDownTerm1 = false; // indexTrend === "up" ||  indexTrend == "breakAndUp";
+    if (signalDownTerm0 && !signalDownTerm1) {
+        max = max + atr; // stopLoss ? stopLoss : max + atr;
         if (max > close * (1 + invalidSigleStopRate)) {
             return {
                 trend: "hold",
@@ -790,6 +929,8 @@ function run(params) {
         var openPriceHistory = ${JSON.stringify(openPriceHistory, null, 2)}
         var closePriceHistory = ${JSON.stringify(closePriceHistory, null, 2)}
         var curTestMoneyHistory = ${JSON.stringify(curTestMoneyHistory, null, 2)}
+        var highLowTimes = ${JSON.stringify(highLowTimes, null, 2)}
+        var highLowPrices = ${JSON.stringify(highLowPrices, null, 2)}
         var valueFormatter = (value, index) => '[openTime:' + openHistory[index] + ']' + '\\n\\r' + 
         '[closeTime:' + closeHistory[index] + ']' + '\\n\\r' + 
         '[trend:' + trendHistory[index] + ']' + '\\n\\r' +
@@ -842,7 +983,9 @@ function run(params) {
             trendHistory,
             openPriceHistory,
             closePriceHistory,
-            curTestMoneyHistory
+            curTestMoneyHistory,
+            highLowPrices,
+            highLowTimes,
         }
     `
     );
@@ -893,9 +1036,32 @@ run({
     maxLossCount: 60, // 损失后加倍开仓，最大倍数
     // targetTime: "2025-03-16_22-03-00",
     closeLastOrder: true, // 最后一单是否平仓
-    isUpOpen: true,
-    isDownOpen: false,
+    isUpOpen: false,
+    isDownOpen: true,
 });
+// 1000pepe
+// run({
+//     brickSize: 0.00002,
+//     B2Period: 10, // boll周期
+//     B2mult: 1.5, // boll倍数
+//     howManyCandle: 3, // 初始止盈，（盈亏比 4 到 10 收益一样，都走了指标止盈，最低有 3 * 0.4 保底）
+//     firstStopProfitRate: 2, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
+//     firstProtectProfitRate: 0.9, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
+//     firstStopLossRate: 0.5, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
+//     isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
+//     profitProtectRate: 0.9, //isProfitRun === 1 时生效，保留多少利润
+//     howManyCandleForProfitRun: 1,
+//     maxStopLossRate: 0.01, // 止损小于10%的情况，最大止损5%
+//     invalidSigleStopRate: 0.1, // 止损在10%，不开单
+//     slAtrPeriod: 14,
+//     double: 1, // 是否损失后加倍开仓
+//     maxLossCount: 60, // 损失后加倍开仓，最大倍数
+//     // targetTime: "2025-03-14_00-00-00",
+//     closeLastOrder: true, // 最后一单是否平仓
+//     isUpOpen: false,
+//     isDownOpen: true,
+// });
+// doge
 // run({
 //     brickSize: 0.0005,
 //     B2Period: 20, // boll周期

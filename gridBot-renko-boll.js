@@ -8,50 +8,10 @@ const WebSocket = require("ws"); // WebSocket库
 // const { SocksProxyAgent } = require("socks-proxy-agent");
 const fs = require("fs");
 const { getDate, hasUpDownVal, getLastFromArr, getSequenceArr } = require("./utils/functions.js");
-// const {calculateSimpleMovingAverage}=require("./utils/ma.js");
-const { calculateATR } = require("./utils/atr.js");
 const { calculateBollingerBands } = require("./utils/boll.js");
 const { convertToRenko } = require("./utils/renko.js");
-// const calculateRSI = require("./utils/rsi_marsi");
 const config = require("./config-boll.js");
-const {
-    calculateCandleHeight,
-    isBigLine,
-    isBigAndYang,
-    isBigAndYin,
-    isBreakPreHigh,
-    isBreakPreLow,
-    isCross,
-    isUpCross,
-    isDownCross,
-    isTopFractal,
-    isBottomFractal,
-    isDownLinesGroup2,
-    isUpLinesGroup2,
-    isDownLinesGroup3,
-    isUpLinesGroup3,
-    isDownSwallow,
-    isUpSwallow,
-    isBreakDown,
-    isBreakUp,
-    isDownStar,
-    isUpStar,
-    isHigherHigh,
-    isLowerLow,
-    isK1Swallow,
-    isFourUp,
-    isFourDown,
-    downPao,
-    upPao,
-    isDownMa,
-    isUpMa,
-    isUpMacd,
-    isDownMacd,
-    isAllDownTail,
-    isAllUpTail,
-    isYang,
-    isYin,
-} = require("./utils/kLineTools");
+const { isYang, isYin, } = require("./utils/kLineTools");
 
 let testMoney = 0;
 const diff = 2;
@@ -66,7 +26,6 @@ let {
     klineStage,
     logsFolder,
     errorsFolder,
-    numForAverage, // 多少根k线求取candleHeight
     //////////////////////////////
     brickSize,
     B2Period,
@@ -83,7 +42,15 @@ let {
     slAtrPeriod, // 止损atr周期
     double, // 是否损失后加倍开仓
     maxLossCount, // 损失后加倍开仓，最大倍数
-} = config["doge"];
+} = config["1000pepe"];
+
+let highArr = [];
+let lowArr = [];
+// 指标趋势
+// let indexTrend = 'hold'; // up down breakAndUp breakAndDown hold
+const MOD_HIGH = 'MOD_HIGH'
+const MOD_LOW = 'MOD_LOW'
+let preAction = '';
 
 let isUpOpen = false;
 let isDownOpen = true;
@@ -181,7 +148,6 @@ const ws = new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineSt
 let kLineData = [];
 let currentPrice = 0; // 记录当前价格
 let prePrice = 0; // 记录当前价格的前一个
-let candleHeight = 0; // 蜡烛高度
 let readyTradingDirection = "hold"; // 是否准备开单
 let TP_SL = []; // TP_SL
 let hasOrder = false; // 是否有订单
@@ -213,6 +179,7 @@ let loadingCloseOrder = false; // 平仓
 let onGridPoint = false; // TP/SL上
 let loadingInit = false;
 let isOrdering = false; // 是否在收盘后的计算中
+let isJudgeStopLoss = false;
 let isJudgeFirstProfit = false;
 let isJudgeProfitRunOrProfit = false;
 let isJudgeIndexProfit = false;
@@ -222,6 +189,7 @@ const isLoading = () => {
     return (
         loadingInit ||
         isOrdering ||
+        isJudgeStopLoss ||
         isJudgeFirstProfit ||
         isJudgeProfitRunOrProfit ||
         isJudgeIndexProfit ||
@@ -315,10 +283,6 @@ const getKLineData = async (symbol, interval, limit) => {
     }
 };
 
-const setCandleHeight = () => {
-    candleHeight = brickSize * 2; // calculateCandleHeight(getLastFromArr(kLineData, numForAverage));
-    // console.log("计算出实际蜡烛高度 candleHeight:", candleHeight);
-};
 // 获取收盘价
 const getHistoryClosePrices = async () => {
     // 在getKLineData方法中获取至少15分钟内的价格数据
@@ -347,27 +311,62 @@ const getHistoryClosePrices = async () => {
 const initEveryIndex = (historyClosePrices) => {
     const len = historyClosePrices.length;
     for (let i = len - 10; i < len; i++) {
-        setEveryIndex(historyClosePrices.slice(0, i));
+        setEveryIndex(historyClosePrices.slice(0, i), kLineData[i]);
     }
 };
-const setEveryIndex = (historyClosePrices) => {
-    setBollArr(historyClosePrices);
+const setEveryIndex = (historyClosePrices, curKLine) => {
+    setBollArr(historyClosePrices, curKLine);
     // setRsiArr(historyClosePrices);
 };
-const setBollArr = (historyClosePrices) => {
+const setBollArr = (historyClosePrices, curKLine) => {
     bollArr.length >= 10 && bollArr.shift();
-    const { B2basis, B2upper, B2lower } = calculateBollingerBands(historyClosePrices, B2Period, B2mult);
-    bollArr.push({
-        B2basis,
-        B2upper,
-        B2lower,
-    });
-    bollArrConsole.push({
-        B2basis,
-        B2upper,
-        B2lower,
-    })
+    const boll = calculateBollingerBands(historyClosePrices, B2Period, B2mult);
+    bollArr.push(boll);
+    bollArrConsole.push(boll)
+    // 计算高低点
+    // setHighLowArr(boll, curKLine)
 };
+
+// 储存高低点
+const setHighLowArr = (boll, curKline) => {
+    const { B2basis, B2upper, B2lower } = boll;
+    const { close, openTime } = curKline;
+    const preHigh = highArr[highArr.length - 1] || close; // 可能不合适，后续修改
+    const preLow = lowArr[lowArr.length - 1] || close; // 可能不合适，后续修改
+    if (close >= B2upper) {
+        // 本次创了高点，但是上一次操作是更新低点，认为是新的高点
+        if (preAction !== MOD_HIGH) {
+            highArr.push(close);
+            preAction = MOD_HIGH;
+            return;
+        }
+    }
+    
+    // 和上次一样的操作，认为是调整高点
+    if (preAction === MOD_HIGH) {
+        if (close > preHigh) {
+            highArr[highArr.length - 1] = close;
+            preAction = MOD_HIGH;
+            return;
+        }
+    }
+    if (close <= B2lower) {
+        // 本次创了低点，但是上一次操作是更新高点，认为是新的低点
+        if (preAction !== MOD_LOW) {
+            lowArr.push(close);
+            preAction = MOD_LOW;
+            return;
+        }
+    }
+    // 和上次一样的操作，认为是调整低点
+    if (preAction === MOD_LOW) {
+        if (close < preLow) {
+            lowArr[lowArr.length - 1] = close;
+            preAction = MOD_LOW;
+            return;
+        }
+    }
+}
 const setRsiArr = (historyClosePrices) => {
     rsiArr.length >= 10 && rsiArr.shift();
     rsiArr.push(calculateRSI(historyClosePrices, MA_RSI));
@@ -391,11 +390,8 @@ const refreshKLineAndIndex = (curKLine) => {
     // 更新kLine信息
     setKLinesTemp(curKLine);
 
-    // 更新平均蜡烛高度
-    setCandleHeight();
-
     // 设置各种指标
-    setEveryIndex([...historyClosePrices]);
+    setEveryIndex([...historyClosePrices], curKLine);
 
     if (isTest) {
         console.log("🚀 ~ : curKLine:", curKLine);
@@ -410,10 +406,11 @@ const kaiDanDaJi = async () => {
         // 判断趋势
         judgeTradingDirection();
         console.log("🚀 ~ judgeTradingDirection ~ 判断趋势:", readyTradingDirection);
-    } else {
-        // 趋势是否被破坏
-        // judgeBreakTradingDirection();
-    }
+    } 
+    // if (!hasOrder && readyTradingDirection !== "hold") {
+    //     // 趋势是否被破坏
+    //     judgeBreakTradingDirection();
+    // }
     // 没有仓位，准备开仓
     if (!hasOrder) {
         // 开仓：没有仓位就根据 readyTradingDirection 开单
@@ -458,10 +455,10 @@ const judgeIndexLoss = async (currentPrice) => {
     }
     isJudgeIndexLoss = false;
 }
-// 止损 | 首次盈利保护
-const judgeFirstProfitProtectOrLoss = async (currentPrice) => {
+// 止损
+const judgeStopLoss = async (currentPrice) => {
     if (!hasOrder) return;
-    isJudgeFirstProfit = true;
+    isJudgeStopLoss = true;
     const { trend, orderPrice } = tradingInfo;
     const [point1, point2] = TP_SL;
 
@@ -469,16 +466,40 @@ const judgeFirstProfitProtectOrLoss = async (currentPrice) => {
         // low 小于 point1 就止损，否则继续持有
         if (currentPrice <= point1) {
             console.log(
-                `🚀 ~ judgeFirstProfitProtectOrLoss up ~ ${currentPrice > orderPrice ? '止盈' : '止损'}/平多:currentPrice, TP_SL:`,
+                `🚀 ~ judgeStopLoss up ~ ${currentPrice > orderPrice ? '止盈' : '止损'}/平多:currentPrice, TP_SL:`,
                 currentPrice,
                 TP_SL
             );
             // 止损/平多
             await closeUp();
-            isJudgeFirstProfit = false;
+            isJudgeStopLoss = false;
             return;
         }
+    }
+    if (trend === "down") {
+        // high 大于 point2 就止损，否则继续持有
+        if (currentPrice >= point2) {
+            // 止损/平空
+            console.log(
+                `🚀 ~ judgeStopLoss down ~  ${currentPrice < orderPrice ? '止盈' : '止损'}/平空:currentPrice, TP_SL:`,
+                currentPrice,
+                TP_SL
+            );
+            await closeDown();
+            isJudgeStopLoss = false;
+            return;
+        }
+    }
+    isJudgeStopLoss = false;
+};
+// 首次盈利保护
+const judgeFirstProfitProtect = async (currentPrice) => {
+    if (!hasOrder) return;
+    isJudgeFirstProfit = true;
+    const { trend, orderPrice } = tradingInfo;
+    const [point1, point2] = TP_SL;
 
+    if (trend === "up") {
         if (firstStopProfitRate) {
             const firstProfitPrice =
                 orderPrice + Math.abs(orderPrice - point1) * firstStopProfitRate; // (开仓价 - 止损)* 初始止盈倍数
@@ -489,7 +510,7 @@ const judgeFirstProfitProtectOrLoss = async (currentPrice) => {
                     orderPrice + Math.abs(orderPrice - firstProfitPrice) * firstProtectProfitRate;
                 firstStopProfitRate = 0;
                 isJudgeFirstProfit = false;
-                console.log("🚀 ~ judgeFirstProfitProtectOrLoss up ~ 到初始止盈点:TP_SL", TP_SL);
+                console.log("🚀 ~ judgeFirstProfitProtect up ~ 到初始止盈点:TP_SL", TP_SL);
                 return;
             }
         }
@@ -504,24 +525,12 @@ const judgeFirstProfitProtectOrLoss = async (currentPrice) => {
                 TP_SL[0] = Math.abs(currentPrice + point1) / 2; // 取currentPrice 、 point1的中间值
                 firstStopLossRate = 0;
                 isJudgeFirstProfit = false;
-                console.log("🚀 ~ judgeFirstProfitProtectOrLoss up ~ 到初始止损点:TP_SL", TP_SL);
+                console.log("🚀 ~ judgeFirstProfitProtect up ~ 到初始止损点:TP_SL", TP_SL);
                 return;
             }
         }
     }
     if (trend === "down") {
-        // high 大于 point2 就止损，否则继续持有
-        if (currentPrice >= point2) {
-            // 止损/平空
-            console.log(
-                `🚀 ~ judgeFirstProfitProtectOrLoss down ~  ${currentPrice < orderPrice ? '止盈' : '止损'}/平空:currentPrice, TP_SL:`,
-                currentPrice,
-                TP_SL
-            );
-            await closeDown();
-            isJudgeFirstProfit = false;
-            return;
-        }
         if (firstStopProfitRate) {
             const firstProfitPrice =
                 orderPrice - Math.abs(orderPrice - point2) * firstStopProfitRate; // (开仓价 - 止损)* 初始止盈倍数
@@ -532,7 +541,7 @@ const judgeFirstProfitProtectOrLoss = async (currentPrice) => {
                     orderPrice - Math.abs(orderPrice - firstProfitPrice) * firstProtectProfitRate;
                 firstStopProfitRate = 0;
                 isJudgeFirstProfit = false;
-                console.log("🚀 ~ judgeFirstProfitProtectOrLoss down ~ 到初始止盈点:TP_SL", TP_SL);
+                console.log("🚀 ~ judgeFirstProfitProtect down ~ 到初始止盈点:TP_SL", TP_SL);
                 return;
             }
         }
@@ -541,7 +550,7 @@ const judgeFirstProfitProtectOrLoss = async (currentPrice) => {
             if (currentPrice > firstStopPrice) {
                 // 到初始止损点时，并且该k线是阴线，移动止盈到开仓价，避免亏损太多
                 // 减少止损
-                console.log("🚀 ~ judgeFirstProfitProtectOrLoss down ~ 到初始止损点:TP_SL", TP_SL);
+                console.log("🚀 ~ judgeFirstProfitProtect down ~ 到初始止损点:TP_SL", TP_SL);
                 TP_SL[1] = Math.abs(currentPrice + point2) / 2; // 取currentPrice 、 point2的中间值
                 firstStopLossRate = 0;
                 isJudgeFirstProfit = false;
@@ -565,7 +574,7 @@ const judgeProfitRunOrProfit = async (currentPrice) => {
         if (trend === "up" && currentPrice >= point2) {
             TP_SL = [
                 orderPrice + Math.abs(point2 - orderPrice) * profitProtectRate,
-                point2 + candleHeight * howManyCandleForProfitRun,
+                point2 + brickSize * howManyCandleForProfitRun,
             ];
             isJudgeProfitRunOrProfit = false;
             console.log("🚀 ~ judgeProfitRunOrProfit up ~ 移动止盈");
@@ -574,7 +583,7 @@ const judgeProfitRunOrProfit = async (currentPrice) => {
         // low 小于 point1 就止盈利，否则继续持有
         if (trend === "down" && currentPrice <= point1) {
             TP_SL = [
-                point1 - candleHeight * howManyCandleForProfitRun,
+                point1 - brickSize * howManyCandleForProfitRun,
                 orderPrice - Math.abs(orderPrice - point1) * profitProtectRate,
             ];
             isJudgeProfitRunOrProfit = false;
@@ -689,29 +698,30 @@ const judgeBreakTradingDirection = () => {
     let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
     let { B2basis, B2upper, B2lower } = boll5;
 
+    const [high1, high2, high3, high4, high5] = getLastFromArr(highArr, 5);
+    const [low1, low2, low3, low4, low5] = getLastFromArr(lowArr, 5);
+
     if (readyTradingDirection === "up") {
-        // 多头被破坏
-        const upTerm1 = close > B2basis;
-        if (upTerm1) {
-            console.log(
-                "🚀 ~ judgeBreakTradingDirection ~ 判断趋势:",
-                readyTradingDirection,
-                "被破坏"
-            );
+        // 不能买在成本区，要买在溢价区(分割线是斐波拉契中间位置)，只做深度回调
+        const upTerm1 = high5 > low5 && low5 > low4 && close > (high5 + low4)/2;
+        // 均线向下
+        const upTerm2 = boll5.B2basis < boll4.B2basis && boll4.B2basis < boll3.B2basis;
+        // M顶看空，不能做多
+        const upTerm3 = Math.abs(high4 - high5) <= brickSize * 3 && close < low4;
+        if ((upTerm1 && upTerm2) || upTerm3) {
             readyTradingDirection = "hold";
             return;
         }
     }
     if (readyTradingDirection === "down") {
-        // 空头被破坏
-        const downTerm1 = close < B2basis;
+        // 不能买在成本区，要买在溢价区(分割线是斐波拉契中间位置)，只做深度回调
+        const downTerm1 = high4 > high5 && high5 > low5 && close < (high4 + low5)/2;
+        // 均线向上
+        const downTerm2 = boll5.B2basis > boll4.B2basis && boll4.B2basis > boll3.B2basis;
+        // W底看多，不能做空
+        const downTerm3 = Math.abs(low4 - low5) <= brickSize * 3 && close > high4;
 
-        if (downTerm1) {
-            console.log(
-                "🚀 ~ judgeBreakTradingDirection ~ 判断趋势:",
-                readyTradingDirection,
-                "被破坏"
-            );
+        if ((downTerm1&& downTerm2) || downTerm3) {
             readyTradingDirection = "hold";
             return;
         }
@@ -1238,9 +1248,6 @@ const startTrading = async () => {
         // 初始化指标
         initEveryIndex(historyClosePrices);
 
-        // 初始化 candleHeight
-        setCandleHeight();
-
         // 设置开仓金额
         if (!invariableBalance) {
             await getContractBalance();
@@ -1435,8 +1442,11 @@ const gridPointClearTrading = async (_currentPrice) => {
     // 指标止损
     await judgeIndexLoss(_currentPrice);
 
-    // 止损 | 首次盈利后盈利保护
-    await judgeFirstProfitProtectOrLoss(_currentPrice);
+    // 止损
+    // await judgeStopLoss(_currentPrice);
+
+    // 首次盈利后盈利保护
+    await judgeFirstProfitProtect(_currentPrice);
 
     // 止盈 | 移动止盈
     await judgeProfitRunOrProfit(_currentPrice);
@@ -1530,9 +1540,12 @@ const startWebSocket = async () => {
         if (isLoading() || prePrice === currentPrice) {
             return;
         } else {
+            // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
+            // 止损 要快，不然滑点太大
+            hasOrder && await judgeStopLoss(currentPrice);
             // renko所以没有滞后得说法????
-            // TP/SL模式止盈/止损
-            hasOrder && (await gridPointClearTrading(currentPrice)); // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
+            // 止盈可以慢一点，滑点什么的对它有利
+            hasOrder && renkoData.length && (await gridPointClearTrading(currentPrice));
         }
     });
     // 添加 'close' 事件处理程序
@@ -1681,7 +1694,6 @@ function saveGlobalVariables() {
                 currentPrice, // 记录当前价格
                 prePrice, // 记录当前价格的前一个
                 tradingInfo, // 订单数据
-                candleHeight: candleHeight,
                 testMoney,
                 hasOrder,
                 isProfitRun: isProfitRun,

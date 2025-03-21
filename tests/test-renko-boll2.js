@@ -42,7 +42,7 @@ const { calculateBollingerBands } = require("../utils/boll.js");
 const { calculateSimpleMovingAverage, calculateEMA } = require("../utils/ma.js");
 const { calculateTSI } = require("../utils/tsi.js");
 const fs = require("fs");
-const symbol = "dogeUSDT";
+const symbol = "1000pepeUSDT";
 
 let { kLineData } = require(`./source/renko-${symbol}-1m.js`);
 // let { kLineData } = require(`./doge.js`);
@@ -876,7 +876,7 @@ function run(params) {
 // let brickSize=0.0006; // zetaUSDT   67.704%             921.1533628456452
 // let brickSize=0.00022; // zkUSDT   60.924%              430.31042108253496
 run({
-    brickSize: 0.0005,
+    brickSize: 0.00002,
     B2Period: 10, // boll周期
     B2mult: 1.5, // boll倍数
     howManyCandle: 3, // 初始止盈，（盈亏比 4 到 10 收益一样，都走了指标止盈，最低有 3 * 0.4 保底）
@@ -891,7 +891,7 @@ run({
     slAtrPeriod: 14,
     double: 1, // 是否损失后加倍开仓
     maxLossCount: 60, // 损失后加倍开仓，最大倍数
-    // targetTime: "2025-03-16_22-03-00",
+    // targetTime: "2025-03-14_00-00-00",
     closeLastOrder: true, // 最后一单是否平仓
     isUpOpen: true,
     isDownOpen: false,

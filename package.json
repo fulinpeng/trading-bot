@@ -22,7 +22,7 @@
         "eth": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-eth.js",
         "1000pepe": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-1000pepe.js",
         "alice": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-alice.js",
-        "hft": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-hft.js",
+        "renko-boll": "forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-renko-boll.js",
         "restart-all": "forever restartall",
         "forever-list": "forever list",
         "stop-all": "forever stopall",
