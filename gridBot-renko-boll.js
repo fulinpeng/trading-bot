@@ -39,7 +39,6 @@ let {
     howManyCandleForProfitRun,
     maxStopLossRate, // 止损小于10%的情况，最大止损5%
     invalidSigleStopRate, // 止损在10%，不开单
-    slAtrPeriod, // 止损atr周期
     double, // 是否损失后加倍开仓
     maxLossCount, // 损失后加倍开仓，最大倍数
 } = config["1000pepe"];
@@ -405,8 +404,10 @@ const kaiDanDaJi = async () => {
     if (readyTradingDirection === "hold") {
         // 判断趋势
         judgeTradingDirection();
+        // 指标判断趋势
+        // judgeTradingDirectionByIndex();
         console.log("🚀 ~ judgeTradingDirection ~ 判断趋势:", readyTradingDirection);
-    } 
+    }
     // if (!hasOrder && readyTradingDirection !== "hold") {
     //     // 趋势是否被破坏
     //     judgeBreakTradingDirection();
@@ -435,7 +436,7 @@ const judgeIndexLoss = async (currentPrice) => {
     if (
         trend === "up" &&
         firstStopLossRate &&
-        (close >= B2upper) //  || (isYin(kLine0) && isYin(kLine1) && isYin(kLine2) && isYin(kLine3))
+        (currentPrice >= B2upper) //  || (isYin(kLine0) && isYin(kLine1) && isYin(kLine2) && isYin(kLine3))
     ) {
         TP_SL[0] = orderPrice - brickSize * 1.5;
         firstStopLossRate = 0;
@@ -446,7 +447,7 @@ const judgeIndexLoss = async (currentPrice) => {
     if (
         trend === "down" &&
         firstStopLossRate &&
-        (close <= B2lower) // ||  (isYang(kLine0) && isYang(kLine1) && isYang(kLine2) && isYang(kLine3))
+        (currentPrice <= B2lower) // ||  (isYang(kLine0) && isYang(kLine1) && isYang(kLine2) && isYang(kLine3))
     ) {
         TP_SL[1] = orderPrice + brickSize * 1.5;
         firstStopLossRate = 0;
@@ -621,7 +622,7 @@ const judgeIndexProfit = async (currentPrice) => {
         hasOrder &&
         trend === "up" &&
         !firstStopProfitRate &&
-        (currentPrice < B2lower || low < B2lower) //  || isYin(kLine1) && isYin(kLine2) && isYin(kLine3)
+        (currentPrice < B2lower)
         // 这里是否需要判断 low 和 close 是否小于 B2lower
     ) {
         // 平多
@@ -634,7 +635,7 @@ const judgeIndexProfit = async (currentPrice) => {
         hasOrder &&
         trend === "down" &&
         !firstStopProfitRate &&
-        (currentPrice > B2upper || high > B2upper) //  || (isYang(kLine1) && isYang(kLine2) && isYang(kLine3))
+        (currentPrice > B2upper)
         // 这里是否需要判断 high 和 close 是否大于 B2upper
     ) {
         // 平空
@@ -661,7 +662,7 @@ const judgeTradingDirection = () => {
     // 准备条件: 三个k形成底分
     // 准备条件: 最低值小于boll下沿
     // 准备条件: 当前close大于boll下沿，并且小于中线
-    const upTerm1 = isYin(kLine3) && isYin(kLine4) && isYang(kLine5);
+    const upTerm1 = isYin(kLine2) && isYin(kLine3) && isYang(kLine4) && isYang(kLine5)// isYin(kLine3) && isYin(kLine4) && isYang(kLine5);
     // const upTerm2 = kLine3.low < boll3.B2lower || kLine4.low < boll4.B2lower || kLine5.low < boll5.B2lower;
     const upTerm2 = true // kLine4.open < boll4.B2basis && kLine5.close < boll5.B2basis && kLine5.close > boll5.B2lower; // kLine3.open < boll3.B2basis && 
 
@@ -677,7 +678,7 @@ const judgeTradingDirection = () => {
     // 准备条件: 三个k形成顶分
     // 准备条件: 最高值大于boll上沿
     // 准备条件: 当前close小于boll上沿，并且大于中线
-    const downTerm1 = isYang(kLine3) && isYang(kLine4) && isYin(kLine5);
+    const downTerm1 = isYang(kLine2) && isYang(kLine3) && isYin(kLine4) && isYin(kLine5) // isYang(kLine3) && isYang(kLine4) && isYin(kLine5);
     // const downTerm2 = kLine3.high > boll3.B2upper || kLine4.high > boll4.B2upper || kLine5.high > boll5.B2upper;
     const downTerm2 = true // kLine4.open > boll4.B2basis && kLine5.close > boll5.B2basis && kLine5.close < boll5.B2upper; // kLine3.open > boll3.B2basis && 
     // const downTerm3 = close < B2upper && close > B2basis;
@@ -691,6 +692,48 @@ const judgeTradingDirection = () => {
     readyTradingDirection = "hold";
 };
 
+// 指标确认趋势
+const judgeTradingDirectionByIndex = () => {
+    const [kLine1, kLine2, kLine3, kLine4, kLine5] = getLastFromArr(kLineData, 5);
+    let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
+
+    let { open, high, low, close } = kLine5;
+    let { B2basis, B2upper, B2lower } = boll5;
+
+    const max = Math.max(kLine5.open, kLine5.close, kLine4.open, kLine4.close, kLine3.open, kLine3.close, kLine2.open, kLine2.close, kLine1.open, kLine1.close);
+    const min = Math.min(kLine5.open, kLine5.close, kLine4.open, kLine4.close, kLine3.open, kLine3.close, kLine2.open, kLine2.close, kLine1.open, kLine1.close);
+
+    const [high5] = getLastFromArr(highArr, 1);
+    const [low5] = getLastFromArr(lowArr, 1);
+    // 可能high/low还没有形成
+    if (isUpOpen && readyTradingDirection === "up") {
+        // W底(左侧交易，不用确认)
+        if(
+            // (Math.abs(low5 - low4) <= brickSize*2 || Math.abs(low5 - open) <= brickSize*2 )&& // /w底
+            // close > low5 &&
+            // close > B2lower && close < B2basis // 在布林带下方
+            close < low5 + Math.abs(high5 - low5) / 2 // 折价区做多
+        ) {
+            readyTradingDirection = "up";
+            return;
+        }
+    }
+
+    if (isDownOpen && isYang(kLine3) && isYang(kLine4) && isYin(kLine5)) {
+        // M顶(左侧交易，不用确认)
+        if(
+            // (Math.abs(high5 - high4) <= brickSize*2 || Math.abs(high5 - open) <= brickSize*2 )&& // /w底
+            // close < high5 &&
+            // close < B2upper && close > B2basis // 在布林带上方
+            close > high5 - Math.abs(high5 - low5) / 2 // 溢价区做空
+        ) {
+            readyTradingDirection = "down";
+            return;
+        }
+    }
+
+    readyTradingDirection = "hold";
+};
 const judgeBreakTradingDirection = () => {
     const [kLine1, kLine2, kLine3] = getLastFromArr(kLineData, 3);
     const { open, close, openTime, closeTime, low, high } = kLine3;
@@ -698,8 +741,8 @@ const judgeBreakTradingDirection = () => {
     let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
     let { B2basis, B2upper, B2lower } = boll5;
 
-    const [high1, high2, high3, high4, high5] = getLastFromArr(highArr, 5);
-    const [low1, low2, low3, low4, low5] = getLastFromArr(lowArr, 5);
+    const [high3, high4, high5] = getLastFromArr(highArr, 3);
+    const [low3, low4, low5] = getLastFromArr(lowArr, 3);
 
     if (readyTradingDirection === "up") {
         // 不能买在成本区，要买在溢价区(分割线是斐波拉契中间位置)，只做深度回调
@@ -768,7 +811,7 @@ const calculateTradingSignal = () => {
     let min = Math.min(kLine1.close, kLine2.close, kLine3.close, kLine1.open, kLine2.open, kLine3.open);
     
     // 计算ATR
-    const atr = brickSize * 2; // calculateATR(kLineData, slAtrPeriod).atr;
+    const atr = brickSize * 3;
 
     if (readyTradingDirection === "up" && close > open) {
         min = min - atr;
@@ -1375,7 +1418,7 @@ const closeUp = async () => {
             testMoney += curTestMoney;
             setLossCount(curTestMoney);
             console.log(
-                "平多 gridPointClearTrading ~ currentPrice testMoney:",
+                "平多 closeUp ~ currentPrice testMoney:",
                 currentPrice,
                 testMoney
             );
@@ -1417,7 +1460,7 @@ const closeDown = async () => {
             testMoney += curTestMoney;
             setLossCount(curTestMoney);
             console.log(
-                "平空 gridPointClearTrading ~ currentPrice testMoney:",
+                "平空 closeDown ~ currentPrice testMoney:",
                 currentPrice,
                 testMoney
             );
@@ -1437,13 +1480,15 @@ const closeDown = async () => {
 };
 // 是否到达止损点/平仓
 const gridPointClearTrading = async (_currentPrice) => {
+    if (!hasOrder) return;
+
     onGridPoint = true;
 
     // 指标止损
     await judgeIndexLoss(_currentPrice);
 
     // 止损
-    // await judgeStopLoss(_currentPrice);
+    await judgeStopLoss(_currentPrice);
 
     // 首次盈利后盈利保护
     await judgeFirstProfitProtect(_currentPrice);
@@ -1541,11 +1586,16 @@ const startWebSocket = async () => {
             return;
         } else {
             // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
-            // 止损 要快，不然滑点太大
-            hasOrder && await judgeStopLoss(currentPrice);
-            // renko所以没有滞后得说法????
-            // 止盈可以慢一点，滑点什么的对它有利
-            hasOrder && renkoData.length && (await gridPointClearTrading(currentPrice));
+            if (!renkoData.length) {
+                // 止损 要快，是逆向的，不然滑点太大
+                await judgeStopLoss(currentPrice);
+                // 指标止盈，这个也是逆向的
+                await judgeIndexProfit(currentPrice);
+            } else {
+                // renko所以没有滞后得说法????
+                // 止盈可以慢一点，滑点什么的对它有利
+                await gridPointClearTrading(currentPrice);
+            }
         }
     });
     // 添加 'close' 事件处理程序
