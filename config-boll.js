@@ -12,7 +12,7 @@ const config = {
         numForAverage: 12, // 多少根k线求取candleHeight
 
         
-        brickSize: 0.0005,
+        brickSize: 0.002,
         B2Period: 10, // boll周期
         B2mult: 1.5, // boll倍数
         howManyCandle: 3, // 初始止盈，（盈亏比 4 到 10 收益一样，都走了指标止盈，最低有 3 * 0.4 保底）

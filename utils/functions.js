@@ -230,7 +230,7 @@ function getSequenceArr(diff, num, defaultVal = 10) {
     }
     return arr;
 }
-function getRatioArr(diff, num) {
+function getSmaRatioArr(diff, num) {
     let arr = [1];
     for (let i = 0; i < num; i++) {
         arr.push(arr[arr.length - 1] * diff);
@@ -253,5 +253,5 @@ module.exports = {
     getLastFromArr,
     calculateHighLow,
     getSequenceArr,
-    getRatioArr,
+    getSmaRatioArr,
 };

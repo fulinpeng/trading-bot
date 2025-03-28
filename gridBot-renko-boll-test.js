@@ -11,7 +11,7 @@ const { getDate, hasUpDownVal, getLastFromArr, getSequenceArr } = require("./uti
 const { calculateBollingerBands } = require("./utils/boll.js");
 const { convertToRenko } = require("./utils/renko.js");
 const config = require("./config-boll.js");
-const { isYang, isYin, } = require("./utils/kLineTools");
+const { isYang, isYin, } = require("./utils/kLineTools.js");
 
 let testMoney = 0;
 const diff = 2;
@@ -41,7 +41,7 @@ let {
     invalidSigleStopRate, // 止损在10%，不开单
     double, // 是否损失后加倍开仓
     maxLossCount, // 损失后加倍开仓，最大倍数
-} = config["1000pepe"];
+} = config["doge"];
 
 let highArr = [];
 let lowArr = [];
@@ -72,6 +72,7 @@ const isTest = true; // 将此标志设置为  false/true 使用沙盒环境
 const showProfit = true;
 const api = "https://api.binance.com/api";
 const fapi = "https://fapi.binance.com/fapi";
+const localApi = 'http://localhost:3000'
 const apiKey = process.env.BINANCE_API_KEY; // 获取API密钥
 const secretKey = process.env.BINANCE_API_SECRET; // 获取API密钥的密钥
 
@@ -118,7 +119,7 @@ const axiosInstance = axios.create({
 
 // WebSocket连接，用于获取实时交易信息
 // const ws = new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineStage}`, { agent: socksProxyAgent });
-const ws = new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineStage}`);
+const ws = isTest ? new WebSocket(`ws://localhost:3000/ws/${SYMBOL}@kline_${klineStage}`) : new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineStage}`);
 // {
 //     "e": "kline",     // 事件类型
 //     "E": 123456789,   // 事件时间
@@ -167,7 +168,7 @@ let allPositionDetail = {}; // 当前仓位信息
 let bollArr = [];
 let rsiArr = [];
 
-const maxKLinelen = 1000; // 储存kLine最大数量
+const maxKLinelen = 100; // 储存kLine最大数量
 // 日志
 let logStream = null;
 let errorStream = null;
@@ -212,6 +213,7 @@ const resetTradingDatas = () => {
 };
 // 获取服务器时间偏移
 const getServerTimeOffset = async () => {
+    if (isTest) return;
     try {
         console.log("获取服务器时间偏移");
         const response = await axiosInstance.get(`${api}/v3/time`);
@@ -244,34 +246,49 @@ const signRequest = (params) => {
 // 获取K线数据
 const getKLineData = async (symbol, interval, limit) => {
     try {
-        const response = await axios.get(`${fapi}/v1/klines`, {
-            params: {
-                symbol,
-                interval,
-                limit,
-            },
-        });
+        let response = null;
+        if (isTest) {
+            response = await axios.get(`${localApi}/v1/klines`, {
+                params: {
+                    symbol,
+                    klineStage,
+                    limit,
+                },
+            });
+        } else {
+            response = await axios.get(`${fapi}/v1/klines`, {
+                params: {
+                    symbol,
+                    interval,
+                    limit,
+                },
+            });
+        }
 
         let ks = response.data || [];
 
-        // 此时间未收盘
-        if (ks[ks.length - 1][6] > Date.now()) {
-            ks.pop();
+        if (isTest) {
+            return ks
+        } else {
+            // 此时间未收盘
+            if (ks[ks.length - 1][6] > Date.now()) {
+                ks.pop();
+            }
+            // 解析K线数据
+            return ks.map((item) => ({
+                openTime: getDate(item[0]), // 开盘时间
+                open: parseFloat(item[1]), // 开盘价
+                high: parseFloat(item[2]), // 最高价
+                low: parseFloat(item[3]), // 最低价
+                close: parseFloat(item[4]), // 收盘价(当前K线未结束的即为最新价)
+                volume: parseFloat(item[5]), // 成交量
+                closeTime: getDate(item[6]), // 收盘时间
+                quoteAssetVolume: parseFloat(item[7]), // 成交额
+                numberOfTrades: item[8], // 成交笔数
+                takerBuyBaseAssetVolume: parseFloat(item[9]), // 主动买入成交量
+                takerBuyQuoteAssetVolume: parseFloat(item[10]), // 主动买入成交额
+            }));
         }
-        // 解析K线数据
-        return ks.map((item) => ({
-            openTime: getDate(item[0]), // 开盘时间
-            open: parseFloat(item[1]), // 开盘价
-            high: parseFloat(item[2]), // 最高价
-            low: parseFloat(item[3]), // 最低价
-            close: parseFloat(item[4]), // 收盘价(当前K线未结束的即为最新价)
-            volume: parseFloat(item[5]), // 成交量
-            closeTime: getDate(item[6]), // 收盘时间
-            quoteAssetVolume: parseFloat(item[7]), // 成交额
-            numberOfTrades: item[8], // 成交笔数
-            takerBuyBaseAssetVolume: parseFloat(item[9]), // 主动买入成交量
-            takerBuyQuoteAssetVolume: parseFloat(item[10]), // 主动买入成交额
-        }));
     } catch (error) {
         console.error(
             "getKLineData header::",
@@ -298,7 +315,7 @@ const getHistoryClosePrices = async () => {
         lastRenkoClose = newLastRenkoClose;
         renkoData.length && kLineData.push(...renkoData);
     });
-    // console.log("🚀 ~ getHistoryClosePrices ~ kLineData:", kLineData)
+    console.log("🚀 ~ getHistoryClosePrices ~ kLineData:", kLineData)
 
     historyClosePrices = kLineData.map((data) => data.close); // K线数据有一个close字段表示收盘价，根据实际情况调整
     console.log(
@@ -1291,7 +1308,6 @@ const setTP_SL = (trend, stopLoss, stopProfit) => {
 
 // 5. 启动交易
 const startTrading = async () => {
-    console.log(isTest ? "测试环境～～～" : "正式环境～～～");
     try {
         // 同步服务器时间
         await getServerTimeOffset();
@@ -1543,6 +1559,32 @@ const startWebSocket = async () => {
 
     // 添加 'message' 事件处理程序
     ws.on("message", async (data) => {
+        let realData = {};
+        if (isTest) {
+            // 将 Buffer 转换为字符串
+            const jsonString = data.toString("utf-8");
+            try {
+                // 解析 JSON 数据
+                const parsedData = JSON.parse(jsonString);
+                realData = {
+                    k: {
+                        t: parsedData.openTime,
+                        T: parsedData.closeTime,
+                        o: parsedData.open,
+                        c: parsedData.close,
+                        h: parsedData.high,
+                        l: parsedData.low,
+                        v: parsedData.volume,
+                        x: parsedData.isNewLine || false,
+                    }
+                }
+            } catch (error) {
+                console.error("JSON 解析失败:", error);
+            }
+        } else {
+            realData = JSON.parse(data);
+            console.log("🚀 ~ ws.on ~ data:", data)
+        }
         const {
             k: {
                 t: openTime, // 这根K线的起始时间
@@ -1555,14 +1597,14 @@ const startWebSocket = async () => {
                 x: isNewLine, // 这根K线是否完结(是否已经开始下一根K线)
                 V: takerBuyBaseAssetVolume, // 主动买入的成交量
             },
-        } = JSON.parse(data);
+        } = realData
 
         prePrice = currentPrice; // 不能删除
         currentPrice = Number(close) || 0;
 
         const curKLine = {
-            openTime: getDate(openTime), // 这根K线的起始时间
-            closeTime: getDate(closeTime), // 这根K线的结束时间
+            openTime: isTest ? openTime : getDate(openTime), // 这根K线的起始时间
+            closeTime: isTest ? closeTime : getDate(closeTime), // 这根K线的结束时间
             open: Number(open), // 这根K线期间第一笔成交价
             close: Number(close), // 这根K线期间末一笔成交价
             high: Number(high), // 这根K线期间最高成交价
@@ -1652,10 +1694,16 @@ const createLogs = () => {
 
     // 重写 console.log
     console.log = function (...args) {
+        if (isTest) {
+            if (args[0].indexOf('testMoney') < 0) {
+                return;
+            }
+        }
         // originalConsoleLog.apply(console, args); // 保留原始 console.log 的功能
         // 将 log 写入文件
+        const date = kLineData.length && isTest ? kLineData[kLineData.length - 1].openTime : getDate();
         logStream.write(
-            `${getDate()}: ${args
+            `${date}: ${args
                 .map((v) => {
                     if (typeof v === "object") {
                         return JSON.stringify(v);
@@ -1713,8 +1761,6 @@ createLogs();
 startTrading(); // 开始启动
 
 const test = async () => {
-    await getServerTimeOffset(); // 同步服务器时间
-    await getCurrentPrice();
     await getHistoryClosePrices(); // 初始化 historyClosePrices
 };
 // test();

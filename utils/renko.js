@@ -11,6 +11,7 @@ function convertToRenko(params) {
         high, // 最高价
         low, // 最低价
         volume, // 成交量
+        isNewLine,
     } = klineData;
 
     // 如果当前的价格波动已经达到砖型图的大小
@@ -40,6 +41,7 @@ function convertToRenko(params) {
                     volume: volume / numOfBricks, // 这里可以进一步计算砖型图的成交量
                     openTime, // 这里是起始时间，通常是上一根 K 线的结束时间 ????
                     closeTime, // ????
+                    isNewLine,
                 });
 
                 // 更新上一个砖型图的收盘价
@@ -61,6 +63,12 @@ function convertToRenko(params) {
 
     return { renkoData, newLastRenkoClose: lastRenkoClose, preRenkoData };
 }
+
+function getSmaRatio(arr) {
+    return (arr[arr.length - 1] - arr[0]) / arr[0];
+}
+
 module.exports = {
     convertToRenko,
+    getSmaRatio,
 };
