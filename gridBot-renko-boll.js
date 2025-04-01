@@ -321,9 +321,9 @@ const setEveryIndex = (historyClosePrices, curKLine) => {
 const setBollArr = (historyClosePrices, curKLine) => {
     bollArr.length >= 10 && bollArr.shift();
     const boll = calculateBollingerBands(historyClosePrices, B2Period, B2mult);
-    if (!boll) return;
+    // if (!boll) return;
     bollArr.push(boll);
-    bollArrConsole.push(boll)
+    isTest && bollArrConsole.push(boll)
     // 计算高低点
     // setHighLowArr(boll, curKLine)
 };
@@ -401,7 +401,7 @@ const refreshKLineAndIndex = (curKLine) => {
 
 // 开仓
 const kaiDanDaJi = async () => {
-    if (!bollArr.length) return;
+    if (!bollArr.filter(v => v).length) return;
     isOrdering = true;
 
     if (readyTradingDirection === "hold") {
@@ -420,7 +420,7 @@ const kaiDanDaJi = async () => {
         // 开仓：没有仓位就根据 readyTradingDirection 开单
         // 开单完成后会重置 readyTradingDirection
         if (readyTradingDirection !== "hold") {
-            judgeAndTrading();
+            await judgeAndTrading();
         }
     }
 

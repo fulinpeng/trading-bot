@@ -25,23 +25,27 @@ let lastRenkoClose = null;
 originLineData.forEach((v, i) => {
     const  {open, high, low, close, volume} = v;
     let splitV = [v];
+    let _volume = volume / 3;
     if (close > open) {
         splitV = [
             {
                 ...v,
                 open: open,
                 close: low,
+                volume: _volume,
             },
             {
                 ...v,
                 open: low,
                 close: high,
+                volume: _volume,
             },
             {
                 ...v,
                 open: high,
                 close: close,
                 isNewLine: true,
+                volume: _volume,
             },
         ]
     } else {
@@ -50,17 +54,20 @@ originLineData.forEach((v, i) => {
                 ...v,
                 open: open,
                 close: high,
+                volume: _volume,
             },
             {
                 ...v,
                 open: high,
                 close: low,
+                volume: _volume,
             },
             {
                 ...v,
                 open: low,
                 close: close,
                 isNewLine: true,
+                volume: _volume,
             },
         ]
     }

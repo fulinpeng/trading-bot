@@ -35,7 +35,8 @@
 		const symbol="{{symbol}}"
 		const timeLevel="{{timeLevel}}"
 		const kLineData={{kLineData}}
-		const option={{option}}
+        // const kLineData= []
+        const option={{option}}
 		option.tooltip.valueFormatter=eval(option.tooltip.valueFormatter)
 		const openHistory={{openHistory}}
 		const closeHistory={{closeHistory}}
@@ -143,6 +144,17 @@
         const B2dev = dev.map((val) => val * B2mult); // 上下轨为均值 ± 2倍标准差
         const B2upper = B2basis.map((val, idx) => val + B2dev[idx]); // 上轨
         const B2lower = B2basis.map((val, idx) => val - B2dev[idx]); // 下轨
+        
+        // let B2basis = [];
+        // let B2upper = [];
+        // let B2lower = [];
+        // let bollArr = []
+        bollArr.map((v) => {
+            B2basis.push(v ? v.B2basis : null);
+            B2upper.push(v ? v.B2upper : null);
+            B2lower.push(v ? v.B2lower : null);
+        })
+        console.log("🚀 ~ bollArr.map ~ bollArr:", bollArr.length, B2basis.length, B2upper.length, B2lower.length)
 
         // console.log("🚀 ~ B2basis B2dev B2upper B2lower:", B2basis, B2dev, B2upper, B2lower)
 
@@ -163,7 +175,6 @@
                 },
             ];
         });
-
         const markPointData = openHistory.map((t, i) => {
             let value = trendHistory[i] === 'up' ? (closePriceHistory[i] - openPriceHistory[i]).toFixed(8) : (openPriceHistory[i] - closePriceHistory[i]).toFixed(8);
             let protectByOrderPrice = closePriceHistory[i] - openPriceHistory[i] === 0; // 保本损

@@ -8,6 +8,7 @@ const { calculateBollingerBands } = require("../utils/boll.js");
 const { calculateSimpleMovingAverage, calculateEMA } = require("../utils/ma.js");
 const { calculateTSI } = require("../utils/tsi.js");
 const { getSmaRatio } = require("../utils/renko.js");
+const { calculateWilliamsR } = require("../utils/williams.js");
 const fs = require("fs");
 const symbol = "dogeUSDT";
 
@@ -73,6 +74,7 @@ let quantity = 0;
 let orderPrice = 0;
 let maxMoney = 0;
 let minMoney = 0;
+let maxLossMoney = 0;
 let openHistory = [];
 let closeHistory = [];
 let trendHistory = [];
@@ -88,6 +90,7 @@ let bollArr = [];
 let rsiArr = [];
 let tsiArr = [];
 let volArr = [];
+let williamsArr = [];
 let emaShortArr = [];
 let emaLongArr = [];
 const MA_RSI = { rsiLength: 14, smaLength: 20 };
@@ -103,7 +106,7 @@ const MOD_LOW = 'MOD_LOW';
 let preAction = '';
 
 let isUpOpen = false;
-let isDownOpen = false;
+let isDownOpen = true;
 
 const highLowTimes = [];
 const highLowPrices = [];
@@ -125,43 +128,37 @@ const setProfit = (orderPrice, currentPrice, time) => {
         if (curTestMoney <= 0) {
             lossCount = lossCount + 1 > maxLossCount ? maxLossCount : lossCount + 1;
         } else {
+            // lossCount = lossCount > 1 ? lossCount - 1 : 0;
             lossCount = 0;
         }
     }
     if (curTestMoney < 0) {
         failNum++;
+        minMoney = minMoney + curTestMoney;
+        if (minMoney < maxLossMoney) {
+            maxLossMoney = minMoney;
+        }
     }
     if (curTestMoney > 0) {
         winNum++;
+        minMoney = 0;
     }
     if (testMoney > maxMoney) maxMoney = testMoney;
-    if (testMoney < minMoney) minMoney = testMoney;
     curTestMoneyHistory.push(curTestMoney);
     testMoneyHistory.push(testMoney);
     closeHistory.push(time);
     closePriceHistory.push(currentPrice);
     trendHistory.push(trend);
     // 最大亏损值
-    setMinMoney(orderPrice, currentPrice);
+    setMinMoney(curTestMoney);
     if (maxLoss[lossCount]) {
         maxLoss[lossCount]++;
     } else {
         maxLoss[lossCount] = 1;
     }
 };
-const setMinMoney = (orderPrice, currentPrice, closeTime) => {
-    let _testMoney = 0;
-    if (trend === "up") {
-        _testMoney =
-            quantity * (currentPrice - orderPrice) -
-            quantity * (orderPrice + currentPrice) * 0.0007;
-    }
-    if (trend === "down") {
-        _testMoney =
-            quantity * (orderPrice - currentPrice) -
-            quantity * (orderPrice + currentPrice) * 0.0007;
-    }
-    if (_testMoney < maxStopLossMoney) maxStopLossMoney = _testMoney;
+const setMinMoney = (curTestMoney) => {
+    if (curTestMoney < maxStopLossMoney) maxStopLossMoney = curTestMoney;
 };
 
 const initEveryIndex = (historyClosePrices, klines) => {
@@ -180,7 +177,9 @@ const setEveryIndex = (historyClosePrices, klines) => {
     // 计算tsi
     // setTsiArr(historyClosePrices);
     // 计算vol
-    // setVolArr(klines);
+    setVolArr(klines);
+    // 计算Williams
+    // setWilliamsArr(klines);
 };
 const setBollArr = (historyClosePrices, klines) => {
     bollArr.length >= 10 && bollArr.shift();
@@ -188,7 +187,7 @@ const setBollArr = (historyClosePrices, klines) => {
     bollArr.push(boll);
 
     // 计算高低点
-    setHighLowArr(boll, klines[klines.length - 1]);
+    // setHighLowArr(boll, klines[klines.length - 1]);
 };
 // 储存高低点
 const setHighLowArr = (boll, curKline) => {
@@ -254,6 +253,11 @@ const setTsiArr = (historyClosePrices) => {
     tsiArr.length >= 10 && tsiArr.shift();
     const tsis = calculateTSI(historyClosePrices);
     tsiArr.push(tsis[tsis.length - 1]);
+};
+const setWilliamsArr = (klines) => {
+    williamsArr.length >= 10 && williamsArr.shift();
+    const williams = calculateWilliamsR(klines, 14);
+    williamsArr.push(williams);
 };
 const setVolArr = (klines) => {
     const volumes = klines.map(v => v.volume);
@@ -361,7 +365,7 @@ const start = (params) => {
         // 准备开仓
         if (readyTradingDirection === "hold") {
             // 初略判断趋势
-            judgeTradingDirection(getLastFromArr(curKLines, 5));
+            judgeTradingDirection(curKLines);
             // 指标判断趋势
             // judgeTradingDirectionByIndex(getLastFromArr(curKLines, 5));
         }
@@ -382,7 +386,7 @@ const start = (params) => {
 
             const [point1, point2] = TP_SL;
 
-            //////////////////////////// 指标止损 /////////////////////////// start
+            //////////////////////////// 指标移动止损位置 /////////////////////////// start
             // trend === "up" 时，close超出上轨，就移动止损点
             if (
                 hasOrder &&
@@ -405,7 +409,7 @@ const start = (params) => {
                 firstStopLossRate = 0;
                 continue;
             }
-            //////////////////////////// 指标止损 /////////////////////////// end
+            //////////////////////////// 指标移动止损位置 /////////////////////////// end
 
             // 判断止损
             if (trend) {
@@ -535,6 +539,7 @@ const start = (params) => {
                         setProfit(orderPrice, close, openTime);
                         reset();
                         arriveLastStopProfit++;
+                        isArriveLastStopProfit = true;
                         continue;
                     }
                     // 上面没有被止损，那看是否能止盈，low 小于 point1 就止盈利，否则继续持有
@@ -542,6 +547,7 @@ const start = (params) => {
                         setProfit(orderPrice, close, openTime);
                         reset();
                         arriveLastStopProfit++;
+                        isArriveLastStopProfit = true;
                         continue;
                     }
                 }
@@ -552,11 +558,11 @@ const start = (params) => {
             if (
                 hasOrder &&
                 trend === "up" &&
-                isArriveLastStopProfit &&
-                (close <= B2lower) //  || (isYin(kLine0) && isYin(kLine1) && isYin(kLine2) && isYin(kLine3))
+                !firstStopProfitRate &&
+                (close <= B2lower)
             ) {
                 zhibiaoWinNum += 1;
-                setProfit(orderPrice, close, openTime);
+                setProfit(orderPrice, close, openTime); // 正式环境可能此时还没有收盘 ???? 但是boll值变化不大可以直接对比
                 reset();
                 continue;
             }
@@ -564,11 +570,11 @@ const start = (params) => {
             if (
                 hasOrder &&
                 trend === "down" &&
-                isArriveLastStopProfit &&
+                !firstStopProfitRate &&
                 (close >= B2upper) // ||  (isYang(kLine0) && isYang(kLine1) && isYang(kLine2) && isYang(kLine3))
             ) {
                 zhibiaoWinNum += 1;
-                setProfit(orderPrice, close, openTime);
+                setProfit(orderPrice, close, openTime); // 正式环境可能此时还没有收盘 ???? 但是boll值变化不大可以直接对比
                 reset();
                 continue;
             }
@@ -595,14 +601,18 @@ const reset = () => {
     hasOrder = false;
 };
 // 指标判断方向 / 交易
-const judgeTradingDirection = (kLines) => {
-    let [kLine1, kLine2, kLine3, kLine4, kLine5] = kLines;
+const judgeTradingDirection = (curKLines) => {
+    let [kLine0, kLine1, kLine2, kLine3, kLine4, kLine5] = getLastFromArr(curKLines, 6);
     let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
     let [high3, high4, high5] = getLastFromArr(highArr, 3);
     let [low3, low4, low5] = getLastFromArr(lowArr, 3);
     // let [rsi1, rsi2, rsi3, rsi4, rsi5] = getLastFromArr(rsiArr, 5);
+    // let [williams1, williams2, williams3, williams4, williams5] = getLastFromArr(williamsArr, 5);
+    let [vol1, vol2, vol3, vol4, vol5] = getLastFromArr(volArr, 5);
 
     // const ratio = getSmaRatio(getLastFromArr(bollArr.map(v => v.B2basis), 3));
+
+    // 使用成交量并不合适，因为这里并不知道renko生么时候收盘，没有时间概念不能累加volume
 
     let { openTime, high, low, close } = kLine5;
 
@@ -614,7 +624,7 @@ const judgeTradingDirection = (kLines) => {
     // 准备条件: 当前close大于boll下沿，并且小于中线
     const upTerm1 = isYin(kLine3) && isYin(kLine4) && isYang(kLine5);// isYin(kLine3) && isYin(kLine4) && isYang(kLine5); // isYin(kLine2) && isYang(kLine3) && isYang(kLine4) && isYang(kLine5); //isYin(kLine2) && isYang(kLine3) && isYang(kLine4) && isYang(kLine5); //
     // 位于前前个低点，+-brickSize，开空
-    const upTerm2 = true//(ratio >= -9.0012);
+    const upTerm2 = true; // kLine4.volume > vol4
     // 位于前前个高点，+-brickSize，开空
     const upTerm3 = true; // high4 - brickSize <= close && close <= high4 + brickSize
     // upTerm1 && console.log("🚀 ~ up ~ ratio:", openTime, ratio.toFixed(6))
@@ -635,7 +645,7 @@ const judgeTradingDirection = (kLines) => {
     // 准备条件: 当前close小于boll上沿，并且大于中线
     const downTerm1 = isYang(kLine3) && isYang(kLine4) && isYin(kLine5); // isYang(kLine3) && isYang(kLine4) && isYin(kLine5); // isYang(kLine2) && isYin(kLine3) && isYin(kLine4) && isYin(kLine5); //  isYang(kLine3) && isYang(kLine4) && isYin(kLine5);  // 
     // 位于前前个低点，+-brickSize，开空
-    const downTerm2 = true// !(ratio >= 0.0012);
+    const downTerm2 = true; // kLine4.volume > vol4
     // 位于前前个高点，+-brickSize，开空
     const downTerm3 = true; // high4 - brickSize <= close && close <= high4 + brickSize
     // downTerm1 && console.log("🚀 ~ down ~ ratio:", openTime, ratio.toFixed(6))
@@ -821,11 +831,11 @@ const judgeAndTrading = (kLines, params) => {
     // 根据指标判断是否可以开单
     const curkLine = kLines[kLines.length - 1];
     const trendInfo = calculateTradingSignal(kLines);
-    const { stopLoss, stopProfit } = trendInfo;
+    const { trend: _trend, stopLoss, stopProfit } = trendInfo;
     curStopLoss = stopLoss;
     curStopProfit = stopProfit;
     // 开单
-    switch (trendInfo.trend) {
+    switch (_trend) {
         case "up":
             trend = "up";
             setTP_SL("up", stopLoss, stopProfit, curkLine.close);
@@ -925,6 +935,7 @@ function run(params) {
         arriveFirstStopLoss: "初次止损" + arriveFirstStopLoss + "次",
         arriveLastStopLoss: "最终止损" + arriveLastStopLoss + "次",
         zhibiaoWinNum: "指标止盈" + zhibiaoWinNum + "次",
+        maxLossMoney: "最大回撤: " + maxLossMoney.toFixed(2) + "U" + '（' + ((maxLossMoney / 100) * 100).toFixed(2) + '%）',
         availableMoney,
         maxAvailableMoney,
         winNum,
@@ -1051,7 +1062,7 @@ run({
     invalidSigleStopRate: 0.1, // 止损在10%，不开单
     slAtrPeriod: 14,
     double: 1, // 是否损失后加倍开仓
-    maxLossCount: 60, // 损失后加倍开仓，最大倍数
+    maxLossCount: 20, // 损失后加倍开仓，最大倍数
     // targetTime: "2025-02-01_00-00-00",
     closeLastOrder: true, // 最后一单是否平仓
     isUpOpen: false,

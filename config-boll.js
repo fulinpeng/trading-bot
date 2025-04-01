@@ -11,8 +11,7 @@ const config = {
         klineStage: "1m", // k线级别
         numForAverage: 12, // 多少根k线求取candleHeight
 
-        
-        brickSize: 0.002,
+        brickSize: 0.0005,
         B2Period: 10, // boll周期
         B2mult: 1.5, // boll倍数
         howManyCandle: 3, // 初始止盈，（盈亏比 4 到 10 收益一样，都走了指标止盈，最低有 3 * 0.4 保底）
@@ -25,7 +24,7 @@ const config = {
         maxStopLossRate: 0.01, // 止损小于10%的情况，最大止损5%
         invalidSigleStopRate: 0.1, // 止损在10%，不开单
         double: 1, // 是否损失后加倍开仓
-        maxLossCount: 60, // 损失后加倍开仓，最大倍数
+        maxLossCount: 20, // 损失后加倍开仓，最大倍数
     },
     '1000pepe': {
         strategyType: "renko_boll",

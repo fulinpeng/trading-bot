@@ -4,7 +4,7 @@ const path = require("path");
 const chokidar = require("chokidar");
 
 const app = express();
-const PORT = 3000;
+const PORT = 3001;
 
 let symbol = process.argv[2];
 let timeLevel = process.argv[3];
@@ -117,8 +117,8 @@ chokidar
 
 // 动态生成 HTML
 app.get("/", (req, res) => {
-    const htmlPath = path.resolve(__dirname, "index.html");
-    // const htmlPath = path.resolve(__dirname, "index-renko-boll3.html");
+    // const htmlPath = path.resolve(__dirname, "index.html");
+    const htmlPath = path.resolve(__dirname, "index-renko-boll3.html");
     const htmlTemplate = fs.readFileSync(htmlPath, "utf-8");
 
     const injectedHTML = htmlTemplate
