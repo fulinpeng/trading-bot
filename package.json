@@ -37,7 +37,6 @@
         "@binance/connector": "^3.2.0",
         "axios": "^1.6.5",
         "crypto": "^1.0.1",
-        "dayjs": "^1.11.12",
         "dotenv": "^16.4.0",
         "geneticalgorithm": "^1.0.2",
         "https-proxy-agent": "^7.0.2",
@@ -51,6 +50,7 @@
         "ws": "^8.16.0"
     },
     "devDependencies": {
+        "dayjs": "^1.11.13",
         "jest": "^29.7.0",
         "prettier": "^3.5.3"
     }

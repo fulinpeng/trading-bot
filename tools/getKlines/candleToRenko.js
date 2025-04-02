@@ -23,29 +23,28 @@ let { kLineData: originLineData } = require(`../../tests/source/${symbol}-${time
 let kLineData = [];
 let lastRenkoClose = null;
 originLineData.forEach((v, i) => {
-    const  {open, high, low, close, volume} = v;
+    let  {open, high, low, close, volume} = v;
     let splitV = [v];
-    let _volume = volume / 3;
+    volume = volume / 3;
     if (close > open) {
         splitV = [
             {
                 ...v,
                 open: open,
                 close: low,
-                volume: _volume,
+                volume,
             },
             {
                 ...v,
                 open: low,
                 close: high,
-                volume: _volume,
+                volume,
             },
             {
                 ...v,
                 open: high,
                 close: close,
-                isNewLine: true,
-                volume: _volume,
+                volume,
             },
         ]
     } else {
@@ -54,31 +53,33 @@ originLineData.forEach((v, i) => {
                 ...v,
                 open: open,
                 close: high,
-                volume: _volume,
+                volume,
             },
             {
                 ...v,
                 open: high,
                 close: low,
-                volume: _volume,
+                volume,
             },
             {
                 ...v,
                 open: low,
                 close: close,
-                isNewLine: true,
-                volume: _volume,
+                volume,
             },
         ]
     }
     splitV.forEach(v => {
-        const { renkoData, newLastRenkoClose } = convertToRenko({
+        const { renkoData, newLastRenkoClose, preRenkoData, updatePre } = convertToRenko({
             klineData: v,
             brickSize,
             lastRenkoClose,
         });
         lastRenkoClose = newLastRenkoClose;
         renkoData.length && kLineData.push(...renkoData);
+        if (updatePre) {
+            kLineData[kLineData.length - 1] = preRenkoData;
+        }
     })
 });
 

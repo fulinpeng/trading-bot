@@ -1,0 +1,1 @@
+module.exports = {"currentPrice":0.17023,"prePrice":0.17021,"tradingInfo":{"trend":"up","side":"BUY","orderPrice":0.17023,"quantity":587,"times":0},"testMoney":0,"hasOrder":true,"isProfitRun":1,"TP_SL":[0.16873,0.17323],"readyTradingDirection":"hold","availableMoney":100,"firstStopProfitRate":1.1,"firstStopLossRate":0.5,"lossCount":0}

@@ -1,3 +1,4 @@
+const dayjs = require('dayjs');
 function debounce(func, delay, immediate) {
     let timeoutId;
 
@@ -107,6 +108,12 @@ const getDate = (date, showMillise) => {
         return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
     }
 };
+function convertToTimestamp(dateStr, inputFormat = "YYYY-MM-DD_HH-mm-ss") {
+    const date = dayjs(dateStr, inputFormat);
+    const timestamp = date.valueOf();
+    return timestamp;
+}
+
 // 计算数组平均值的函数
 function calculateAverage(values, period) {
     if (period) {
@@ -254,4 +261,5 @@ module.exports = {
     calculateHighLow,
     getSequenceArr,
     getSmaRatioArr,
+    convertToTimestamp,
 };

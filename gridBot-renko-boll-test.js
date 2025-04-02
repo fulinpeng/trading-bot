@@ -51,8 +51,8 @@ const MOD_HIGH = 'MOD_HIGH'
 const MOD_LOW = 'MOD_LOW'
 let preAction = '';
 
-let isUpOpen = false;
-let isDownOpen = true;
+let isUpOpen = true;
+let isDownOpen = false;
 
 const MA_RSI = { rsiLength: 14, smaLength: 20 };
 
@@ -502,7 +502,7 @@ const judgeStopLoss = async (currentPrice) => {
                 (point1 - currentPrice)/currentPrice
             );
             // 止损/平多
-            await closeUp(isTestLocal ? point1 : currentPrice); // 这里非常关键>>>>????
+            await closeUp(point1); // 这里非常关键>>>>????
             isJudgeStopLoss = false;
             return;
         }
@@ -517,7 +517,7 @@ const judgeStopLoss = async (currentPrice) => {
                 point2,
                 (currentPrice - point2)/point2
             );
-            await closeDown(isTestLocal ? point2 : currentPrice); // 这里非常关键>>>>????
+            await closeDown(point2); // 这里非常关键>>>>????
             isJudgeStopLoss = false;
             return;
         }
@@ -1334,7 +1334,7 @@ const closeAllOrders = async ({ up, down }) => {
 
 // 平多
 const closeUp = async (testCurrentPrice) => {
-    let _currentPrice = isTestLocal ? testCurrentPrice || currentPrice : currentPrice;
+    let _currentPrice = testCurrentPrice || currentPrice;
     await closeOrder("SELL", tradingInfo.quantity, () => {
         // 测试
         const curTestMoney =
@@ -1373,7 +1373,7 @@ const setLossCount = (curTestMoney) => {
 };
 // 平空
 const closeDown = async (testCurrentPrice) => {
-    let _currentPrice = isTestLocal ? testCurrentPrice || currentPrice : currentPrice;
+    let _currentPrice = testCurrentPrice || currentPrice;
     await closeOrder("BUY", tradingInfo.quantity, () => {
         // 测试
         const curTestMoney =
@@ -1424,24 +1424,6 @@ const gridPointClearTrading = async (_currentPrice) => {
 
     onGridPoint = false;
 };
-// let reconnectAttempts=0; // 重连次数
-// const maxReconnectAttempts=10; // 最大重连次数
-// const reconnectInterval=3000; // 重连间隔
-// let reconnectTimer=null; // 重连定时器
-// function scheduleReconnect() {
-// 	if (reconnectAttempts>=maxReconnectAttempts) {
-// 		console.error('Websocket Max reconnect attempts reached...');
-// 		process.exit();
-// 	}
-// 	if (!reconnectTimer) {
-// 		console.log(`Reconnecting Websocket in ${reconnectInterval}ms...`);
-// 		reconnectTimer=setTimeout(() => {
-// 			reconnectAttempts++;
-// 			reconnectTimer=null;
-// 			startWebSocket();
-// 		}, reconnectInterval);
-// 	}
-// }
 // WebSocket 事件
 const startWebSocket = async () => {
     console.log("🚀 startWebSocket~~~~~");
@@ -1547,7 +1529,6 @@ const startWebSocket = async () => {
         // 相等的话直接退出，因为它到不了任何交易点，继续执行也没有意义
         // 没有订单也不继续了
         if (isLoading() || prePrice === currentPrice) {
-            // return;
         } else {
             if (renkoData.length){
                 // renko所以没有滞后得说法????
