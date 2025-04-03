@@ -28,6 +28,7 @@ let {
     errorsFolder,
     //////////////////////////////
     brickSize,
+    slippage, // 滑点(测试)
     B2Period,
     B2mult,
     howManyCandle, // 初始止盈，盈亏比
@@ -69,7 +70,7 @@ let bollArrConsole = []
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
 const isTest = true; // 将此标志设置为  false/true
-const isTestLocal = false; // 使用本地环境（先确保isTest==true）
+const isTestLocal = true; // 使用本地环境（先确保isTest==true）
 const api = "https://api.binance.com/api";
 const fapi = "https://fapi.binance.com/fapi";
 const localApi = 'http://localhost:3000'
@@ -168,7 +169,7 @@ let allPositionDetail = {}; // 当前仓位信息
 let bollArr = [];
 let rsiArr = [];
 
-const maxKLinelen = 1000; // 储存kLine最大数量
+const maxKLinelen = isTestLocal ? 100 : 1000; // 储存kLine最大数量
 // 日志
 let logStream = null;
 let errorStream = null;
@@ -486,7 +487,7 @@ const judgeIndexLoss = async (currentPrice) => {
     isJudgeIndexLoss = false;
 }
 // 止损
-const judgeStopLoss = async (currentPrice) => {
+const judgeStopLoss = async (_currentPrice) => {
     if (!hasOrder) return;
     isJudgeStopLoss = true;
     const { trend, orderPrice } = tradingInfo;
@@ -494,30 +495,34 @@ const judgeStopLoss = async (currentPrice) => {
 
     if (trend === "up") {
         // low 小于 point1 就止损，否则继续持有
-        if (currentPrice <= point1) {
+        if (_currentPrice <= point1) {
+            // 这里非常关键point1/_currentPrice
+            _currentPrice = isTestLocal ? point1 * (1 - slippage) : _currentPrice; // 后续改为限价单后_currentPrice改为point1
             console.log(
-                `🚀 ~ judgeStopLoss up ~ ${currentPrice > orderPrice ? '止盈' : '止损'}/平多:currentPrice, point1, 滑点:`,
-                currentPrice,
+                `🚀 ~ judgeStopLoss up ~ ${_currentPrice > orderPrice ? '止盈' : '止损'}/平多:currentPrice, point1, 滑点:`,
+                _currentPrice,
                 point1,
-                (point1 - currentPrice)/currentPrice
+                (point1 - _currentPrice)/_currentPrice
             );
             // 止损/平多
-            await closeUp(point1); // 这里非常关键>>>>????
+            await closeUp(_currentPrice);
             isJudgeStopLoss = false;
             return;
         }
     }
     if (trend === "down") {
         // high 大于 point2 就止损，否则继续持有
-        if (currentPrice >= point2) {
+        if (_currentPrice >= point2) {
+            // 这里非常关键point2/_currentPrice
+            _currentPrice = isTestLocal ? point2 * (1 + slippage) : _currentPrice; // 后续改为限价单后_currentPrice改为point2
             // 止损/平空
             console.log(
-                `🚀 ~ judgeStopLoss down ~  ${currentPrice < orderPrice ? '止盈' : '止损'}/平空:currentPrice, point2, 滑点:`,
-                currentPrice,
+                `🚀 ~ judgeStopLoss down ~  ${_currentPrice < orderPrice ? '止盈' : '止损'}/平空:currentPrice, point2, 滑点:`,
+                _currentPrice,
                 point2,
-                (currentPrice - point2)/point2
+                (_currentPrice - point2)/point2
             );
-            await closeDown(point2); // 这里非常关键>>>>????
+            await closeDown(_currentPrice);
             isJudgeStopLoss = false;
             return;
         }
@@ -1460,7 +1465,7 @@ const startWebSocket = async () => {
         } else {
             realData = JSON.parse(data);
         }
-        if (!realData || realData.e !== "kline") {
+        if ((isTestLocal && !realData) || (!isTestLocal && realData.e !== "kline")) {
             console.log("🚀 ~ ws.on ~ data:", data, data.toString('utf8'))
             return;
         }
@@ -1481,6 +1486,7 @@ const startWebSocket = async () => {
         prePrice = currentPrice; // 不能删除
         currentPrice = Number(close) || 0;
 
+        // 测试时就没有这种高频检测，正式情况不一样，需要实时监测
         if (hasOrder) {
             // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
             // 止损 要快，是逆向的，不然滑点太大

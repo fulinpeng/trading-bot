@@ -29,6 +29,7 @@ let availableMoney = 0;
 let howManyCandle = 1;
 let isProfitRun = 0;
 let firstStopProfitRate = 0;
+let slippage = 0;
 let arriveLastStopLoss = 0;
 let B2Period = 11; // boll周期
 let B2mult = 1.5; // boll倍数
@@ -286,6 +287,7 @@ const resetInit = () => {
     lossCount = 0;
     maxLossCount = 2;
     firstStopProfitRate = 0;
+    slippage = 0;
     B2Period = 11; // boll周期
     B2mult = 1.5; // boll倍数
     firstProtectProfitRate = 0;
@@ -330,6 +332,7 @@ const start = (params) => {
         B2Period = params.B2Period;
         B2mult = params.B2mult;
         firstStopProfitRate = params.firstStopProfitRate;
+        slippage = params.slippage;
         firstProtectProfitRate = params.firstProtectProfitRate;
         firstStopLossRate = params.firstStopLossRate;
         profitProtectRate = params.profitProtectRate;
@@ -423,7 +426,7 @@ const start = (params) => {
                     // low 小于 point1 就止损，否则继续持有
                     if (close <= point1) {
                         firstStopProfitRate && (arriveLastStopLoss++);
-                        setProfit(orderPrice, point1, openTime);
+                        setProfit(orderPrice, point1*(1-slippage), openTime);
                         reset();
                         continue;
                     }
@@ -465,7 +468,7 @@ const start = (params) => {
                     // high 大于 point2 就止损，否则继续持有
                     if (close >= point2) {
                         firstStopProfitRate && (arriveLastStopLoss++);
-                        setProfit(orderPrice, point2, openTime);
+                        setProfit(orderPrice, point2*(1+slippage), openTime);
                         reset();
                         continue;
                     }
@@ -563,7 +566,8 @@ const start = (params) => {
             if (
                 hasOrder &&
                 trend === "up" &&
-                !firstStopProfitRate &&
+                // !firstStopProfitRate &&
+                isArriveLastStopProfit &&
                 (close <= B2lower)
             ) {
                 zhibiaoWinNum += 1;
@@ -575,7 +579,8 @@ const start = (params) => {
             if (
                 hasOrder &&
                 trend === "down" &&
-                !firstStopProfitRate &&
+                // !firstStopProfitRate &&
+                isArriveLastStopProfit &&
                 (close >= B2upper) // ||  (isYang(kLine0) && isYang(kLine1) && isYang(kLine2) && isYang(kLine3))
             ) {
                 zhibiaoWinNum += 1;
@@ -1055,15 +1060,16 @@ function run(params) {
 // let brickSize=0.0006; // zetaUSDT   67.704%             921.1533628456452
 // let brickSize=0.00022; // zkUSDT   60.924%              430.31042108253496
 run({
-    brickSize: 0.001,
+    brickSize: 0.0005,
+    slippage:  0.0002,
     B2Period: 10, // boll周期
     B2mult: 1.5, // boll倍数
-    howManyCandle: 3, // 初始止盈，（盈亏比 4 到 10 收益一样，都走了指标止盈，最低有 3 * 0.4 保底）
+    howManyCandle: 2, // 初始止盈，（盈亏比 4 到 10 收益一样，都走了指标止盈，最低有 3 * 0.4 保底）
     firstStopProfitRate: 1.3, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
     firstProtectProfitRate: 0.9, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
     firstStopLossRate: 0.5, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
     isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
-    profitProtectRate: 0.9, //isProfitRun === 1 时生效，保留多少利润
+    profitProtectRate: 0.95, //isProfitRun === 1 时生效，保留多少利润
     howManyCandleForProfitRun: 1,
     maxStopLossRate: 0.01, // 止损小于10%的情况，最大止损5%
     invalidSigleStopRate: 0.1, // 止损在10%，不开单

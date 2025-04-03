@@ -49,7 +49,7 @@
         const curTestMoneyHistory={{curTestMoneyHistory}}
         const highLowTimes={{highLowTimes}}
         const highLowPrices={{highLowPrices}}
-        const rsiArr={{rsiArr}}
+        // const rsiArr={{rsiArr}}
 
         function calculateMA(dayCount) {
             var result = [];
@@ -134,19 +134,19 @@
         });
 
         
-        let rsi = [];
-        let smoothedRsi = [];
-        rsiArr.map(v => {
-            rsi.push(v.rsi);
-            smoothedRsi.push(v.smoothedRsi);
-        })
-        if (rsi.length < dates.length) {
-            let dis = dates.length - rsi.length;
-            for (let i = 0; i < dis; i++) {
-                rsi.unshift(null);
-                smoothedRsi.unshift(null);
-            }
-        }
+        // let rsi = [];
+        // let smoothedRsi = [];
+        // rsiArr.map(v => {
+        //     rsi.push(v.rsi);
+        //     smoothedRsi.push(v.smoothedRsi);
+        // })
+        // if (rsi.length < dates.length) {
+        //     let dis = dates.length - rsi.length;
+        //     for (let i = 0; i < dis; i++) {
+        //         rsi.unshift(null);
+        //         smoothedRsi.unshift(null);
+        //     }
+        // }
 
         console.log("🚀 ~ data:", data.length);
 
@@ -352,28 +352,28 @@
                 //     },
                 //     data: volumes,
                 // },
-                {
-                    name: 'rsi',
-                    type: 'line',
-                    symbol: 'none',
-                    xAxisIndex: 1,
-                    yAxisIndex: 1,
-                    itemStyle: {
-                        color: '#7fbe9e'
-                    },
-                    data: rsi,
-                },
-                {
-                    name: 'smoothedRsi',
-                    type: 'line',
-                    symbol: 'none',
-                    xAxisIndex: 1,
-                    yAxisIndex: 1,
-                    itemStyle: {
-                        color: '#d24f4f'
-                    },
-                    data: smoothedRsi,
-                },
+                // {
+                //     name: 'rsi',
+                //     type: 'line',
+                //     symbol: 'none',
+                //     xAxisIndex: 1,
+                //     yAxisIndex: 1,
+                //     itemStyle: {
+                //         color: '#7fbe9e'
+                //     },
+                //     data: rsi,
+                // },
+                // {
+                //     name: 'smoothedRsi',
+                //     type: 'line',
+                //     symbol: 'none',
+                //     xAxisIndex: 1,
+                //     yAxisIndex: 1,
+                //     itemStyle: {
+                //         color: '#d24f4f'
+                //     },
+                //     data: smoothedRsi,
+                // },
                 {
                     type: 'candlestick',
                     name: timeLevel,
