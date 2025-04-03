@@ -10,7 +10,7 @@ const { calculateTSI } = require("../utils/tsi.js");
 const { getSmaRatio } = require("../utils/renko.js");
 const { calculateWilliamsR } = require("../utils/williams.js");
 const fs = require("fs");
-const symbol = "dogeUSDT";
+const symbol = "1000pepeUSDT";
 
 let { kLineData } = require(`./source/renko-${symbol}-1m.js`);
 // let { kLineData } = require(`./${symbol}.js`);
@@ -1060,8 +1060,8 @@ function run(params) {
 // let brickSize=0.0006; // zetaUSDT   67.704%             921.1533628456452
 // let brickSize=0.00022; // zkUSDT   60.924%              430.31042108253496
 run({
-    brickSize: 0.0005,
-    slippage:  0.0002,
+    brickSize: 0.00002,
+    slippage: 0.0002, // 滑点
     B2Period: 10, // boll周期
     B2mult: 1.5, // boll倍数
     howManyCandle: 2, // 初始止盈，（盈亏比 4 到 10 收益一样，都走了指标止盈，最低有 3 * 0.4 保底）
@@ -1073,7 +1073,6 @@ run({
     howManyCandleForProfitRun: 1,
     maxStopLossRate: 0.01, // 止损小于10%的情况，最大止损5%
     invalidSigleStopRate: 0.1, // 止损在10%，不开单
-    slAtrPeriod: 14,
     double: 1, // 是否损失后加倍开仓
     maxLossCount: 20, // 损失后加倍开仓，最大倍数
     // targetTime: "2025-02-01_00-00-00",

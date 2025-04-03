@@ -662,7 +662,8 @@ const judgeIndexProfit = async (currentPrice) => {
     const { trend, orderPrice } = tradingInfo;
     if (
         trend === "up" &&
-        (!firstStopProfitRate) &&
+        // (!firstStopProfitRate) &&
+        isArriveLastStopProfit && // 效果好一点点
         (currentPrice <= B2lower) // boll值变化不大可以直接对比
     ) {
         // 平多
@@ -673,7 +674,8 @@ const judgeIndexProfit = async (currentPrice) => {
     }
     if (
         trend === "down" &&
-        !firstStopProfitRate &&
+        // !firstStopProfitRate &&
+        isArriveLastStopProfit && // 效果好一点点
         (currentPrice >= B2upper) // boll值变化不大可以直接对比
         // 这里是否需要判断 high 和 close 是否大于 B2upper
     ) {
@@ -1492,7 +1494,7 @@ const startWebSocket = async () => {
             // 止损 要快，是逆向的，不然滑点太大
             await judgeStopLoss(currentPrice);
             // 指标止盈，这个也是逆向的
-            await judgeIndexProfit(currentPrice);
+            // await judgeIndexProfit(currentPrice); // 几率很小可以注释掉
         }
 
         const curKLine = {
