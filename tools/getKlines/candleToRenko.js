@@ -22,8 +22,9 @@ if (!brickSize) {
 let { kLineData: originLineData } = require(`../../tests/source/${symbol}-${time}.js`);
 let kLineData = [];
 let lastRenkoClose = null;
+let lastRenkoTrend = null;
 originLineData.forEach((v, i) => {
-    let  {open, high, low, close, volume} = v;
+    let  {open, high, low, close, volume, openTime, closeTime} = v;
     let splitV = [v];
     volume = volume / 3;
     if (close > open) {
@@ -33,18 +34,24 @@ originLineData.forEach((v, i) => {
                 open: open,
                 close: low,
                 volume,
+                openTime: openTime + 1,
+                closeTime: closeTime + 1,
             },
             {
                 ...v,
                 open: low,
                 close: high,
                 volume,
+                openTime: openTime + 2,
+                closeTime: closeTime + 2,
             },
             {
                 ...v,
                 open: high,
                 close: close,
                 volume,
+                openTime: openTime + 3,
+                closeTime: closeTime + 3,
             },
         ]
     } else {
@@ -54,32 +61,45 @@ originLineData.forEach((v, i) => {
                 open: open,
                 close: high,
                 volume,
+                openTime: openTime + 1,
+                closeTime: closeTime + 1,
             },
             {
                 ...v,
                 open: high,
                 close: low,
                 volume,
+                openTime: openTime + 2,
+                closeTime: closeTime + 2,
             },
             {
                 ...v,
                 open: low,
                 close: close,
                 volume,
+                openTime: openTime + 3,
+                closeTime: closeTime + 3,
             },
         ]
     }
     splitV.forEach(v => {
-        const { renkoData, newLastRenkoClose, preRenkoData, updatePre } = convertToRenko({
+        let preRenkoData = null;
+        const { renkoData, newLastRenkoClose, updatePre } = convertToRenko({
             klineData: v,
             brickSize,
+            preRenkoData,
             lastRenkoClose,
+            lastRenkoTrend,
         });
-        lastRenkoClose = newLastRenkoClose;
+        if (newLastRenkoClose && lastRenkoClose) {
+            lastRenkoTrend = newLastRenkoClose > lastRenkoClose ? "up" : "down";
+        }
         renkoData.length && kLineData.push(...renkoData);
         if (updatePre) {
             kLineData[kLineData.length - 1] = preRenkoData;
         }
+        preRenkoData = renkoData[renkoData.length - 1];
+        lastRenkoClose = newLastRenkoClose;
     })
 });
 
