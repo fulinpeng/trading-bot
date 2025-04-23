@@ -89,7 +89,7 @@ function resolveModulePath(moduleName, currentFilePath) {
 function reloadData() {
     // const sourcePath = path.resolve(__dirname, `source/${symbol}-${timeLevel}.js`);
     const sourcePath = path.resolve(__dirname, `source/renko-${symbol}-${timeLevel}.js`);
-    // const sourcePath = path.resolve(__dirname, `../${symbol}.js`); // 测试用，刚从logs拿到的数据
+    // const sourcePath = path.resolve(__dirname, `../${symbol}2.js`); // 测试用，刚从logs拿到的数据
     const dataPath = path.resolve(__dirname, `data/${symbol}-${strategy}.js`);
 
     kLineData = require(sourcePath).kLineData || [];
@@ -117,8 +117,8 @@ chokidar
 
 // 动态生成 HTML
 app.get("/", (req, res) => {
-    // const htmlPath = path.resolve(__dirname, "index.html");
-    const htmlPath = path.resolve(__dirname, "index-renko-boll5.html");
+    const htmlPath = path.resolve(__dirname, "index.html");
+    // const htmlPath = path.resolve(__dirname, "index-renko-boll5.html");
     const htmlTemplate = fs.readFileSync(htmlPath, "utf-8");
 
     const injectedHTML = htmlTemplate

@@ -15,7 +15,7 @@ const { isYang, isYin, } = require("./utils/kLineTools.js");
 
 let testMoney = 0;
 const diff = 2;
-const times = getSequenceArr(diff, 150);
+const times = getSequenceArr(diff, 100);
 
 let {
     strategyType,
@@ -43,7 +43,7 @@ let {
     invalidSigleStopRate, // 止损在10%，不开单
     double, // 是否损失后加倍开仓
     maxLossCount, // 损失后加倍开仓，最大倍数
-} = config["doge"];
+} = config["1000pepe"];
 
 let highArr = [];
 let lowArr = [];
@@ -64,7 +64,8 @@ let firstStopLossRate = DefaultFirstStopLossRate;
 let lossCount = 0;
 let isArriveLastStopProfit = false;
 
-let lastRenkoClose = null;
+let preRenkoClose = null;
+let preRenkoData = null;
 
 let bollArrConsole = []
 
@@ -170,7 +171,7 @@ let allPositionDetail = {}; // 当前仓位信息
 let bollArr = [];
 let rsiArr = [];
 
-const maxKLinelen = isTestLocal ? 100 : 1000; // 储存kLine最大数量
+const maxKLinelen = isTestLocal ? 30 : 1440; // 储存kLine最大数量
 // 日志
 let logStream = null;
 let errorStream = null;
@@ -312,17 +313,19 @@ const getHistoryClosePrices = async () => {
     } else {
         console.log("🚀 ~ getHistoryClosePrices ~ kLines.length:", kLines.length);
         kLines.forEach((v) => {
-            const { renkoData, newLastRenkoClose } = convertToRenko({
+            const { renkoData, newRenkoClose, newRenkoData } = convertToRenko({
                 klineData: v,
                 brickSize,
-                lastRenkoClose,
+                preRenkoClose,
+                preRenkoData,
             });
-            lastRenkoClose = newLastRenkoClose;
+            preRenkoClose = newRenkoClose;
+            preRenkoData = newRenkoData;
             renkoData.length && kLineData.push(...renkoData);
         });
         console.log("🚀 ~ getHistoryClosePrices ~ kLineData:", kLineData.length);
 
-        historyClosePrices = kLineData.map((data) => data.close); // K线数据有一个close字段表示收盘价，根据实际情况调整
+        historyClosePrices = kLineData.map((data) => data.close);
         console.log(
             "初始化k线收盘价:kLineData.length, historyClosePrices.length",
             kLineData.length,
@@ -347,9 +350,7 @@ const setBollArr = (historyClosePrices, curKLine) => {
     // if (!boll) return;
     bollArr.push(boll);
     // ?????会占用很长时间
-    // if (!bollArrConsole.length) {
-    //     bollArrConsole = new Array(maxKLinelen - 10).fill(null);
-    // } else {
+    // if (isTest) {
     //     bollArrConsole.push(boll);
     // }
     // 计算高低点
@@ -403,8 +404,9 @@ const setRsiArr = (historyClosePrices) => {
 
 // 更新kLine信息
 const setKLinesTemp = (curKLine) => {
-    kLineData.length >= maxKLinelen && kLineData.shift();
-    historyClosePrices.length >= maxKLinelen && historyClosePrices.shift();
+    // ?????>>>>
+    kLineData.length >= 30 && kLineData.shift();
+    historyClosePrices.length >= 30 && historyClosePrices.shift();
 
     kLineData.push(curKLine);
     historyClosePrices.push(curKLine.close);
@@ -422,9 +424,6 @@ const refreshKLineAndIndex = (curKLine) => {
     // 设置各种指标
     setEveryIndex([...historyClosePrices], curKLine);
 
-    if (isTest) {
-        console.log("🚀 ~ : curKLine:", curKLine);
-    }
 };
 
 // 开仓
@@ -665,8 +664,8 @@ const judgeIndexProfit = async (currentPrice) => {
     const { trend, orderPrice } = tradingInfo;
     if (
         trend === "up" &&
-        // (!firstStopProfitRate) &&
-        isArriveLastStopProfit && // 效果好一点点
+        (!firstStopProfitRate) &&
+        // isArriveLastStopProfit && // 效果好一点点
         (currentPrice <= B2lower) // boll值变化不大可以直接对比
     ) {
         // 平多
@@ -677,8 +676,8 @@ const judgeIndexProfit = async (currentPrice) => {
     }
     if (
         trend === "down" &&
-        // !firstStopProfitRate &&
-        isArriveLastStopProfit && // 效果好一点点
+        !firstStopProfitRate &&
+        // isArriveLastStopProfit && // 效果好一点点
         (currentPrice >= B2upper) // boll值变化不大可以直接对比
         // 这里是否需要判断 high 和 close 是否大于 B2upper
     ) {
@@ -747,7 +746,7 @@ const judgeAndTrading = async () => {
     switch (trend) {
         case "up":
             await teadeBuy();
-            setTP_SL("up", stopLoss, stopProfit);
+            setTP_SL("up", stopLoss, stopProfit); // 这里下设置止盈止损 ????
             readyTradingDirection = "hold";
             firstStopProfitRate = DefaultFirstStopProfitRate;
             firstStopLossRate = DefaultFirstStopLossRate;
@@ -755,7 +754,7 @@ const judgeAndTrading = async () => {
             break;
         case "down":
             await teadeSell();
-            setTP_SL("down", stopLoss, stopProfit);
+            setTP_SL("down", stopLoss, stopProfit); // 这里下设置止盈止损 ????
             firstStopProfitRate = DefaultFirstStopProfitRate;
             firstStopLossRate = DefaultFirstStopLossRate;
             readyTradingDirection = "hold";
@@ -782,7 +781,7 @@ const calculateTradingSignal = () => {
     let min = Math.min(kLine1.close, kLine2.close, kLine3.close, kLine1.open, kLine2.open, kLine3.open);
     
     // 计算ATR
-    const atr = brickSize * 2;
+    const atr = brickSize * 0.5;
 
     if (readyTradingDirection === "up" && close > open) {
         min = min - atr;
@@ -796,7 +795,7 @@ const calculateTradingSignal = () => {
         return {
             trend: "up",
             stopLoss, // 止损
-            stopProfit: close + (close - stopLoss) * howManyCandle, // 止盈
+            stopProfit: close + brickSize * howManyCandle // (close - stopLoss) * howManyCandle, // 止盈
         };
     }
 
@@ -812,7 +811,7 @@ const calculateTradingSignal = () => {
         return {
             trend: "down",
             stopLoss, // 止损
-            stopProfit: close - (stopLoss - close) * howManyCandle, // 止盈
+            stopProfit: close - brickSize * howManyCandle // (stopLoss - close) * howManyCandle, // 止盈
         };
     }
     return {
@@ -820,20 +819,6 @@ const calculateTradingSignal = () => {
     };
 };
 
-// 查询持仓模式
-const getPositionSideModel = async () => {
-    // await getServerTimeOffset(); // 测试后删除
-    let timestamp = Date.now() + serverTimeOffset;
-    const params = {
-        recvWindow: 6000, // 请求的超时时间
-        timestamp,
-    };
-    const signedParams = signRequest(params);
-    const positionResponse = await axiosInstance.get(
-        `${fapi}/v1/positionSide/dual?${signedParams}`
-    );
-    console.log("🚀 ~ file:200 ~ getPositionSideModel ~ positionResponse:", positionResponse.data);
-};
 // 获取持仓风险，这里要改成村本地
 const getPositionRisk = async () => {
     try {
@@ -999,14 +984,15 @@ const placeOrder = async (side, quantity) => {
         );
         // 如果 下单（开多操作/开空操作） 成功需要更新PurchaseInfo
         if (response && response.data && response.data.orderId) {
-            const { origQty } = response.data;
+            const { origQty, orderId } = response.data;
             const trend = side === "BUY" ? "up" : "down";
             await recordRradingInfo({
+                orderId,
                 trend,
                 side,
                 orderPrice: _currentPrice,
                 quantity: Math.abs(origQty),
-                // orderTime: Date.now(),
+                orderTime: kLineData[kLineData.length - 1].openTime,
             });
 
             // 更新交易状态
@@ -1244,7 +1230,7 @@ const startTrading = async () => {
         console.log("🚀 获取历史仓位数据 ~ allPositionDetail:", historyDatas);
         // 测试
         if (isTest) {
-            await getCurrentPrice();
+            !isTestLocal && await getCurrentPrice();
             historyDatas && (await recoverHistoryData(historyDatas));
         } else {
             // 初始化
@@ -1355,9 +1341,13 @@ const closeUp = async (testCurrentPrice) => {
         setLossCount(curTestMoney);
         console.log(
             "平多 closeUp ~ currentPrice curTestMoney testMoney:",
+            tradingInfo.orderTime,
+            kLineData[kLineData.length - 1].openTime,
+            tradingInfo.orderPrice,
             _currentPrice,
             curTestMoney,
-            testMoney
+            testMoney,
+            lossCount
         );
         console.log("平多完成");
 
@@ -1394,9 +1384,13 @@ const closeDown = async (testCurrentPrice) => {
         setLossCount(curTestMoney);
         console.log(
             "平空 closeDown ~ currentPrice curTestMoney testMoney:",
+            tradingInfo.orderTime,
+            kLineData[kLineData.length - 1].openTime,
+            tradingInfo.orderPrice,
             _currentPrice,
             curTestMoney,
-            testMoney
+            testMoney,
+            lossCount
         );
         console.log("平空完成");
 
@@ -1493,11 +1487,21 @@ const startWebSocket = async () => {
 
         // 测试时就没有这种高频检测，正式情况不一样，需要实时监测
         if (hasOrder) {
-            // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
-            // 止损 要快，是逆向的，不然滑点太大
-            await judgeStopLoss(currentPrice);
-            // 指标止盈，这个也是逆向的
-            // await judgeIndexProfit(currentPrice); // 几率很小可以注释掉
+            await gridPointClearTrading(currentPrice);
+            // // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
+            // // 止损 要快，是逆向的，不然滑点太大
+            // //   （而且，不到 brickSize * 1 所以要实时监测）
+            // await judgeStopLoss(currentPrice);
+
+            // // 下面代码再仔细想想
+
+            // // 首次盈利保护/首次亏损保护
+            // // 作为保底，一定要快
+            // // （不到 brickSize * 1 所以要实时监测）
+            // await judgeFirstProfitProtect(currentPrice);
+        
+            // // // 止盈 | 移动止盈
+            // // await judgeProfitRunOrProfit(currentPrice);
         }
 
         const curKLine = {
@@ -1512,13 +1516,15 @@ const startWebSocket = async () => {
             takerBuyBaseAssetVolume: Number(takerBuyBaseAssetVolume), // 主动买入的成交量
         };
 
-        const { renkoData, newLastRenkoClose } = isTestLocal ? {renkoData: [curKLine]} : convertToRenko({
+        const { renkoData, newRenkoClose, newRenkoData } = isTestLocal ? {renkoData: [curKLine]} : convertToRenko({
             klineData: curKLine,
             brickSize,
-            lastRenkoClose,
+            preRenkoClose,
+            preRenkoData
         });
-        // renkoData.length && console.log("🚀 ~ ws.on ~ , lastRenkoClose, newLastRenkoClose:", lastRenkoClose, newLastRenkoClose)
-        lastRenkoClose = newLastRenkoClose;
+        // renkoData.length && console.log("🚀 ~ ws.on ~ , preRenkoClose, newRenkoClose:", preRenkoClose, newRenkoClose)
+        preRenkoClose = newRenkoClose;
+        preRenkoData = newRenkoData;
         // renkoData 这个值可能大于1，是插针，一般不会??????
         // renko 不怕插针，但是怕流动性不足，会导致不成单
         if (renkoData.length) {

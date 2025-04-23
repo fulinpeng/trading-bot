@@ -21,8 +21,8 @@ if (!brickSize) {
 
 let { kLineData: originLineData } = require(`../../tests/source/${symbol}-${time}.js`);
 let kLineData = [];
-let lastRenkoClose = null;
-let lastRenkoTrend = null;
+let preRenkoClose = null;
+let preRenkoData = null;
 originLineData.forEach((v, i) => {
     let  {open, high, low, close, volume, openTime, closeTime} = v;
     let splitV = [v];
@@ -82,24 +82,16 @@ originLineData.forEach((v, i) => {
             },
         ]
     }
-    splitV.forEach(v => {
-        let preRenkoData = null;
-        const { renkoData, newLastRenkoClose, updatePre } = convertToRenko({
+    splitV.forEach((v, i) => {
+        const { renkoData, newRenkoClose, newRenkoData } = convertToRenko({
             klineData: v,
             brickSize,
+            preRenkoClose,
             preRenkoData,
-            lastRenkoClose,
-            lastRenkoTrend,
         });
-        if (newLastRenkoClose && lastRenkoClose) {
-            lastRenkoTrend = newLastRenkoClose > lastRenkoClose ? "up" : "down";
-        }
-        renkoData.length && kLineData.push(...renkoData);
-        if (updatePre) {
-            kLineData[kLineData.length - 1] = preRenkoData;
-        }
-        preRenkoData = renkoData[renkoData.length - 1];
-        lastRenkoClose = newLastRenkoClose;
+        preRenkoClose = newRenkoClose;
+        preRenkoData = newRenkoData;
+        renkoData.length && kLineData.push(...renkoData.map((v) => ({ ...v, openTime: v.openTime + i, closeTime: v.closeTime + i })));
     })
 });
 

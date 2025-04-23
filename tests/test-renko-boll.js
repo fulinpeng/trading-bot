@@ -190,7 +190,7 @@ const setEveryIndex = (historyClosePrices, klines) => {
     // setVolArr(klines);
     // 计算Williams
     // setWilliamsArr(klines);
-    // setMacdArr(historyClosePrices);
+    setMacdArr(historyClosePrices);
 };
 const setBollArr = (historyClosePrices, klines) => {
     bollArr.length >= 10 && bollArr.shift();
@@ -626,7 +626,7 @@ const reset = () => {
 };
 // 指标判断方向 / 交易
 const judgeTradingDirection = (curKLines) => {
-    let [kLine0, kLine1, kLine2, kLine3, kLine4, kLine5] = getLastFromArr(curKLines, 6);
+    let [kLine1, kLine2, kLine3, kLine4, kLine5] = getLastFromArr(curKLines, 5);
     let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
     let [high3, high4, high5] = getLastFromArr(highArr, 3);
     let [low3, low4, low5] = getLastFromArr(lowArr, 3);

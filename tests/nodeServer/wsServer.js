@@ -8,7 +8,6 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 /////////////////////////////////截取测试数据////////////////////////////////////////
-const limit = 100;
 const targetTime = '' // "2025-02-01_00-00-00"
 /////////////////////////////////////////////////////////////////////////
 
@@ -19,11 +18,14 @@ const targetTime = '' // "2025-02-01_00-00-00"
  */
 app.get('/v1/klines', (req, res) => {
   const { symbol, klineStage, limit = limit } = req.query;
+  console.log("🚀 ~ wss.on ~ klineStage:", symbol, klineStage)
   if (!symbol || !klineStage) {
     return res.status(400).json({ error: '缺少必要参数 symbol 或 klineStage' });
   }
 
-  const filePath = path.resolve(__dirname, `../../tests/source/renko-${symbol}-${klineStage}.js`);
+    // const filePath = path.resolve(__dirname, `../../tests/${symbol}2.js`);
+    const filePath = path.resolve(__dirname, `../../tests/source/renko-${symbol}-${klineStage}.js`);
+//   const filePath = path.resolve(__dirname, `../../tests/source/${symbol}-${klineStage}.js`);
   try {
     // 确保读取最新数据
     delete require.cache[require.resolve(filePath)];
@@ -101,11 +103,13 @@ wss.on('connection', (ws, req) => {
       const klineStage = match[2];
   
     try {
+        // const filePath = path.resolve(__dirname, `../../tests/${symbol}2.js`);
       const filePath = path.resolve(__dirname, `../../tests/source/renko-${symbol}-${klineStage}.js`);
+    //   const filePath = path.resolve(__dirname, `../../tests/source/${symbol}-${klineStage}.js`);
       delete require.cache[require.resolve(filePath)];
       const fileData = require(filePath);
       const originLineData = fileData.kLineData;
-      let index = 100; // 默认从第100条数据开始推送
+      let index = 30; // 默认从第100条数据开始推送
   
       ws.on('message', (data) => {
         const message = Buffer.isBuffer(data) ? data.toString('utf8') : data;

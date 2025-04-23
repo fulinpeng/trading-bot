@@ -12,12 +12,10 @@ const { calculateBollingerBands } = require("./utils/boll.js");
 const { convertToRenko } = require("./utils/renko.js");
 const config = require("./config-boll.js");
 const { isYang, isYin, } = require("./utils/kLineTools.js");
-const { calculateRSI } = require("./utils/rsi.js");
-const { calculateMACD } = require("./utils/macd.js");
 
 let testMoney = 0;
 const diff = 2;
-const times = getSequenceArr(diff, 150);
+const times = getSequenceArr(diff, 100);
 
 let {
     strategyType,
@@ -59,7 +57,6 @@ let isUpOpen = true;
 let isDownOpen = false;
 
 const MA_RSI = { rsiLength: 14, smaLength: 20 };
-const MACD = [9 * 5, 26 * 5, 9 * 5];
 
 let availableMoney = DefaultAvailableMoney;
 let firstStopProfitRate = DefaultFirstStopProfitRate;
@@ -74,7 +71,7 @@ let bollArrConsole = []
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
 const isTest = true; // 将此标志设置为  false/true
-const isTestLocal = true; // 使用本地环境（先确保isTest==true）
+const isTestLocal = false; // 使用本地环境（先确保isTest==true）
 const api = "https://api.binance.com/api";
 const fapi = "https://fapi.binance.com/fapi";
 const localApi = 'http://localhost:3000'
@@ -163,6 +160,8 @@ let tradingInfo = {
     orderPrice: 0,
     quantity: 0,
     times: 0,
+    price: 0,
+    orderId: '',
 };
 
 // 以下参数会在程序启动时初始化
@@ -172,7 +171,6 @@ let allPositionDetail = {}; // 当前仓位信息
 
 let bollArr = [];
 let rsiArr = [];
-let macdArr = [];
 
 const maxKLinelen = isTestLocal ? 100 : 1000; // 储存kLine最大数量
 // 日志
@@ -182,6 +180,7 @@ let errorStream = null;
 // loading
 let loadingTrading = false; // 下单
 let loadingPlaceOrder = false; // 下单
+let loadingGetLimitOrder = false; // 限价单查询
 let loadingCloseOrder = false; // 平仓
 let onGridPoint = false; // TP/SL上
 let loadingInit = false;
@@ -203,6 +202,7 @@ const isLoading = () => {
         isJudgeIndexLoss ||
         loadingTrading ||
         loadingPlaceOrder ||
+        loadingGetLimitOrder ||
         loadingCloseOrder ||
         onGridPoint
     );
@@ -344,7 +344,6 @@ const initEveryIndex = (historyClosePrices) => {
 const setEveryIndex = (historyClosePrices, curKLine) => {
     setBollArr(historyClosePrices, curKLine);
     // setRsiArr(historyClosePrices);
-    // setMacdArr(historyClosePrices);
 };
 const setBollArr = (historyClosePrices, curKLine) => {
     bollArr.length >= 10 && bollArr.shift();
@@ -404,10 +403,6 @@ const setHighLowArr = (boll, curKline) => {
 const setRsiArr = (historyClosePrices) => {
     rsiArr.length >= 10 && rsiArr.shift();
     rsiArr.push(calculateRSI(historyClosePrices, MA_RSI));
-};
-const setMacdArr = (historyClosePrices) => {
-    macdArr.length >= 10 && macdArr.shift();
-    macdArr.push(calculateMACD(historyClosePrices, MACD));
 };
 
 // 更新kLine信息
@@ -481,7 +476,7 @@ const judgeIndexLoss = async (currentPrice) => {
         TP_SL[0] = orderPrice - brickSize * 1.5;
         firstStopLossRate = 0;
         isJudgeIndexLoss = false;
-        return true;
+        return;
     }
     // trend === "down" ，close超出下轨，就移动到开仓价
     if (
@@ -492,7 +487,7 @@ const judgeIndexLoss = async (currentPrice) => {
         TP_SL[1] = orderPrice + brickSize * 1.5;
         firstStopLossRate = 0;
         isJudgeIndexLoss = false;
-        return true;
+        return;
     }
     isJudgeIndexLoss = false;
 }
@@ -517,7 +512,7 @@ const judgeStopLoss = async (_currentPrice) => {
             // 止损/平多
             await closeUp(_currentPrice);
             isJudgeStopLoss = false;
-            return true;
+            return;
         }
     }
     if (trend === "down") {
@@ -534,7 +529,7 @@ const judgeStopLoss = async (_currentPrice) => {
             );
             await closeDown(_currentPrice);
             isJudgeStopLoss = false;
-            return true;
+            return;
         }
     }
     isJudgeStopLoss = false;
@@ -559,7 +554,7 @@ const judgeFirstProfitProtect = async (currentPrice) => {
                 firstStopLossRate = 0; // 防止同时触发止损
                 isJudgeFirstProfit = false;
                 console.log("🚀 ~ judgeFirstProfitProtect up ~ 到初始止盈点:TP_SL", TP_SL);
-                return true;
+                return;
             }
         }
         if (firstStopLossRate) {
@@ -574,7 +569,7 @@ const judgeFirstProfitProtect = async (currentPrice) => {
                 firstStopLossRate = 0;
                 isJudgeFirstProfit = false;
                 console.log("🚀 ~ judgeFirstProfitProtect up ~ 到初始止损点:TP_SL", TP_SL);
-                return true;
+                return;
             }
         }
     }
@@ -591,7 +586,7 @@ const judgeFirstProfitProtect = async (currentPrice) => {
                 firstStopLossRate = 0; // 防止同时触发止损
                 isJudgeFirstProfit = false;
                 console.log("🚀 ~ judgeFirstProfitProtect down ~ 到初始止盈点:TP_SL", TP_SL);
-                return true;
+                return;
             }
         }
         if (firstStopLossRate) {
@@ -603,7 +598,7 @@ const judgeFirstProfitProtect = async (currentPrice) => {
                 TP_SL[1] = Math.abs(currentPrice + point2) / 2; // 取currentPrice 、 point2的中间值
                 firstStopLossRate = 0;
                 isJudgeFirstProfit = false;
-                return true;
+                return;
             }
         }
     }
@@ -622,26 +617,26 @@ const judgeProfitRunOrProfit = async (currentPrice) => {
         // 判断止盈：high 大于 point2 就止盈利，否则继续持有
         if (trend === "up" && currentPrice >= point2) {
             TP_SL = [
-                // orderPrice + Math.abs(point2 - orderPrice) * profitProtectRate,
-                point2 - brickSize * howManyCandleForProfitRun,
-                point2 + brickSize * howManyCandleForProfitRun,
+                orderPrice + Math.abs(point2 - orderPrice) * profitProtectRate, // 止损(这个收益高点)
+                // point2 - brickSize * howManyCandleForProfitRun, // 止损
+                point2 + brickSize * howManyCandleForProfitRun, // 止盈
             ];
             isArriveLastStopProfit = true;
             isJudgeProfitRunOrProfit = false;
             console.log("🚀 ~ judgeProfitRunOrProfit up ~ 移动止盈");
-            return true;
+            return;
         }
         // low 小于 point1 就止盈利，否则继续持有
         if (trend === "down" && currentPrice <= point1) {
             TP_SL = [
-                point1 - brickSize * howManyCandleForProfitRun,
-                // orderPrice - Math.abs(orderPrice - point1) * profitProtectRate,
-                point1 + brickSize * howManyCandleForProfitRun,
+                point1 - brickSize * howManyCandleForProfitRun, // 止盈
+                orderPrice - Math.abs(orderPrice - point1) * profitProtectRate, // 止损(这个收益高点)
+                // point1 + brickSize * howManyCandleForProfitRun, // 止损
             ];
             isArriveLastStopProfit = true;
             isJudgeProfitRunOrProfit = false;
             console.log("🚀 ~ judgeProfitRunOrProfit down ~ 移动止盈");
-            return true;
+            return;
         }
     } else {
         // 判断止盈：上面没有被止损，也没被止盈，那看下面是否能止盈，high 大于 point2 就止盈利，否则继续持有
@@ -651,7 +646,7 @@ const judgeProfitRunOrProfit = async (currentPrice) => {
             await closeUp();
             isArriveLastStopProfit = true;
             isJudgeProfitRunOrProfit = false;
-            return true;
+            return;
         }
         // 上面没有被止损，那看是否能止盈，low 小于 point1 就止盈利，否则继续持有
         if (hasOrder && trend === "down" && currentPrice <= point1) {
@@ -660,7 +655,7 @@ const judgeProfitRunOrProfit = async (currentPrice) => {
             await closeDown();
             isArriveLastStopProfit = true;
             isJudgeProfitRunOrProfit = false;
-            return true;
+            return;
         }
     }
     isJudgeProfitRunOrProfit = false;
@@ -682,7 +677,7 @@ const judgeIndexProfit = async (currentPrice) => {
         console.log("🚀 ~ 指标止盈:平多");
         await closeUp();
         isJudgeIndexProfit = false;
-        return true;
+        return;
     }
     if (
         trend === "down" &&
@@ -695,7 +690,7 @@ const judgeIndexProfit = async (currentPrice) => {
         console.log("🚀 ~ 指标止盈:平空");
         await closeDown();
         isJudgeIndexProfit = false;
-        return true;
+        return;
     }
     isJudgeIndexProfit = false;
 };
@@ -756,7 +751,7 @@ const judgeAndTrading = async () => {
     switch (trend) {
         case "up":
             await teadeBuy();
-            setTP_SL("up", stopLoss, stopProfit);
+            setTP_SL("up", stopLoss, stopProfit); // 这里下设置止盈止损 ????
             readyTradingDirection = "hold";
             firstStopProfitRate = DefaultFirstStopProfitRate;
             firstStopLossRate = DefaultFirstStopLossRate;
@@ -764,7 +759,7 @@ const judgeAndTrading = async () => {
             break;
         case "down":
             await teadeSell();
-            setTP_SL("down", stopLoss, stopProfit);
+            setTP_SL("down", stopLoss, stopProfit); // 这里下设置止盈止损 ????
             firstStopProfitRate = DefaultFirstStopProfitRate;
             firstStopLossRate = DefaultFirstStopLossRate;
             readyTradingDirection = "hold";
@@ -829,20 +824,6 @@ const calculateTradingSignal = () => {
     };
 };
 
-// 查询持仓模式
-const getPositionSideModel = async () => {
-    // await getServerTimeOffset(); // 测试后删除
-    let timestamp = Date.now() + serverTimeOffset;
-    const params = {
-        recvWindow: 6000, // 请求的超时时间
-        timestamp,
-    };
-    const signedParams = signRequest(params);
-    const positionResponse = await axiosInstance.get(
-        `${fapi}/v1/positionSide/dual?${signedParams}`
-    );
-    console.log("🚀 ~ file:200 ~ getPositionSideModel ~ positionResponse:", positionResponse.data);
-};
 // 获取持仓风险，这里要改成村本地
 const getPositionRisk = async () => {
     try {
@@ -980,11 +961,13 @@ const placeOrder = async (side, quantity) => {
         let params = {
             symbol: B_SYMBOL, // 交易对
             side, // 指定订单是开多 (BUY) 还是开空 (SELL)
-            type: "MARKET", // LIMIT：限价订单，MARKET：市价订单，详见 https://binance-docs.github.io/apidocs/spot/en/#test-new-order-trade
+            type: "LIMIT", // LIMIT：限价订单，MARKET：市价订单，详见 https://binance-docs.github.io/apidocs/spot/en/#test-new-order-trade
             quantity,
             positionSide: side === "BUY" ? "LONG" : "SHORT",
             timestamp,
-            recvWindow: 6000, // 请求的超时时间
+            recvWindow: 6000, // 请求的超时时间,
+            newOrderRespType: "ACK", // 返回数据类型，ACK：仅响应请求，RESULT：响应请求结果
+            
         };
         console.log("下单 params:", params);
         const signedParams = signRequest(params);
@@ -1008,9 +991,10 @@ const placeOrder = async (side, quantity) => {
         );
         // 如果 下单（开多操作/开空操作） 成功需要更新PurchaseInfo
         if (response && response.data && response.data.orderId) {
-            const { origQty } = response.data;
+            const { origQty, orderId } = response.data;
             const trend = side === "BUY" ? "up" : "down";
             await recordRradingInfo({
+                orderId,
                 trend,
                 side,
                 orderPrice: _currentPrice,
@@ -1038,6 +1022,174 @@ const placeOrder = async (side, quantity) => {
         process.exit(1);
     }
 };
+// 设置止盈和止损函数（TAKE_PROFIT_MARKET 和 STOP_MARKET）
+const setTakeProfitStopLoss = async (side, takeProfitPrice, stopLossPrice, quantity) => {
+    const timestamp = Date.now() + serverTimeOffset;
+    const positionSide = side === "BUY" ? "LONG" : "SHORT";
+
+    // 设置止盈
+    const takeProfitParams = {
+        symbol: B_SYMBOL,
+        side: side === "BUY" ? "SELL" : "BUY",
+        type: "TAKE_PROFIT_MARKET",
+        stopPrice: takeProfitPrice,
+        closePosition: true,
+        positionSide,
+        timestamp,
+        recvWindow: 5000,
+    };
+
+    // 设置止损
+    const stopLossParams = {
+        symbol: B_SYMBOL,
+        side: side === "BUY" ? "SELL" : "BUY",
+        type: "STOP_MARKET",
+        stopPrice: stopLossPrice,
+        closePosition: true,
+        positionSide,
+        timestamp,
+        recvWindow: 5000,
+    };
+
+    try {
+        await axiosInstance.post(`${fapi}/v1/order?${signRequest(takeProfitParams)}`);
+        console.log("止盈单已设置");
+
+        await axiosInstance.post(`${fapi}/v1/order?${signRequest(stopLossParams)}`);
+        console.log("止损单已设置");
+    } catch (error) {
+        console.error("止盈/止损下单失败:", error.response ? error.response.data : error);
+    }
+};
+
+// 查询当前挂单状态
+const checkOrderStatus = async (orderId) => {
+    const timestamp = Date.now() + serverTimeOffset;
+    const params = {
+        symbol: B_SYMBOL,
+        orderId,
+        timestamp,
+        recvWindow: 5000,
+    };
+    const signedParams = signRequest(params);
+
+    try {
+        const response = await axiosInstance.get(`${fapi}/v1/order?${signedParams}`);
+        const order = response.data;
+        console.log("订单状态：", order.status); // FILLED 为完全成交
+        return order;
+    } catch (error) {
+        console.error("查询订单失败:", error.response ? error.response.data : error);
+        return null;
+    }
+};
+
+// 限价（LIMIT）订单修改
+const modLimitOrder = async (price) => {
+    console.log(`修改当前挂单...`);
+    try {
+        loadingGetLimitOrder = true;
+        const timestamp = Date.now() + serverTimeOffset;
+        const { orderId, side, quantity } = tradingInfo;
+        let params = {
+            orderId,
+            symbol: B_SYMBOL, // 交易对
+            side,
+            price, // 修改后的价格
+            quantity,
+            timestamp,
+            recvWindow: 6000, // 请求的超时时间,
+        };
+        const signedParams = signRequest(params);
+
+        let response = null;
+        if (isTest) {
+            response = {
+                data: {
+                    orderId: "xxx",
+                    origQty: quantity,
+                },
+            };
+        } else {
+            response = await axiosInstance.post(`${fapi}/v1/order?${signedParams}`);
+        }
+
+        // 如果 下单（开多操作/开空操作） 成功需要更新PurchaseInfo
+        if (response && response.data && response.data.orderId) {
+            console.log("修改当前挂单状态成功:", response.data);
+            return response.data;
+        } else {
+            console.error("修改当前挂单失败！！！！！");
+        }
+        loadingGetLimitOrder = false;
+    } catch (error) {
+        console.error(
+            "getLimitOrder header::",
+            error && error.request ? error.request._header : null,
+            " error::",
+            error && error.response ? error.response.data : error
+        );
+        process.exit(1);
+    }
+};
+// 撤销当前挂单
+const cancelOrder = async (orderId) => {
+    const timestamp = Date.now() + serverTimeOffset;
+    const params = {
+        symbol: B_SYMBOL,
+        orderId,
+        timestamp,
+        recvWindow: 5000,
+    };
+    const signedParams = signRequest(params);
+
+    try {
+        const response = await axiosInstance.delete(`${fapi}/v1/order?${signedParams}`);
+        console.log("取消订单成功:", response.data);
+    } catch (error) {
+        console.error("取消订单失败:", error.response ? error.response.data : error);
+    }
+};
+/**
+ * 更新（修改）止盈和止损订单：先取消已有订单，然后重新提交新的止盈和止损限价单
+ * @param {string|null} existingTpOrderId - 原止盈订单ID，如果没有则传入 null
+ * @param {string|null} existingSlOrderId - 原止损订单ID，如果没有则传入 null
+ * @param {string} side - 当前主单方向，"BUY" 表示开多，则止盈订单为 "SELL"，反之亦然
+ * @param {number} newTakeProfitPrice - 新的止盈触发价格
+ * @param {number} newStopLossPrice - 新的止损触发价格
+ * @param {number} quantity - 持仓数量
+ */
+const updateStopOrders = async (
+    existingTpOrderId,
+    existingSlOrderId,
+    side,
+    newTakeProfitPrice,
+    newStopLossPrice,
+    quantity
+  ) => {
+    try {
+      // 如果存在旧的止盈订单，取消之
+      if (existingTpOrderId) {
+        console.log(`取消原止盈订单: ${existingTpOrderId}`);
+        await cancelOrder(existingTpOrderId);
+        console.log('原止盈订单取消成功');
+      }
+  
+      // 如果存在旧的止损订单，取消之
+      if (existingSlOrderId) {
+        console.log(`取消原止损订单: ${existingSlOrderId}`);
+        await cancelOrder(existingSlOrderId);
+        console.log('原止损订单取消成功');
+      }
+  
+      // 取消后重新设置新的止盈和止损订单
+      console.log('设置新的止盈和止损订单...');
+      await setTakeProfitStopLoss(side, newTakeProfitPrice, newStopLossPrice, quantity);
+      console.log('新的止盈和止损订单已设置');
+    } catch (error) {
+      console.error("更新止盈止损订单失败:", error.response ? error.response.data : error.message);
+    }
+  };
 // 平仓
 const closeOrder = async (side, quantity, cb) => {
     try {
@@ -1366,7 +1518,8 @@ const closeUp = async (testCurrentPrice) => {
             "平多 closeUp ~ currentPrice curTestMoney testMoney:",
             _currentPrice,
             curTestMoney,
-            testMoney
+            testMoney,
+            lossCount
         );
         console.log("平多完成");
 
@@ -1405,7 +1558,8 @@ const closeDown = async (testCurrentPrice) => {
             "平空 closeDown ~ currentPrice curTestMoney testMoney:",
             _currentPrice,
             curTestMoney,
-            testMoney
+            testMoney,
+            lossCount
         );
         console.log("平空完成");
 
@@ -1427,34 +1581,19 @@ const gridPointClearTrading = async (_currentPrice) => {
     onGridPoint = true;
 
     // 指标止损，设置止损位置
-    if (await judgeIndexLoss(_currentPrice)) {
-        onGridPoint = false;
-        return;
-    }
+    await judgeIndexLoss(_currentPrice);
 
     // 止损
-    if (await judgeStopLoss(_currentPrice)) {
-        onGridPoint = false;
-        return;
-    }
+    await judgeStopLoss(_currentPrice);
 
     // 首次盈利保护/首次亏损保护
-    if (await judgeFirstProfitProtect(_currentPrice)) {
-        onGridPoint = false;
-        return;
-    }
+    await judgeFirstProfitProtect(_currentPrice);
 
     // 止盈 | 移动止盈
-    if (await judgeProfitRunOrProfit(_currentPrice)) {
-        onGridPoint = false;
-        return;
-    }
+    await judgeProfitRunOrProfit(_currentPrice);
 
     // 指标止盈
-    if (await judgeIndexProfit(_currentPrice)) {
-        onGridPoint = false;
-        return;
-    }
+    await judgeIndexProfit(_currentPrice);
 
     onGridPoint = false;
 };
@@ -1516,13 +1655,13 @@ const startWebSocket = async () => {
         currentPrice = Number(close) || 0;
 
         // 测试时就没有这种高频检测，正式情况不一样，需要实时监测
-        // if (hasOrder) {
-        //     // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
-        //     // 止损 要快，是逆向的，不然滑点太大
-        //     await judgeStopLoss(currentPrice);
-        //     // 指标止盈，这个也是逆向的
-        //     // await judgeIndexProfit(currentPrice); // 几率很小可以注释掉
-        // }
+        if (hasOrder) {
+            // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
+            // 止损 要快，是逆向的，不然滑点太大
+            await judgeStopLoss(currentPrice);
+            // 指标止盈，这个也是逆向的
+            // await judgeIndexProfit(currentPrice); // 几率很小可以注释掉
+        }
 
         const curKLine = {
             openTime: isTestLocal ? openTime : getDate(openTime), // 这根K线的起始时间

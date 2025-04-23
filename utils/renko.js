@@ -1,8 +1,7 @@
 // 砖型图数据转换函数
 function convertToRenko(params) {
-    let { klineData, brickSize, lastRenkoClose, preRenkoData } = params;
+    let { klineData, brickSize, preRenkoClose, preRenkoData } = params;
     let renkoData = [];
-    let updatePre = false;
     // 解析 K 线数据
     let {
         openTime, // 当前K线的起始时间
@@ -18,13 +17,13 @@ function convertToRenko(params) {
     let preCloseTime = preRenkoData ? preRenkoData.closeTime : openTime;
 
     // 如果当前的价格波动已经达到砖型图的大小
-    if (lastRenkoClose === null) {
+    if (!preRenkoClose) {
         // 如果没有上一个砖型图，初始化第一个砖型图
-        lastRenkoClose = close;
-        renkoData.push({ open, close, high, low, volume, openTime, closeTime });
+        preRenkoClose = Math.round(close / brickSize) * brickSize;
+        // renkoData.push({ open, close, high, low, volume, openTime, closeTime });
     } else {
         // 计算当前价格波动与上一根砖型图的收盘价的差距
-        let priceDifference = close - lastRenkoClose;
+        let priceDifference = close - preRenkoClose;
 
         // 如果价格差距超过了砖型图的价格区间，生成多个新的砖型图
         if (Math.abs(priceDifference) >= brickSize) {
@@ -33,21 +32,22 @@ function convertToRenko(params) {
 
             for (let i = 0; i < numOfBricks; i++) {
                 // 计算新砖型图的开盘和收盘价
-                let newClose = lastRenkoClose + direction * brickSize;
+                let newClose = preRenkoClose + direction * brickSize;
 
-                // 将新的砖型图保存到 renkoData 中
-                renkoData.push({
-                    open: lastRenkoClose,
+                // 更新 砖型图/收盘价
+                preRenkoData = {
+                    open: preRenkoClose,
                     close: newClose,
-                    high: Math.max(lastRenkoClose, newClose, high),
-                    low: Math.min(lastRenkoClose, newClose, low),
+                    high: Math.max(preRenkoClose, newClose, high),
+                    low: Math.min(preRenkoClose, newClose, low),
                     volume: volume / numOfBricks, // 这里可以进一步计算砖型图的成交量
                     openTime: preCloseTime, // 这里是起始时间，通常是上一根 K 线的结束时间
                     closeTime,
-                });
+                }
+                preRenkoClose = newClose;
 
-                // 更新上一个砖型图的收盘价
-                lastRenkoClose = newClose;
+                // 将新的砖型图保存到 renkoData 中
+                renkoData.push(preRenkoData);
             }
         }
         // 如果价格差距没有超过砖型图的价格区间，将当前 K 线的数据保存到上一个砖型图中
@@ -59,14 +59,16 @@ function convertToRenko(params) {
                     high: Math.max(preRenkoData.high, high),
                     low: Math.min(preRenkoData.low, low),
                     volume: preRenkoData.volume + volume,
-                    closeTime,// 更新为当前k线的收盘价
                 };
-                updatePre = true;
             }
         }
     }
 
-    return { renkoData, newLastRenkoClose: lastRenkoClose, preRenkoData, updatePre };
+    return {
+        renkoData,
+        newRenkoClose: preRenkoClose,
+        newRenkoData: preRenkoData
+    };
 }
 
 function getSmaRatio(arr) {
