@@ -409,32 +409,31 @@ const start = (params) => {
         }
         // 有仓位就准备平仓
         else {
-
             const [point1, point2] = TP_SL;
 
             //////////////////////////// 指标移动止损位置 /////////////////////////// start
             // trend === "up" 时，close超出上轨，就移动止损点
-            if (
-                hasOrder &&
-                trend === "up" &&
-                firstStopLossRate &&
-                (close >= B2upper) // || (isYin(kLine0) && isYin(kLine1) && isYin(kLine2) && isYin(kLine3))
-            ) {
-                TP_SL[0] = orderPrice - brickSize * 1.5;
-                firstStopLossRate = 0;
-                continue;
-            }
-            // trend === "down" ，close超出下轨，就移动止损点
-            if (
-                hasOrder &&
-                trend === "down" &&
-                firstStopLossRate &&
-                (close <= B2lower) // || (isYang(kLine0) && isYang(kLine1) && isYang(kLine2) && isYang(kLine3))
-            ) {
-                TP_SL[1] = orderPrice + brickSize * 1.5;
-                firstStopLossRate = 0;
-                continue;
-            }
+            // if (
+            //     hasOrder &&
+            //     trend === "up" &&
+            //     firstStopLossRate &&
+            //     (close >= B2upper) // || (isYin(kLine0) && isYin(kLine1) && isYin(kLine2) && isYin(kLine3))
+            // ) {
+            //     TP_SL[0] = orderPrice - brickSize * 1.5;
+            //     firstStopLossRate = 0;
+            //     continue;
+            // }
+            // // trend === "down" ，close超出下轨，就移动止损点
+            // if (
+            //     hasOrder &&
+            //     trend === "down" &&
+            //     firstStopLossRate &&
+            //     (close <= B2lower) // || (isYang(kLine0) && isYang(kLine1) && isYang(kLine2) && isYang(kLine3))
+            // ) {
+            //     TP_SL[1] = orderPrice + brickSize * 1.5;
+            //     firstStopLossRate = 0;
+            //     continue;
+            // }
             //////////////////////////// 指标移动止损位置 /////////////////////////// end
 
             // 判断止损
@@ -450,9 +449,9 @@ const start = (params) => {
                     }
                     // 初次止盈
                     if (typeof firstStopProfitRate !== "undefined" && firstStopProfitRate) {
-                        const firstProfitPrice =
-                            orderPrice + Math.abs(orderPrice - point1) * firstStopProfitRate; // (开仓价 - 止损)* 初始止盈倍数
-                        if (close > firstProfitPrice) {
+                        // const firstProfitPrice = orderPrice + Math.abs(orderPrice - point1) * firstStopProfitRate; // (开仓价 - 止损)* 初始止盈倍数
+                        const firstProfitPrice = orderPrice + brickSize * firstStopProfitRate;
+                        if (close >= firstProfitPrice) {
                             TP_SL[0] =
                                 orderPrice +
                                 Math.abs(orderPrice - firstProfitPrice) * firstProtectProfitRate;
@@ -464,9 +463,8 @@ const start = (params) => {
                     }
                     // 初次止损
                     if (firstStopLossRate) {
-                        const firstStopPrice =
-                            orderPrice - Math.abs(orderPrice - point1) * firstStopLossRate;
-                        if (close < firstStopPrice) {
+                        const firstStopPrice = orderPrice - Math.abs(orderPrice - point1) * firstStopLossRate;
+                        if (close <= firstStopPrice) {
                             // 到初始止损点时，并且该k线是大阴线，移动止损到该k线的下方，避免亏损太多
                             // 仓位还在，说明没有 low 没有触发止损，所以low在point1上方
                             // 0.8还是比较苛刻，比较难触发，所以不会频繁触发
@@ -491,11 +489,10 @@ const start = (params) => {
                     }
                     // 初次止盈
                     if (typeof firstStopProfitRate !== "undefined" && firstStopProfitRate) {
-                        const firstProfitPrice = orderPrice - Math.abs(orderPrice - point2) * firstStopProfitRate; // (开仓价 - 止损)* 初始止盈倍数
-                        if (close < firstProfitPrice) {
-                            TP_SL[1] =
-                                orderPrice -
-                                Math.abs(orderPrice - firstProfitPrice) * firstProtectProfitRate;
+                        // const firstProfitPrice = orderPrice - Math.abs(orderPrice - point2) * firstStopProfitRate; // (开仓价 - 止损)* 初始止盈倍数
+                        const firstProfitPrice = orderPrice - brickSize * firstStopProfitRate;
+                        if (close <= firstProfitPrice) {
+                            TP_SL[1] = orderPrice - Math.abs(orderPrice - firstProfitPrice) * firstProtectProfitRate;
                             firstStopProfitRate = 0;
                             firstStopLossRate = 0; // 防止同时触发止损
                             arrivefirstStopProfit++;
@@ -506,7 +503,7 @@ const start = (params) => {
                     if (firstStopLossRate) {
                         const firstStopPrice =
                             orderPrice + Math.abs(orderPrice - point2) * firstStopLossRate;
-                        if (close > firstStopPrice) {
+                        if (close >= firstStopPrice) {
                             TP_SL[1] = Math.abs(close + point2) / 2; // 取currentPrice 、 point2的中间值
                             firstStopLossRate = 0;
                             arriveFirstStopLoss++;
@@ -521,7 +518,7 @@ const start = (params) => {
                 if (isProfitRun) {
                     // 移动止盈
                     // 判断止盈：上面没有被止损，那看是否能止盈，high 大于 point2 就止盈利，否则继续持有
-                    if (trend === "up" && (close >= point2)) { //  || Math.abs(close - point2) < 0.000001)
+                    if (trend === "up" && (close >= point2)) { //  || Math.abs(close - point2) < 0.000001
                         TP_SL = [
                             orderPrice + Math.abs(point2 - orderPrice) * profitProtectRate, // 止损(这个收益高点)
                             // point2 - brickSize * howManyCandleForProfitRun, // 止损
@@ -600,7 +597,7 @@ const start = (params) => {
                 trend === "down" &&
                 !firstStopProfitRate &&
                 // isArriveLastStopProfit &&
-                (close >= B2upper)//  || Math.abs(close - B2upper) < 0.000001
+                (close >= B2upper)//   || Math.abs(close - B2upper) < 0.000001
             ) {
                 zhibiaoWinNum += 1;
                 setProfit(orderPrice, close, openTime); // 正式环境可能此时还没有收盘 ???? 但是boll值变化不大可以直接对比
@@ -1087,7 +1084,7 @@ run({
     closeLastOrder: true, // 最后一单是否平仓
     isUpOpen: true,
     isDownOpen: false,
-    compoundInterest: 0, // 复利
+    compoundInterest: 1, // 复利
 });
 module.exports = {
     evaluateStrategy: start,
