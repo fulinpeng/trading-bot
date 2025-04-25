@@ -1,1 +1,0 @@
-module.exports = {"currentPrice":0.008940000000000003,"prePrice":0.009000000000000003,"tradingInfo":{"trend":"","side":"","orderPrice":0,"quantity":0,"times":0},"testMoney":6662.043382648753,"hasOrder":false,"isProfitRun":1,"TP_SL":[],"readyTradingDirection":"hold","availableMoney":100,"firstStopProfitRate":1,"firstStopLossRate":0.5,"lossCount":0}

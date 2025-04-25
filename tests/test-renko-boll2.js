@@ -1062,14 +1062,14 @@ function run(params) {
 // let brickSize=0.0006; // zetaUSDT   67.704%             921.1533628456452
 // let brickSize=0.00022; // zkUSDT   60.924%              430.31042108253496
 run({
-    brickSize: 0.00006,
+    brickSize: 0.00005,
     priorityFee: 0.0007,
     slippage: 0.0002, // 滑点
     B2Period: 10, // boll周期
     B2mult: 1.5, // boll倍数
     howManyCandle: 3, // 初始止盈
     firstStopProfitRate: 1,// 2, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
-    firstProtectProfitRate: 0.95, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
+    firstProtectProfitRate: 0.75, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
     firstStopLossRate: 0.5, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
     isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
     profitProtectRate: 0.95, //isProfitRun === 1 时生效，保留多少利润
@@ -1084,7 +1084,7 @@ run({
     closeLastOrder: true, // 最后一单是否平仓
     isUpOpen: true,
     isDownOpen: false,
-    compoundInterest: 1, // 复利
+    compoundInterest: 0, // 复利
 });
 module.exports = {
     evaluateStrategy: start,

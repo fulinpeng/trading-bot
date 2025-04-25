@@ -39,7 +39,7 @@
         "crypto": "^1.0.1",
         "dotenv": "^16.4.0",
         "geneticalgorithm": "^1.0.2",
-        "https-proxy-agent": "^7.0.2",
+        "https-proxy-agent": "^7.0.6",
         "log4js": "^0.6.14",
         "mongoose": "^8.1.3",
         "node-binance-api": "^0.13.1",

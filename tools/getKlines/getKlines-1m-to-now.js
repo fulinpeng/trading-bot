@@ -111,7 +111,7 @@ const getDatas = async (symbol) => {
 };
 
 function writeInFile(fileName, data) {
-    fs.writeFileSync(fileName, `module.exports =  ${JSON.stringify(data)}`, {
+    fs.writeFileSync(fileName, `module.exports =  ${JSON.stringify(data, null, 2)}`, {
         flag: "w",
     });
 }

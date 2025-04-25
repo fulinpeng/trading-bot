@@ -88,7 +88,7 @@ const getDatas = async (symbol, startTime, num) => {
 };
 
 function writeInFile(fileName, data) {
-    fs.writeFileSync(fileName, `module.exports =  ${JSON.stringify(data)}`, {
+    fs.writeFileSync(fileName, `module.exports =  ${JSON.stringify(data, null, 2)}`, {
         flag: "w",
     });
 }

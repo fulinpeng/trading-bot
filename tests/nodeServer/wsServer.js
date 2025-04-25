@@ -104,8 +104,9 @@ wss.on('connection', (ws, req) => {
   
     try {
         // const filePath = path.resolve(__dirname, `../../tests/${symbol}2.js`);
-      const filePath = path.resolve(__dirname, `../../tests/source/renko-${symbol}-${klineStage}.js`);
+    //   const filePath = path.resolve(__dirname, `../../tests/source/renko-${symbol}-${klineStage}.js`);
     //   const filePath = path.resolve(__dirname, `../../tests/source/${symbol}-${klineStage}.js`);
+      const filePath = path.resolve(__dirname, `../../tests/source/${symbol}-${klineStage}-part.js`);
       delete require.cache[require.resolve(filePath)];
       const fileData = require(filePath);
       const originLineData = fileData.kLineData;

@@ -39,15 +39,14 @@ const config = {
         klineStage: "1m", // k线级别
         numForAverage: 12, // 多少根k线求取candleHeight
 
-
-        brickSize: 0.00006,
+        brickSize: 0.00008,
         priorityFee: 0.0007,
         slippage: 0.0002, // 滑点
         B2Period: 10, // boll周期
         B2mult: 1.5, // boll倍数
         howManyCandle: 3, // 初始止盈
-        firstStopProfitRate: 1,// 1.3, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
-        firstProtectProfitRate: 0.95, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
+        firstStopProfitRate: 1.5, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
+        firstProtectProfitRate: 0.75, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
         firstStopLossRate: 0.5, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
         isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
         profitProtectRate: 0.95, //isProfitRun === 1 时生效，保留多少利润
