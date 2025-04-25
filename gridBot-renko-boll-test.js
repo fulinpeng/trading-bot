@@ -473,7 +473,7 @@ const judgeStopLoss = async (_currentPrice) => {
         // low 小于 point1 就止损，否则继续持有
         if (_currentPrice <= point1) {
             // 这里非常关键point1/_currentPrice
-            _currentPrice = isTestLocal ? point1 * (1 - slippage) : point1 // _currentPrice; // 后续改为限价单后_currentPrice改为point1
+            _currentPrice = isTestLocal ? point1 * (1 - slippage) : _currentPrice; // 后续改为限价单后_currentPrice改为point1
             console.log(
                 `🚀 ~ judgeStopLoss up ~ ${_currentPrice > orderPrice ? '止盈' : '止损'}/平多:currentPrice, point1, 滑点:`,
                 _currentPrice,
@@ -490,7 +490,7 @@ const judgeStopLoss = async (_currentPrice) => {
         // high 大于 point2 就止损，否则继续持有
         if (_currentPrice >= point2) {
             // 这里非常关键point2/_currentPrice
-            _currentPrice = isTestLocal ? point2 * (1 + slippage) : point2 // _currentPrice; // 后续改为限价单后_currentPrice改为point2
+            _currentPrice = isTestLocal ? point2 * (1 + slippage) : _currentPrice; // 后续改为限价单后_currentPrice改为point2
             // 止损/平空
             console.log(
                 `🚀 ~ judgeStopLoss down ~  ${_currentPrice < orderPrice ? '止盈' : '止损'}/平空:currentPrice, point2, 滑点:`,
@@ -1392,27 +1392,25 @@ const closeDown = async (testCurrentPrice) => {
     });
 };
 // 是否到达止损点/平仓
-const gridPointClearTrading = async (_currentPrice) => {
+const gridPointClearTrading = async (currentPrice) => {
     if (!hasOrder) return;
 
     onGridPoint = true;
 
-    // 下面两个需要实时，要快，甚至需要平仓
-    // 止损
-    // await judgeStopLoss(_currentPrice);
-    // 首次亏损保护
-    // await judgeFirstLossProtect(_currentPrice);
+    // 止损 / 移动盈利的平仓
+    await judgeStopLoss(currentPrice);
 
-    // 后续的可以每次到达收盘价执行（不需要下单和快速处理，在renkonk线收盘时执行判断）
+    // 首次亏损保护
+    await judgeFirstLossProtect(currentPrice);
 
     // 首次盈利保护
-    // await judgeFirstProfitProtect(_currentPrice);
+    await judgeFirstProfitProtect(currentPrice);
 
     // 止盈 | 移动止盈
-    await judgeProfitRunOrProfit(_currentPrice);
+    await judgeProfitRunOrProfit(currentPrice);
 
-    // 指标止盈
-    await judgeIndexProfit(_currentPrice);
+    // // 指标止盈
+    // await judgeIndexProfit(currentPrice);
 
     onGridPoint = false;
 };
@@ -1470,20 +1468,23 @@ const startWebSocket = async () => {
             },
         } = realData
 
+        if (isTestLocal && realData.error) {
+            process.exit(0);
+        }
         prePrice = currentPrice; // 不能删除
         currentPrice = Number(close) || 0;
 
         // 测试时就没有这种高频检测，正式情况不一样，需要实时监测
+        // 加上这里的逻辑没有什么卵用，反而亏钱>>>>>>>>>>>>>>>>>>>>>>>>>>>>?????????????
         if (hasOrder) {
-            // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
-            
-            // 下面两个需要实时，要快，甚至需要平仓，或者需要在renkonk线中执行判断
-            // 止损 / 移动盈利的平仓
-            await judgeStopLoss(currentPrice);
-            // 首次亏损保护
-            await judgeFirstLossProtect(currentPrice);
-            // 首次盈利保护
-            await judgeFirstProfitProtect(_currentPrice);
+        //     // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
+        //     // 下面两个需要实时，要快，甚至需要平仓，或者需要在renkonk线中执行判断
+
+        //     // 没有首次止盈前，时开启高频止损判断
+        //     if (firstStopProfitRate) {
+        //         // 止损 / 移动盈利的平仓
+        //         await judgeStopLoss(currentPrice);
+        //     }
         }
 
         const curKLine = {
@@ -1498,7 +1499,7 @@ const startWebSocket = async () => {
             takerBuyBaseAssetVolume: Number(takerBuyBaseAssetVolume), // 主动买入的成交量
         };
 
-        const { renkoData, newRenkoClose, newRenkoData } = isTestLocal ? {renkoData: [curKLine]} : convertToRenko({
+        const { renkoData, newRenkoClose, newRenkoData } = convertToRenko({
             klineData: curKLine,
             brickSize,
             preRenkoClose,

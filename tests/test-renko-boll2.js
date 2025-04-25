@@ -1078,12 +1078,12 @@ run({
     invalidSigleStopRate: 0.3, // 止损在10%，不开单
     double: 1, // 是否损失后加倍开仓
     maxLossCount: 20, // 损失后加倍开仓，最大倍数
-    // targetTime: "2024-12-31_23-53-5921", // 1000pepe
+    targetTime: "2025-01-01_00-57-5920", // 1000pepe
     // targetTime: "2024-02-29_02-05-5921", // 1000pepe
     // targetTime: "2025-04-09_06-36-002", // doge
     closeLastOrder: true, // 最后一单是否平仓
-    isUpOpen: true,
-    isDownOpen: false,
+    isUpOpen: false,
+    isDownOpen: true,
     compoundInterest: 0, // 复利
 });
 module.exports = {
