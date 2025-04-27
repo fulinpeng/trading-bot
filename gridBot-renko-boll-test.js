@@ -53,8 +53,8 @@ const MOD_HIGH = 'MOD_HIGH'
 const MOD_LOW = 'MOD_LOW'
 let preAction = '';
 
-let isUpOpen = false;
-let isDownOpen = true;
+let isUpOpen = true;
+let isDownOpen = false;
 
 const MA_RSI = { rsiLength: 14, smaLength: 20 };
 
@@ -474,6 +474,7 @@ const judgeStopLoss = async (_currentPrice) => {
         if (_currentPrice <= point1) {
             // 这里非常关键point1/_currentPrice
             _currentPrice = isTestLocal ? point1 * (1 - slippage) : _currentPrice; // 后续改为限价单后_currentPrice改为point1
+            // _currentPrice = _currentPrice
             console.log(
                 `🚀 ~ judgeStopLoss up ~ ${_currentPrice > orderPrice ? '止盈' : '止损'}/平多:currentPrice, point1, 滑点:`,
                 _currentPrice,
@@ -491,6 +492,7 @@ const judgeStopLoss = async (_currentPrice) => {
         if (_currentPrice >= point2) {
             // 这里非常关键point2/_currentPrice
             _currentPrice = isTestLocal ? point2 * (1 + slippage) : _currentPrice; // 后续改为限价单后_currentPrice改为point2
+            // _currentPrice = _currentPrice
             // 止损/平空
             console.log(
                 `🚀 ~ judgeStopLoss down ~  ${_currentPrice < orderPrice ? '止盈' : '止损'}/平空:currentPrice, point2, 滑点:`,
@@ -550,6 +552,7 @@ const judgeFirstProfitProtect = async (currentPrice) => {
     if (!hasOrder) return;
     isJudgeFirstProfit = true;
     const { trend, orderPrice } = tradingInfo;
+    const [point1, point2] = TP_SL;
 
     if (trend === "up") {
         if (firstStopProfitRate) {
@@ -781,7 +784,7 @@ const calculateTradingSignal = () => {
         return {
             trend: "up",
             stopLoss, // 止损
-            stopProfit: close + brickSize * howManyCandle // (close - stopLoss) * howManyCandle, // 止盈
+            stopProfit: close + brickSize * howManyCandle // (close - stopLoss) * howManyCandle, // 止盈 //
         };
     }
 
@@ -797,7 +800,7 @@ const calculateTradingSignal = () => {
         return {
             trend: "down",
             stopLoss, // 止损
-            stopProfit: close - brickSize * howManyCandle // (stopLoss - close) * howManyCandle, // 止盈
+            stopProfit: close - brickSize * howManyCandle // (stopLoss - close) * howManyCandle, // 止盈 // 
         };
     }
     return {
@@ -1477,14 +1480,9 @@ const startWebSocket = async () => {
         // 测试时就没有这种高频检测，正式情况不一样，需要实时监测
         // 加上这里的逻辑没有什么卵用，反而亏钱>>>>>>>>>>>>>>>>>>>>>>>>>>>>?????????????
         if (hasOrder) {
-        //     // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
-        //     // 下面两个需要实时，要快，甚至需要平仓，或者需要在renkonk线中执行判断
-
-        //     // 没有首次止盈前，时开启高频止损判断
-        //     if (firstStopProfitRate) {
-        //         // 止损 / 移动盈利的平仓
-        //         await judgeStopLoss(currentPrice);
-        //     }
+            // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
+            // 下面两个需要实时，要快，甚至需要平仓，或者需要在renkonk线中执行判断
+                // await gridPointClearTrading(currentPrice);
         }
 
         const curKLine = {

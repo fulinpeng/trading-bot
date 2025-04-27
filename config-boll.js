@@ -40,7 +40,7 @@ const config = {
         numForAverage: 12, // 多少根k线求取candleHeight
 
 
-        brickSize: 0.00005,
+        brickSize: 0.0001,
         priorityFee: 0.0007,
         slippage: 0.0002, // 滑点
         B2Period: 10, // boll周期
