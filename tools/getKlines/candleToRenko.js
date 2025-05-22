@@ -23,6 +23,7 @@ let { kLineData: originLineData } = require(`../../tests/source/${symbol}-${time
 let kLineData = [];
 let preRenkoClose = null;
 let preRenkoData = null;
+let preDirection = null;
 originLineData.forEach((v, i) => {
     let  {open, high, low, close, volume, openTime, closeTime} = v;
     let splitV = [v];
@@ -83,14 +84,16 @@ originLineData.forEach((v, i) => {
         ]
     }
     splitV.forEach((v, i) => {
-        const { renkoData, newRenkoClose, newRenkoData } = convertToRenko({
+        const { renkoData, newRenkoClose, newRenkoData, newDirection } = convertToRenko({
             klineData: v,
-            brickSize,
+            brickSize: Number(brickSize),
             preRenkoClose,
             preRenkoData,
+            preDirection
         });
         preRenkoClose = newRenkoClose;
         preRenkoData = newRenkoData;
+        preDirection = newDirection;
         renkoData.length && kLineData.push(...renkoData.map((v) => ({ ...v, openTime: v.openTime + i, closeTime: v.closeTime + i })));
     })
 });

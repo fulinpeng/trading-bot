@@ -39,8 +39,11 @@ const calculateNormalizedMACD = require("../utils/nmacd");
 const calculateRSI = require("../utils/rsi_marsi");
 const { calculateSimpleMovingAverage } = require("../utils/ma.js");
 const fs = require("fs");
-const symbol = "1000pepeUSDT";
-let { kLineData } = require(`./source/${symbol}-2h.js`);
+// const symbol = "1000pepeUSDT";
+// let { kLineData } = require(`./source/${symbol}-2h.js`);
+const symbol = "1000pepeUSDT"; // 1000pepeUSDT
+
+let { kLineData } = require(`./source/renko-${symbol}-1m.js`);
 
 const DefaultAvailableMoney = 10;
 let maxAvailableMoney = 0;
@@ -60,8 +63,8 @@ let maxStopLossRate = 0.01;
 let invalidSigleStopRate = 0.05;
 
 const getQuantity = (currentPrice) => {
-    // availableMoney=DefaultAvailableMoney*(1+lossCount) // Math.pow(1.1, (1+lossCount))
-    availableMoney = baseMoney + DefaultAvailableMoney * lossCount;
+    availableMoney=DefaultAvailableMoney*(1+lossCount) // Math.pow(1.1, (1+lossCount))
+    // availableMoney = baseMoney + DefaultAvailableMoney * lossCount;
     if (maxAvailableMoney < availableMoney) maxAvailableMoney = availableMoney;
     return Math.round(availableMoney / currentPrice);
 };
@@ -803,12 +806,12 @@ function run(params) {
 // });
 // 1000pepe
 run({
-    howManyCandle: 3, // 初始止盈，盈亏比
-    firstStopProfitRate: 1, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
-    firstProtectProfitRate: 0.04, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
-    firstStopLossRate: 0.4, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
+    howManyCandle: 2, // 初始止盈，盈亏比
+    firstStopProfitRate: 1.5, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
+    firstProtectProfitRate: 0.7, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
+    firstStopLossRate: 0.5, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
     isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
-    profitProtectRate: 0.7, //isProfitRun === 1 时生效，保留多少利润
+    profitProtectRate: 0.9, //isProfitRun === 1 时生效，保留多少利润
     howManyCandleForProfitRun: 0.1,
     maxStopLossRate: 0.03, // 止损小于10%的情况，最大止损5%
     invalidSigleStopRate: 0.1, // 止损在10%，不开单

@@ -11,7 +11,7 @@ const { getDate, hasUpDownVal, getLastFromArr, getSequenceArr } = require("./uti
 const { calculateBollingerBands } = require("./utils/boll.js");
 const { convertToRenko } = require("./utils/renko.js");
 const config = require("./config-boll.js");
-const { isYang, isYin, } = require("./utils/kLineTools.js");
+const { isYang, isYin, isDownSwallow, isUpSwallow } = require("./utils/kLineTools.js");
 
 let testMoney = 0;
 const diff = 2;
@@ -33,6 +33,7 @@ let {
     B2Period,
     B2mult,
     howManyCandle, // 初始止盈，盈亏比
+    baseLossRate,
     firstStopProfitRate: DefaultFirstStopProfitRate, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
     firstProtectProfitRate,
     firstStopLossRate: DefaultFirstStopLossRate, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
@@ -66,6 +67,7 @@ let isArriveLastStopProfit = false;
 
 let preRenkoClose = null;
 let preRenkoData = null;
+let preDirection = null;
 
 let bollArrConsole = []
 
@@ -146,7 +148,7 @@ let allPositionDetail = {}; // 当前仓位信息
 let bollArr = [];
 let rsiArr = [];
 
-const maxKLinelen = isTestLocal ? 30 : 1400; // 储存kLine最大数量
+const maxKLinelen = isTestLocal ? 30 : 450; // 储存kLine最大数量
 // 日志
 let logStream = null;
 let errorStream = null;
@@ -462,7 +464,7 @@ const judgeIndexLoss = async (currentPrice) => {
     isJudgeIndexLoss = false;
 }
 // 止损
-const judgeStopLoss = async (_currentPrice) => {
+const judgeStopLoss = async (_currentPrice, isFast) => {
     if (!hasOrder) return;
     isJudgeStopLoss = true;
     const { trend, orderPrice } = tradingInfo;
@@ -473,10 +475,11 @@ const judgeStopLoss = async (_currentPrice) => {
 
     if (trend === "up") {
         // low 小于 point1 就止损，否则继续持有
-        if (_currentPrice <= point1 || (firstStopProfitRate && kLine3.close < orderPrice && kLine3.close < B2lower)) {
+        if (_currentPrice <= point1 || (isFast && firstStopProfitRate && _currentPrice < orderPrice && _currentPrice < B2lower)) {
             // 这里非常关键point1/_currentPrice
-            // _currentPrice = isTestLocal ? (firstStopProfitRate ? _currentPrice : point1) * (1 - slippage) : _currentPrice; // 后续改为限价单后_currentPrice改为point1
-            // _currentPrice = _currentPrice
+            // let slip = (_currentPrice - point1)/point1
+            // console.log("🚀 ~ judgeStopLoss ~ testMoney", firstStopProfitRate, slip)
+            _currentPrice = isTest ? _currentPrice * (1 - slippage) : _currentPrice; // 后续改为限价单后_currentPrice改为point1
             console.log(
                 `🚀 ~ judgeStopLoss up ~ ${_currentPrice > orderPrice ? '止盈' : '止损'}/平多:currentPrice, point1, 滑点:`,
                 _currentPrice,
@@ -491,10 +494,9 @@ const judgeStopLoss = async (_currentPrice) => {
     }
     if (trend === "down") {
         // high 大于 point2 就止损，否则继续持有
-        if (_currentPrice >= point2 || (firstStopProfitRate && kLine3.close > orderPrice && kLine3.close > B2upper)) {
+        if (_currentPrice >= point2 || (isFast && firstStopProfitRate && _currentPrice > orderPrice && _currentPrice > B2upper)) {
             // 这里非常关键point2/_currentPrice
-            // _currentPrice = isTestLocal ? (firstStopProfitRate ? _currentPrice : point2) * (1 + slippage) : _currentPrice; // 后续改为限价单后_currentPrice改为point2
-            // _currentPrice = _currentPrice
+            _currentPrice = isTest ? _currentPrice * (1 + slippage) : _currentPrice; // 后续改为限价单后_currentPrice改为point2
             // 止损/平空
             console.log(
                 `🚀 ~ judgeStopLoss down ~  ${_currentPrice < orderPrice ? '止盈' : '止损'}/平空:currentPrice, point2, 滑点:`,
@@ -713,9 +715,9 @@ const judgeTradingDirection = () => {
     // 准备条件: 三个k形成顶分
     // 准备条件: 最高值大于boll上沿
     // 准备条件: 当前close小于boll上沿，并且大于中线
-    const downTerm1 = isYang(kLine3) && isYang(kLine4) && isYin(kLine5);
+    const downTerm1 = isYin(kLine3) && isYang(kLine4) && isYin(kLine5);
     // const downTerm2 = kLine3.high > boll3.B2upper || kLine4.high > boll4.B2upper || kLine5.high > boll5.B2upper;
-    const downTerm2 = true // kLine4.open > boll4.B2basis && kLine5.close > boll5.B2basis && kLine5.close < boll5.B2upper; // kLine3.open > boll3.B2basis && 
+    const downTerm2 = true // kLine4.high < kLine5.high;
     // const downTerm3 = close < B2upper && close > B2basis;
     // const downTerm4 = (rsi5.rsi > 30 && isYin(kLine5)) && close < B2lower;
     
@@ -772,7 +774,7 @@ const calculateTradingSignal = () => {
     let min = Math.min(kLine1.close, kLine2.close, kLine3.close, kLine1.open, kLine2.open, kLine3.open);
     
     // 计算ATR
-    const atr = brickSize * 0.5;
+    const atr = brickSize * baseLossRate;
 
     if (readyTradingDirection === "up" && close > open) {
         min = min - atr;
@@ -1479,12 +1481,14 @@ const startWebSocket = async () => {
         prePrice = currentPrice; // 不能删除
         currentPrice = Number(close) || 0;
 
-        // 测试时就没有这种高频检测，正式情况不一样，需要实时监测
-        // 加上这里的逻辑没有什么卵用，反而亏钱>>>>>>>>>>>>>>>>>>>>>>>>>>>>?????????????
-        if (hasOrder) {
+        if (hasOrder && isNewLine) {
             // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
             // 下面两个需要实时，要快，甚至需要平仓，或者需要在renkonk线中执行判断
-                // await gridPointClearTrading(currentPrice);
+            firstStopProfitRate && await judgeStopLoss(currentPrice, true);
+            // 首次亏损保护
+            // firstStopProfitRate && await judgeFirstLossProtect(currentPrice);
+            // // 止盈 | 移动止盈
+            // await judgeProfitRunOrProfit(currentPrice);
         }
 
         const curKLine = {
@@ -1499,17 +1503,19 @@ const startWebSocket = async () => {
             takerBuyBaseAssetVolume: Number(takerBuyBaseAssetVolume), // 主动买入的成交量
         };
 
-        const { renkoData, newRenkoClose, newRenkoData } = convertToRenko({
+        const { renkoData, newRenkoClose, newRenkoData, newDirection } = convertToRenko({
             klineData: curKLine,
             brickSize,
             preRenkoClose,
-            preRenkoData
+            preRenkoData,
+            preDirection,
         });
         // renkoData.length && console.log("🚀 ~ ws.on ~ , preRenkoClose, newRenkoClose:", preRenkoClose, newRenkoClose)
         preRenkoClose = newRenkoClose;
         preRenkoData = newRenkoData;
+        preDirection = newDirection;
         // renkoData 这个值可能大于1，是插针，一般不会??????
-        // renko 不怕插针，但是怕流动性不足，会导致不成单
+        // renko 不怕插针，只是怕流动性不足，会导致不成单
         if (renkoData.length) {
             for (let i = 0; i < renkoData.length; i++) {
                 const line = renkoData[i];
@@ -1533,7 +1539,7 @@ const startWebSocket = async () => {
             if (renkoData.length){
                 // renko所以没有滞后得说法????
                 // 止盈可以慢一点，滑点什么的对它有利
-                await gridPointClearTrading(isTestLocal ? renkoData[renkoData.length - 1].close : currentPrice);
+                await gridPointClearTrading(isTest ? renkoData[renkoData.length - 1].close : currentPrice);
             }
         }
         isTestLocal && ws.send('hello');
@@ -1552,6 +1558,7 @@ const startWebSocket = async () => {
         // 在这里添加处理错误的逻辑
         process.exit(error);
     });
+    // 可能不需要ping/pong因为服务器一直在推送数据，所以socket不能因为休眠关闭
     ws.on("ping", (data) => {
         // const str = data.toString('utf8');
         // console.log("🚀 ~ ws.on ~ ping data:", data, str)

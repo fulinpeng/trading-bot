@@ -1,7 +1,8 @@
 // 计算简单移动平均线
 function calculateSimpleMovingAverage(prices, period) {
     if (prices.length < period) {
-        throw new Error("Not enough data points for the specified period.");
+        console.log("Not enough data points for the specified period.");
+        return null
     }
 
     const slice = prices.slice(prices.length - period);

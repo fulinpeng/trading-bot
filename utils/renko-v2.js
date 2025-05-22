@@ -1,7 +1,7 @@
 // 砖型图数据转换函数
 // 该砖型图，close为最新值，open方向可能存在长长的尾巴，就像彗星一样
 function convertToRenko(params) {
-    let { klineData, brickSize, preRenkoClose, preRenkoData, preDirection } = params;
+    let { klineData, brickSize, preRenkoClose, preRenkoData } = params;
     let renkoData = [];
     // 解析 K 线数据
     let {
@@ -33,9 +33,7 @@ function convertToRenko(params) {
     }
 
     // 上一根砖型图的方向 1为上涨，-1为下跌
-    if (!preDirection) {
-        preDirection = preRenkoData ? (preRenkoData.close > preRenkoData.open ? 1 : -1) : (close >= preRenkoClose ? 1 : -1);
-    }
+    let preDirection = preRenkoData ? (preRenkoData.close > preRenkoData.open ? 1 : -1) : (close >= preRenkoClose ? 1 : -1);
 
     // 如果没有上一个砖型图，初始化第一个砖型图
     if (!preRenkoData) {
@@ -202,7 +200,6 @@ function convertToRenko(params) {
                 };
             }
         }
-        preDirection = direction;
     }
     // 没有产生新的砖块
     else {
@@ -218,8 +215,7 @@ function convertToRenko(params) {
     return {
         renkoData,
         newRenkoClose: preRenkoClose,
-        newRenkoData: preRenkoData,
-        newDirection: preDirection,
+        newRenkoData: preRenkoData
     };
 }
 

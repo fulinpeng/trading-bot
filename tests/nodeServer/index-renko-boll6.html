@@ -52,7 +52,32 @@
         const rsiArr={{rsiArr}}
         const macdArr={{macdArr}}
         const bollDisArr={{bollDisArr}}
+        const volArr={{volArr}}
         const ratioArr={{ratioArr}}
+        const totalSuperTrendArr={{totalSuperTrendArr}}
+
+
+        const superTrendUp = [];
+        const superTrendDn = [];
+
+        let dis = kLineData.length - totalSuperTrendArr.length;
+        for (let i = 0; i < dis; i++) {
+            superTrendUp.push(null)
+            superTrendDn.push(null)
+        }
+
+        totalSuperTrendArr.forEach(item => {
+            const { trend, up, dn } = item || {};
+            if (trend === 1) {
+                superTrendUp.push(null)
+                superTrendDn.push(dn)
+            }
+            if (trend === -1){
+                superTrendUp.push(up)
+                superTrendDn.push(null)
+            }
+
+        });
 
         function calculateMA(dayCount) {
             var result = [];
@@ -165,6 +190,12 @@
                 bollDisArr.unshift(null);
             }
         }
+        if (volArr.length < dates.length) {
+            let dis = dates.length - volArr.length;
+            for (let i = 0; i < dis; i++) {
+                volArr.unshift(null);
+            }
+        }
         if (ratioArr.length < dates.length) {
             let dis = dates.length - ratioArr.length;
             for (let i = 0; i < dis; i++) {
@@ -174,8 +205,8 @@
 
         console.log("🚀 ~ data:", data.length);
 
-        const length = 5;
-        const B2mult = 2;
+        const length = 20;
+        const B2mult = 1.5;
 
         // const B2basis = calculateMA(length);
 
@@ -262,7 +293,7 @@
             },
             legend: {
                 top: 30,
-                data: [timeLevel, "UP", "MA20", "DN", "EMASHORT", "EMALONG"]
+                data: [timeLevel, "UP", "MA20", "DN", "superTrendUp", "superTrendDn", "EMASHORT", "EMALONG"]
             },
             tooltip: {
                 trigger: "axis",
@@ -522,6 +553,30 @@
                         opacity: 0.5,
                     },
                 },
+                {
+                    name: "superTrendUp",
+                    type: "line",
+                    xAxisIndex: 0,
+                    yAxisIndex: 0,
+                    symbol: 'none',
+                    data: superTrendUp,
+                    smooth: true,
+                    lineStyle: {
+                        opacity: 0.5,
+                    },
+                },
+                {
+                    name: "superTrendDn",
+                    type: "line",
+                    xAxisIndex: 0,
+                    yAxisIndex: 0,
+                    symbol: 'none',
+                    data: superTrendDn,
+                    smooth: true,
+                    lineStyle: {
+                        opacity: 0.5,
+                    },
+                },
                 // {
                 //     name: "EMALONG",
                 //     type: "line",
@@ -557,6 +612,29 @@
                         color: '#d24f4f'
                     },
                     data: bollDisArr,
+                    smooth: true,
+                    markLine: {
+                        precision: 4,
+                        data: [
+                            {
+                                yAxis: 0.004
+                            },
+                            {
+                                yAxis: 0.0011
+                            },
+                        ]
+                    },
+                },
+                {
+                    name: 'volArr',
+                    type: 'line',
+                    symbol: 'none',
+                    xAxisIndex: 1,
+                    yAxisIndex: 1,
+                    itemStyle: {
+                        color: '#d24f4f'
+                    },
+                    data: volArr,
                     smooth: true,
                     markLine: {
                         precision: 4,

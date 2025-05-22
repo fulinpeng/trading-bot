@@ -33,6 +33,7 @@ let {
     B2Period,
     B2mult,
     howManyCandle, // 初始止盈，盈亏比
+    baseLossRate,
     firstStopProfitRate: DefaultFirstStopProfitRate, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
     firstProtectProfitRate,
     firstStopLossRate: DefaultFirstStopLossRate, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
@@ -43,7 +44,7 @@ let {
     invalidSigleStopRate, // 止损在10%，不开单
     double, // 是否损失后加倍开仓
     maxLossCount, // 损失后加倍开仓，最大倍数
-} = config["1000pepe"];
+} = config["doge"];
 
 let highArr = [];
 let lowArr = [];
@@ -66,6 +67,7 @@ let isArriveLastStopProfit = false;
 
 let preRenkoClose = null;
 let preRenkoData = null;
+let preDirection = null;
 
 let bollArrConsole = []
 
@@ -146,7 +148,7 @@ let allPositionDetail = {}; // 当前仓位信息
 let bollArr = [];
 let rsiArr = [];
 
-const maxKLinelen = isTestLocal ? 30 : 400; // 储存kLine最大数量
+const maxKLinelen = isTestLocal ? 30 : 450; // 储存kLine最大数量
 // 日志
 let logStream = null;
 let errorStream = null;
@@ -324,7 +326,7 @@ const setEveryIndex = (historyClosePrices, curKLine) => {
 const setBollArr = (historyClosePrices, curKLine) => {
     bollArr.length >= 10 && bollArr.shift();
     const boll = calculateBollingerBands(historyClosePrices, B2Period, B2mult);
-    // if (!boll) return;
+    if (!boll) return;
     bollArr.push(boll);
     // ?????会占用很长时间
     // if (isTest) {
@@ -381,7 +383,6 @@ const setRsiArr = (historyClosePrices) => {
 
 // 更新kLine信息
 const setKLinesTemp = (curKLine) => {
-    // ?????>>>>
     kLineData.length >= 30 && kLineData.shift();
     historyClosePrices.length >= 30 && historyClosePrices.shift();
 
@@ -463,18 +464,22 @@ const judgeIndexLoss = async (currentPrice) => {
     isJudgeIndexLoss = false;
 }
 // 止损
-const judgeStopLoss = async (_currentPrice) => {
+const judgeStopLoss = async (_currentPrice, isFast) => {
     if (!hasOrder) return;
     isJudgeStopLoss = true;
     const { trend, orderPrice } = tradingInfo;
     const [point1, point2] = TP_SL;
+    const [kLine1, kLine2, kLine3] = getLastFromArr(kLineData, 3);
+    let [boll5] = getLastFromArr(bollArr, 1);
+    let { B2basis, B2upper, B2lower } = boll5;
 
     if (trend === "up") {
         // low 小于 point1 就止损，否则继续持有
-        if (_currentPrice <= point1) {
+        if (_currentPrice <= point1 || (firstStopProfitRate && _currentPrice < orderPrice && _currentPrice < B2lower)) {
             // 这里非常关键point1/_currentPrice
-            _currentPrice = isTestLocal ? point1 * (1 - slippage) : _currentPrice; // 后续改为限价单后_currentPrice改为point1
-            // _currentPrice = _currentPrice
+            // let slip = (_currentPrice - point1)/point1
+            // console.log("🚀 ~ judgeStopLoss ~ testMoney", firstStopProfitRate, slip)
+            _currentPrice = isTest ? _currentPrice * (1 - slippage) : _currentPrice; // 后续改为限价单后_currentPrice改为point1
             console.log(
                 `🚀 ~ judgeStopLoss up ~ ${_currentPrice > orderPrice ? '止盈' : '止损'}/平多:currentPrice, point1, 滑点:`,
                 _currentPrice,
@@ -489,10 +494,9 @@ const judgeStopLoss = async (_currentPrice) => {
     }
     if (trend === "down") {
         // high 大于 point2 就止损，否则继续持有
-        if (_currentPrice >= point2) {
+        if (_currentPrice >= point2 || (isFast && firstStopProfitRate && _currentPrice > orderPrice && _currentPrice > B2upper)) {
             // 这里非常关键point2/_currentPrice
-            _currentPrice = isTestLocal ? point2 * (1 + slippage) : _currentPrice; // 后续改为限价单后_currentPrice改为point2
-            // _currentPrice = _currentPrice
+            _currentPrice = isTest ? _currentPrice * (1 + slippage) : _currentPrice; // 后续改为限价单后_currentPrice改为point2
             // 止损/平空
             console.log(
                 `🚀 ~ judgeStopLoss down ~  ${_currentPrice < orderPrice ? '止盈' : '止损'}/平空:currentPrice, point2, 滑点:`,
@@ -701,6 +705,7 @@ const judgeTradingDirection = () => {
     // const upTerm3 = close > B2lower && close < B2basis;
     // const upTerm4 = (rsi5.rsi < 70 && isYang(kLine5)) && close > B2upper;
     
+    // isYin(kLine3) && isYin(kLine4)&&console.log("🚀 ~ judgeTradingDirection down testMoney ~ rsi5.rsi:", kLine5)
     if (isUpOpen && (upTerm1 && upTerm2)) {// || upTerm4
         // console.log("🚀 ~ judgeTradingDirection up ~ rsi5.rsi:", rsi5.rsi)
         readyTradingDirection = "up";
@@ -717,7 +722,6 @@ const judgeTradingDirection = () => {
     // const downTerm4 = (rsi5.rsi > 30 && isYin(kLine5)) && close < B2lower;
     
     if (isDownOpen && (downTerm1 && downTerm2)) {// || downTerm4
-        // console.log("🚀 ~ judgeTradingDirection down ~ rsi5.rsi:", rsi5.rsi)
         readyTradingDirection = "down";
         return;
     }
@@ -770,7 +774,7 @@ const calculateTradingSignal = () => {
     let min = Math.min(kLine1.close, kLine2.close, kLine3.close, kLine1.open, kLine2.open, kLine3.open);
     
     // 计算ATR
-    const atr = brickSize * 0.5;
+    const atr = brickSize * baseLossRate;
 
     if (readyTradingDirection === "up" && close > open) {
         min = min - atr;
@@ -1403,17 +1407,17 @@ const gridPointClearTrading = async (currentPrice) => {
     // 止损 / 移动盈利的平仓
     await judgeStopLoss(currentPrice);
 
-    // 首次亏损保护
-    await judgeFirstLossProtect(currentPrice);
-
     // 首次盈利保护
     await judgeFirstProfitProtect(currentPrice);
+
+    // 首次亏损保护
+    await judgeFirstLossProtect(currentPrice);
 
     // 止盈 | 移动止盈
     await judgeProfitRunOrProfit(currentPrice);
 
-    // // 指标止盈
-    // await judgeIndexProfit(currentPrice);
+    // 指标止盈
+    await judgeIndexProfit(currentPrice);
 
     onGridPoint = false;
 };
@@ -1479,10 +1483,14 @@ const startWebSocket = async () => {
 
         // 测试时就没有这种高频检测，正式情况不一样，需要实时监测
         // 加上这里的逻辑没有什么卵用，反而亏钱>>>>>>>>>>>>>>>>>>>>>>>>>>>>?????????????
-        if (hasOrder) {
+        if (hasOrder && isNewLine) {
             // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
             // 下面两个需要实时，要快，甚至需要平仓，或者需要在renkonk线中执行判断
-                // await gridPointClearTrading(currentPrice);
+            if (firstStopProfitRate) {
+                await judgeStopLoss(currentPrice, true);
+            } else {
+                await judgeProfitRunOrProfit(currentPrice);
+            }
         }
 
         const curKLine = {
@@ -1497,17 +1505,19 @@ const startWebSocket = async () => {
             takerBuyBaseAssetVolume: Number(takerBuyBaseAssetVolume), // 主动买入的成交量
         };
 
-        const { renkoData, newRenkoClose, newRenkoData } = convertToRenko({
+        const { renkoData, newRenkoClose, newRenkoData, newDirection } = convertToRenko({
             klineData: curKLine,
             brickSize,
             preRenkoClose,
-            preRenkoData
+            preRenkoData,
+            preDirection,
         });
         // renkoData.length && console.log("🚀 ~ ws.on ~ , preRenkoClose, newRenkoClose:", preRenkoClose, newRenkoClose)
         preRenkoClose = newRenkoClose;
         preRenkoData = newRenkoData;
+        preDirection = newDirection;
         // renkoData 这个值可能大于1，是插针，一般不会??????
-        // renko 不怕插针，但是怕流动性不足，会导致不成单
+        // renko 不怕插针，只是怕流动性不足，会导致不成单
         if (renkoData.length) {
             for (let i = 0; i < renkoData.length; i++) {
                 const line = renkoData[i];
@@ -1531,7 +1541,10 @@ const startWebSocket = async () => {
             if (renkoData.length){
                 // renko所以没有滞后得说法????
                 // 止盈可以慢一点，滑点什么的对它有利
-                await gridPointClearTrading(currentPrice);
+                // await gridPointClearTrading(renkoData[renkoData.length - 1].close);
+                let curClose = renkoData[renkoData.length - 1].close;
+                console.log("🚀 ~ ws.on ~ renkoData[renkoData.length - 1].close:", (currentPrice - curClose)/curClose)
+                await gridPointClearTrading(isTest ? renkoData[renkoData.length - 1].close : currentPrice);
             }
         }
         isTestLocal && ws.send('hello');
@@ -1550,6 +1563,7 @@ const startWebSocket = async () => {
         // 在这里添加处理错误的逻辑
         process.exit(error);
     });
+    // 可能不需要ping/pong因为服务器一直在推送数据，所以socket不能因为休眠关闭
     ws.on("ping", (data) => {
         // const str = data.toString('utf8');
         // console.log("🚀 ~ ws.on ~ ping data:", data, str)

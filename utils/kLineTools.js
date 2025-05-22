@@ -237,10 +237,10 @@ function isUpLinesGroup3(kLine1, kLine2, kLine3) {
     return res;
 }
 // 看跌吞没
-function isDownSwallow(kLine2, kLine3) {
+function isDownSwallow(kLine2, kLine3, ratio = 0.5) {
     const res =
         kLine3.open > kLine3.close && // 阴烛
-        (kLine3.open - kLine3.close) / (kLine3.high - kLine3.low) > 0.52 && // 实体占比大于0.55
+        (kLine3.open - kLine3.close) / (kLine3.high - kLine3.low) > ratio && // 实体占比大于0.55
         kLine2.low > kLine3.low &&
         kLine2.high < kLine3.high;
     // console.log("🚀 ~ 是否 看跌吞没 ~ res:", res);
