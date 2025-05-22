@@ -16,6 +16,16 @@ function stdev(values, length) {
 
 // 计算真实范围 (True Range)
 function trueRange(prices) {
+    // ?????????????????? >>>>>>>>>>>>>>>>> 这里要改，虽然知识和renko但是性能不好，改到别的地方去
+    prices = prices.map((item) => {
+        const high = Math.max(item.open, item.close);
+        const low = Math.min(item.open, item.close);
+        return {
+            ...item,
+            high,
+            low,
+        }
+    });
     return prices.map((price, idx) => {
         if (idx === 0) return price.high - price.low; // 第一个值的真实范围为高-低
         // 计算最大范围：当前高-低，当前高-前一收盘，当前低-前一收盘
@@ -28,7 +38,7 @@ function trueRange(prices) {
 }
 
 // 非挤压状态
-function calculateBBKeltnerSqueeze(prices, length = 20, B2mult = 2.0, Kmult = 1.5) {
+function calculateBBKeltnerSqueeze(prices, length = 20, B2mult = 2.0, Kmult = 2) {
     const closePrices = prices.map((price) => price.close); // 获取所有的收盘价
 
     // 计算布林带 (Bollinger Bands)

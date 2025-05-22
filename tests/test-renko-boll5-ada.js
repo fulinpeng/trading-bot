@@ -5,7 +5,7 @@ const {
     isDownSwallow, isUpSwallow
 } = require("../utils/kLineTools.js");
 const calculateRSI = require("../utils/rsi_marsi.js");
-const { calculateBollingerBands } = require("../utils/boll.js");
+const { calculateBBKeltnerSqueeze } = require("../utils/BBKeltner.js");
 const { calculateSimpleMovingAverage, calculateEMA } = require("../utils/ma.js");
 const { calculateSuperTrendOnRenko } = require("../utils/renkoSuperTrend.js");
 const { calculateTSI } = require("../utils/tsi.js");
@@ -47,6 +47,7 @@ let invalidSigleStopRate = 0.05;
 let slAtrPeriod = 14;
 let closeLastOrder = false;
 let compoundInterest = 0;
+let isFirstArriveBBK = false;
 
 let curStopLoss = 0; // 如果达到最终止损就计数一次,每次开单后重置未当前止损点
 let curStopProfit = 0; // 如果达到最终止盈就计数一次,每次开单后重置未当前止盈点
@@ -97,6 +98,7 @@ let orderIndex = 0;
 
 let bollArr = [];
 let bollDisArr = [];
+let bollAllArr = [];
 let ratioArr = [];
 let rsiArr = [];
 let macdArr = [];
@@ -204,8 +206,21 @@ const setEveryIndex = (historyClosePrices, klines) => {
 };
 const setBollArr = (historyClosePrices, klines) => {
     bollArr.length >= 10 && bollArr.shift();
-    const boll = calculateBollingerBands(historyClosePrices, B2Period, B2mult);
+    const bbkRes = calculateBBKeltnerSqueeze(klines, B2Period, B2mult, 2);
+
+    const { B2basis, B2upper, B2lower, Kma, Kupper, Klower, squeeze } = bbkRes;
+    const len = B2basis.length;
+    const curB2basis = B2basis[len - 1];
+    const curB2upper = B2upper[len - 1];
+    const curB2lower = B2lower[len - 1];
+    const curKma = Kma[len - 1];
+    const curKupper = Kupper[len - 1];
+    const curKlower = Klower[len - 1];
+    const isSqueeze = squeeze[len - 1];
+
+    const boll = { B2basis: curB2basis, B2upper: curB2upper, B2lower: curB2lower, Kupper: curKupper, Klower: curKlower, isSqueeze };
     bollArr.push(boll);
+    bollAllArr.push(boll);
     bollDisArr.push(boll.B2upper - boll.B2lower);
     const ratio = getSmaRatio(getLastFromArr(bollArr, 3).map(v => v.B2basis));
     ratioArr.push(ratio);
@@ -407,7 +422,7 @@ const start = (params) => {
 
         let [kLine0, kLine1, kLine2, kLine3] = getLastFromArr(curKLines, 4);
         let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
-        let { B2basis, B2upper, B2lower } = boll5;
+        let { B2basis, B2upper, B2lower, Kupper, Klower } = boll5;
         // console.log("🚀 ~ start ~ B2basis, B2upper, B2lower:", B2basis, B2upper, B2lower)
 
         // 准备开仓
@@ -468,12 +483,11 @@ const start = (params) => {
                     //     continue;
                     // }
                     // 强制保本损
-                    // if (idx - orderIndex === 5 && close > orderPrice) {
-                    //     TP_SL[0] = orderPrice;
-                    //     firstStopProfitRate = 0;
-                    //     firstStopLossRate = 0; // 防止同时触发止损
-                    //     continue;
-                    // }
+                    if (idx - orderIndex === 2 && !isFirstArriveBBK && firstStopProfitRate) { //  && close > Klower
+                        TP_SL[0] += brickSize * 0.25;
+                        isFirstArriveBBK = true;
+                        continue;
+                    }
                     // low 小于 point1 就止损，否则继续持有
                     if (close <= point1) {
                         firstStopProfitRate && (arriveLastStopLoss++);
@@ -520,12 +534,11 @@ const start = (params) => {
                     //     continue;
                     // }
                     // 强制保本损
-                    // if (idx - orderIndex === 5 && close < orderPrice) {
-                    //     TP_SL[1] = orderPrice;
-                    //     firstStopProfitRate = 0;
-                    //     firstStopLossRate = 0; // 防止同时触发止损
-                    //     continue;
-                    // }
+                    if (idx - orderIndex === 2 && !isFirstArriveBBK && firstStopProfitRate) {// && close < Kupper
+                        TP_SL[1] -= brickSize * 0.25;
+                        isFirstArriveBBK = true;
+                        continue;
+                    }
                     // high 大于 point2 就止损，否则继续持有
                     if (close >= point2) {
                         firstStopProfitRate && (arriveLastStopLoss++);
@@ -633,9 +646,9 @@ const start = (params) => {
             // if (
             //     hasOrder &&
             //     trend === "up" &&
-            //     !firstStopProfitRate &&
+            //     // !firstStopProfitRate &&
             //     // isArriveLastStopProfit &&
-            //     (close <= B2lower)
+            //     (B2lower < Klower)
             // ) {
             //     zhibiaoWinNum += 1;
             //     setProfit(orderPrice, close, openTime); // 正式环境可能此时还没有收盘 ???? 但是boll值变化不大可以直接对比
@@ -646,9 +659,9 @@ const start = (params) => {
             // if (
             //     hasOrder &&
             //     trend === "down" &&
-            //     !firstStopProfitRate &&
+            //     // !firstStopProfitRate &&
             //     // isArriveLastStopProfit &&
-            //     (close <= B2lower) // ||  (isYang(kLine0) && isYang(kLine1) && isYang(kLine2) && isYang(kLine3))
+            //     (B2lower > Klower) // ||  (isYang(kLine0) && isYang(kLine1) && isYang(kLine2) && isYang(kLine3))
             // ) {
             //     zhibiaoWinNum += 1;
             //     setProfit(orderPrice, close, openTime); // 正式环境可能此时还没有收盘 ???? 但是boll值变化不大可以直接对比
@@ -693,19 +706,19 @@ const judgeTradingDirection = (curKLines) => {
     // 使用成交量并不合适，因为这里并不知道renko生么时候收盘，没有时间概念不能累加volume
 
     let { openTime, high, low, open, close } = kLine5;
-    let { B2basis, B2upper, B2lower } = boll5;
+    let { B2basis, B2upper, B2lower, Kupper, Klower } = boll5;
 
     // 反转做多
-    const upTerm1 = kLine5.low < boll5.B2lower && kLine5.close < boll5.B2basis && isYin(kLine4) && isYang(kLine5);
-    const upTerm2 = true;
+    const upTerm1 = kLine5.close < boll5.B2basis && isYin(kLine4) && isYang(kLine5);
+    const upTerm2 = true // Klower > B2lower;
 
-    if (isUpOpen && upTerm1) {
+    if (isUpOpen && upTerm1 && upTerm2) {
         readyTradingDirection = "up";
         return;
     }
     // 反转做空
-    const downTerm1 = kLine5.high >= boll5.B2upper && kLine5.close > boll5.B2basis && isYang(kLine4) && isYin(kLine5);
-    const downTerm2 = true
+    const downTerm1 =  kLine5.close > boll5.B2basis && isYang(kLine4) && isYin(kLine5);
+    const downTerm2 = true // Kupper < B2upper;
 
     if (isDownOpen && downTerm1 && downTerm2) {
         readyTradingDirection = "down";
@@ -747,12 +760,13 @@ const judgeAndTrading = (kLines, params, idx) => {
             setTP_SL("up", stopLoss, stopProfit, curkLine.close);
             readyTradingDirection = "hold";
             hasOrder = true;
-            orderIndex = idx;
             openHistory.push(curkLine.openTime); // 其实开单时间是：curkLine.closeTime，binance的时间显示的是open Time，方便调试这里记录openTime
             openPriceHistory.push(curkLine.close);
             firstStopProfitRate = params.firstStopProfitRate;
             firstStopLossRate = params.firstStopLossRate;
             isArriveLastStopProfit = false;
+            orderIndex = idx;
+            isFirstArriveBBK = false;
             break;
         case "down":
             trend = "down";
@@ -765,6 +779,7 @@ const judgeAndTrading = (kLines, params, idx) => {
             firstStopLossRate = params.firstStopLossRate;
             isArriveLastStopProfit = false;
             orderIndex = idx;
+            isFirstArriveBBK = false;
             break;
         default:
             break;
@@ -871,6 +886,7 @@ function run(params) {
         var rsiArr = ${JSON.stringify(rsiArr, null, 2)}
         var macdArr = ${JSON.stringify(macdArr, null, 2)}
         var bollDisArr = ${JSON.stringify(bollDisArr, null, 2)}
+        var bollAllArr = ${JSON.stringify(bollAllArr, null, 2)}
         var volArr = ${JSON.stringify(volArr, null, 2)}
         var ratioArr = ${JSON.stringify(ratioArr, null, 2)}
         var totalSuperTrendArr = ${JSON.stringify(totalSuperTrendArr, null, 2)}
@@ -932,6 +948,7 @@ function run(params) {
             rsiArr,
             macdArr,
             bollDisArr,
+            bollAllArr,
             volArr,
             ratioArr,
             totalSuperTrendArr,

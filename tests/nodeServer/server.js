@@ -118,7 +118,7 @@ chokidar
 // 动态生成 HTML
 app.get("/", (req, res) => {
     // const htmlPath = path.resolve(__dirname, "index.html");
-    const htmlPath = path.resolve(__dirname, "index-renko-boll3.html");
+    const htmlPath = path.resolve(__dirname, "index-renko-boll3-bbk.html");
     const htmlTemplate = fs.readFileSync(htmlPath, "utf-8");
 
     const injectedHTML = htmlTemplate
@@ -139,6 +139,7 @@ app.get("/", (req, res) => {
         .replace("{{rsiArr}}", jsonString(data.rsiArr))
         .replace("{{macdArr}}", jsonString(data.macdArr))
         .replace("{{bollDisArr}}", jsonString(data.bollDisArr))
+        .replace("{{bollAllArr}}", jsonString(data.bollAllArr))
         .replace("{{volArr}}", jsonString(data.volArr))
         .replace("{{ratioArr}}", jsonString(data.ratioArr))
         .replace("{{totalSuperTrendArr}}", jsonString(data.totalSuperTrendArr))
