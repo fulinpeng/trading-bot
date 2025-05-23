@@ -88,8 +88,8 @@ function resolveModulePath(moduleName, currentFilePath) {
 // 加载数据
 function reloadData() {
     // const sourcePath = path.resolve(__dirname, `source/${symbol}-${timeLevel}.js`);
-    const sourcePath = path.resolve(__dirname, `source/renko-${symbol}-${timeLevel}.js`);
-    // const sourcePath = path.resolve(__dirname, `../${symbol}2.js`); // 测试用，刚从logs拿到的数据
+    // const sourcePath = path.resolve(__dirname, `source/renko-${symbol}-${timeLevel}.js`);
+    const sourcePath = path.resolve(__dirname, `../../logs/${symbol}.js`); // 测试用，刚从logs拿到的数据
     const dataPath = path.resolve(__dirname, `data/${symbol}-${strategy}.js`);
 
     kLineData = require(sourcePath).kLineData || [];

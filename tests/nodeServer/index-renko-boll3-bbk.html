@@ -155,6 +155,9 @@
             Klower.push(null)
         }
         bollAllArr.forEach(item => {
+            if (!item) {
+                item = {};
+            }
             B2basis.push(item.B2basis)
             B2upper.push(item.B2upper)
             B2lower.push(item.B2lower)

@@ -44,7 +44,7 @@ let {
     invalidSigleStopRate, // 止损在10%，不开单
     double, // 是否损失后加倍开仓
     maxLossCount, // 损失后加倍开仓，最大倍数
-} = config["ada"];
+} = config["doge"];
 
 let highArr = [];
 let lowArr = [];
@@ -331,6 +331,7 @@ const setEveryIndex = (historyClosePrices, curKLine) => {
 const setBollArr = (historyClosePrices, curKLine) => {
     bollArr.length >= 6 && bollArr.shift();
     const boll = calculateBollingerBands(historyClosePrices, B2Period, B2mult);
+    console.log("🚀 ~ setBollArr ~ boll:", boll)
     if (!boll) return;
     bollArr.push(boll);
     
@@ -482,7 +483,8 @@ const judgeStopLoss = async (_currentPrice, isFast) => {
             // 这里非常关键point1/_currentPrice
             _currentPrice = isTestLocal ? point1 * (1 - slippage) : _currentPrice;
             console.log(
-                `🚀 ~ judgeStopLoss testMoney up ~ ${_currentPrice > orderPrice ? '止盈' : '止损'}/平多:currentPrice, point1, 滑点:`,
+                isTestLocal ? 'testMoney' : '',
+                `🚀 ~ judgeStopLoss up ~ ${_currentPrice > orderPrice ? '止盈' : '止损'}/平多:currentPrice, point1, 滑点:`,
                 _currentPrice,
                 point1,
                 `, 滑点:`, (point1 - _currentPrice)/_currentPrice, '是否盈利:', _currentPrice > orderPrice
@@ -500,7 +502,8 @@ const judgeStopLoss = async (_currentPrice, isFast) => {
             _currentPrice = isTestLocal ? point2 * (1 + slippage) : _currentPrice;
             // 止损/平空
             console.log(
-                `🚀 ~ judgeStopLoss testMoney down ~  ${_currentPrice < orderPrice ? '止盈' : '止损'}/平空:currentPrice, point2`,
+                isTestLocal ? 'testMoney' : '',
+                `🚀 ~ judgeStopLoss down ~  ${_currentPrice < orderPrice ? '止盈' : '止损'}/平空:currentPrice, point2`,
                 _currentPrice,
                 point2,
                 `, 滑点:`, (_currentPrice - point2)/point2, '是否盈利:', _currentPrice < orderPrice
