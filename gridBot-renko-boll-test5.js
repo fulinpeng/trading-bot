@@ -44,7 +44,7 @@ let {
     invalidSigleStopRate, // 止损在10%，不开单
     double, // 是否损失后加倍开仓
     maxLossCount, // 损失后加倍开仓，最大倍数
-} = config["doge"];
+} = config["ada"];
 
 let highArr = [];
 let lowArr = [];
@@ -525,7 +525,7 @@ const judgeForceLossProtect = async (currentPrice) => {
     let [boll5] = getLastFromArr(bollArr, 1);
     let { B2basis, B2upper, B2lower } = boll5;
     if (trend === "up") {
-        if (idx - orderIndex === 2 && !isFirstArriveBBK && firstStopProfitRate) { //  && close > Klower
+        if (idx - orderIndex === 3 && !isFirstArriveBBK && firstStopProfitRate) { //  && close > Klower
             TP_SL[0] += brickSize * 0.25;
             isFirstArriveBBK = true;
             isJudgeForceLossProtect = false;
@@ -533,7 +533,7 @@ const judgeForceLossProtect = async (currentPrice) => {
         }
     }
     if (trend === "down") {
-        if (idx - orderIndex === 2 && !isFirstArriveBBK && firstStopProfitRate) {// && close < Kupper
+        if (idx - orderIndex === 3 && !isFirstArriveBBK && firstStopProfitRate) {// && close < Kupper
             TP_SL[1] -= brickSize * 0.25;
             isFirstArriveBBK = true;
             isJudgeForceLossProtect = false;

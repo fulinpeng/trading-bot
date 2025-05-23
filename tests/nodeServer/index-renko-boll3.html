@@ -49,6 +49,7 @@
 		const curTestMoneyHistory={{curTestMoneyHistory}}
 		const highLowTimes={{highLowTimes}}
 		const highLowPrices={{highLowPrices}}
+		const bollAllArr={{bollAllArr}}
 
         // Each item: open，close，lowest，highest
         function splitData(rawData) {
@@ -137,20 +138,30 @@
 
         let data0 = splitData(kLineData.map(v => [v.openTime, v.open, v.close, v.low, v.high, v.closeTime]));
 
-        console.log("🚀 ~ data0.values:", data0.values.length);
+        let B2basis = []
+        let B2upper = []
+        let B2lower = []
+        let Kupper = []
+        let Klower = []
 
-        const length = 20;
-        const B2mult = 2;
-
-        // const B2basis = calculateMA(length);
-
-        const closePrices = kLineData.map((v) => v.close);
-        const [B2basis, dev] = stdev(closePrices, length)
-        const B2dev = dev.map((val) => val * B2mult); // 上下轨为均值 ± 2倍标准差
-        const B2upper = B2basis.map((val, idx) => val + B2dev[idx]); // 上轨
-        const B2lower = B2basis.map((val, idx) => val - B2dev[idx]); // 下轨
-
-        // console.log("🚀 ~ B2basis B2dev B2upper B2lower:", B2basis, B2dev, B2upper, B2lower)
+        let dis = kLineData.length - bollAllArr.length;
+        for (let i = 0; i < dis; i++) {
+            B2basis.push(null)
+            B2upper.push(null)
+            B2lower.push(null)
+            Kupper.push(null)
+            Klower.push(null)
+        }
+        bollAllArr.forEach(item => {
+            if (!item) {
+                item = {};
+            }
+            B2basis.push(item.B2basis)
+            B2upper.push(item.B2upper)
+            B2lower.push(item.B2lower)
+            Kupper.push(item.Kupper)
+            Klower.push(item.Klower)
+        });
 
         const markArea = openHistory.map((t, i) => {
             if (i === 1) {

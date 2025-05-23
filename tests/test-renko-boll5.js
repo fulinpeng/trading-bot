@@ -5,7 +5,7 @@ const {
     isDownSwallow, isUpSwallow
 } = require("../utils/kLineTools.js");
 const calculateRSI = require("../utils/rsi_marsi.js");
-const { calculateBBKeltnerSqueeze } = require("../utils/BBKeltner.js");
+const { calculateBollingerBands } = require("../utils/boll.js");
 const { calculateSimpleMovingAverage, calculateEMA } = require("../utils/ma.js");
 const { calculateSuperTrendOnRenko } = require("../utils/renkoSuperTrend.js");
 const { calculateTSI } = require("../utils/tsi.js");
@@ -47,7 +47,6 @@ let invalidSigleStopRate = 0.05;
 let slAtrPeriod = 14;
 let closeLastOrder = false;
 let compoundInterest = 0;
-let isFirstArriveBBK = false;
 
 let curStopLoss = 0; // 如果达到最终止损就计数一次,每次开单后重置未当前止损点
 let curStopProfit = 0; // 如果达到最终止盈就计数一次,每次开单后重置未当前止盈点
@@ -206,19 +205,7 @@ const setEveryIndex = (historyClosePrices, klines) => {
 };
 const setBollArr = (historyClosePrices, klines) => {
     bollArr.length >= 10 && bollArr.shift();
-    const bbkRes = calculateBBKeltnerSqueeze(klines, B2Period, B2mult, 2);
-
-    const { B2basis, B2upper, B2lower, Kma, Kupper, Klower, squeeze } = bbkRes;
-    const len = B2basis.length;
-    const curB2basis = B2basis[len - 1];
-    const curB2upper = B2upper[len - 1];
-    const curB2lower = B2lower[len - 1];
-    const curKma = Kma[len - 1];
-    const curKupper = Kupper[len - 1];
-    const curKlower = Klower[len - 1];
-    const isSqueeze = squeeze[len - 1];
-
-    const boll = { B2basis: curB2basis, B2upper: curB2upper, B2lower: curB2lower, Kupper: curKupper, Klower: curKlower, isSqueeze };
+    const boll = calculateBollingerBands(historyClosePrices, B2Period, B2mult);
     bollArr.push(boll);
     bollAllArr.push(boll);
     bollDisArr.push(boll.B2upper - boll.B2lower);
@@ -422,7 +409,7 @@ const start = (params) => {
 
         let [kLine0, kLine1, kLine2, kLine3] = getLastFromArr(curKLines, 4);
         let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
-        let { B2basis, B2upper, B2lower, Kupper, Klower } = boll5;
+        let { B2basis, B2upper, B2lower } = boll5;
         // console.log("🚀 ~ start ~ B2basis, B2upper, B2lower:", B2basis, B2upper, B2lower)
 
         // 准备开仓
@@ -483,7 +470,7 @@ const start = (params) => {
                     //     continue;
                     // }
                     // 强制保本损
-                    if (idx - orderIndex === 2 && !isFirstArriveBBK && firstStopProfitRate) { //  && close > Klower
+                    if (idx - orderIndex === 3 && !isFirstArriveBBK && firstStopProfitRate) { //  && close > Klower
                         TP_SL[0] += brickSize * 0.25;
                         isFirstArriveBBK = true;
                         continue;
@@ -534,7 +521,7 @@ const start = (params) => {
                     //     continue;
                     // }
                     // 强制保本损
-                    if (idx - orderIndex === 2 && !isFirstArriveBBK && firstStopProfitRate) {// && close < Kupper
+                    if (idx - orderIndex === 3 && !isFirstArriveBBK && firstStopProfitRate) {// && close < Kupper
                         TP_SL[1] -= brickSize * 0.25;
                         isFirstArriveBBK = true;
                         continue;
@@ -646,9 +633,9 @@ const start = (params) => {
             // if (
             //     hasOrder &&
             //     trend === "up" &&
-            //     // !firstStopProfitRate &&
+            //     !firstStopProfitRate &&
             //     // isArriveLastStopProfit &&
-            //     (B2lower < Klower)
+            //     (close <= B2lower)
             // ) {
             //     zhibiaoWinNum += 1;
             //     setProfit(orderPrice, close, openTime); // 正式环境可能此时还没有收盘 ???? 但是boll值变化不大可以直接对比
@@ -659,9 +646,9 @@ const start = (params) => {
             // if (
             //     hasOrder &&
             //     trend === "down" &&
-            //     // !firstStopProfitRate &&
+            //     !firstStopProfitRate &&
             //     // isArriveLastStopProfit &&
-            //     (B2lower > Klower) // ||  (isYang(kLine0) && isYang(kLine1) && isYang(kLine2) && isYang(kLine3))
+            //     (close <= B2lower) // ||  (isYang(kLine0) && isYang(kLine1) && isYang(kLine2) && isYang(kLine3))
             // ) {
             //     zhibiaoWinNum += 1;
             //     setProfit(orderPrice, close, openTime); // 正式环境可能此时还没有收盘 ???? 但是boll值变化不大可以直接对比
@@ -706,11 +693,11 @@ const judgeTradingDirection = (curKLines) => {
     // 使用成交量并不合适，因为这里并不知道renko生么时候收盘，没有时间概念不能累加volume
 
     let { openTime, high, low, open, close } = kLine5;
-    let { B2basis, B2upper, B2lower, Kupper, Klower } = boll5;
+    let { B2basis, B2upper, B2lower } = boll5;
 
     // 反转做多
     const upTerm1 = kLine5.close < boll5.B2basis && isYin(kLine4) && isYang(kLine5);
-    const upTerm2 = true // Klower > B2lower;
+    const upTerm2 = true
 
     if (isUpOpen && upTerm1 && upTerm2) {
         readyTradingDirection = "up";
@@ -718,7 +705,7 @@ const judgeTradingDirection = (curKLines) => {
     }
     // 反转做空
     const downTerm1 =  kLine5.close > boll5.B2basis && isYang(kLine4) && isYin(kLine5);
-    const downTerm2 = true // Kupper < B2upper;
+    const downTerm2 = true
 
     if (isDownOpen && downTerm1 && downTerm2) {
         readyTradingDirection = "down";
@@ -984,6 +971,8 @@ function run(params) {
 // let brickSize=0.00024; // wooUSDT   59.104%             425.1831198021458
 // let brickSize=0.0006; // zetaUSDT   67.704%             921.1533628456452
 // let brickSize=0.00022; // zkUSDT   60.924%              430.31042108253496
+
+// ada
 run({
     brickSize: 0.0025,
     priorityFee: 0.0007, // 0.0007,
@@ -1010,6 +999,62 @@ run({
     isDownOpen: true,
     compoundInterest: 1, // 复利
 });
+
+// doge
+// run({
+//     brickSize: 0.0008,
+//     priorityFee: 0.0007, // 0.0007,
+//     slippage: 0.0002, // 滑点
+//     B2Period: 20, // boll周期
+//     B2mult: 2, // boll倍数
+//     atrPeriod: 5,
+//     multiplier: 2,
+//     baseLossRate: 0.5, // 基础止损
+//     howManyCandle: 4, // 止盈
+//     firstStopProfitRate: 3, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
+//     firstProtectProfitRate: 0.9, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
+//     firstStopLossRate: 0, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
+//     isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
+//     profitProtectRate: 0.9, //isProfitRun === 1 时生效，保留多少利润
+//     howManyCandleForProfitRun: 1,
+//     maxStopLossRate: 0.01, // 止损小于10%的情况，最大止损5%
+//     invalidSigleStopRate: 0.1, // 止损在10%，不开单
+//     double: 1, // 是否损失后加倍开仓
+//     maxLossCount: 20, // 损失后加倍开仓，最大倍数
+//     // targetTime: "2025-02-01_00-00-00",
+//     closeLastOrder: true, // 最后一单是否平仓
+//     isUpOpen: true,
+//     isDownOpen: true,
+//     compoundInterest: 1, // 复利
+// });
+
+// 1000pepe
+// run({
+//     brickSize: 0.0001,
+//     priorityFee: 0.0007, // 0.0007,
+//     slippage: 0.0002, // 滑点
+//     B2Period: 20, // boll周期
+//     B2mult: 2, // boll倍数
+//     atrPeriod: 5,
+//     multiplier: 2,
+//     baseLossRate: 0.5, // 基础止损
+//     howManyCandle: 6, // 止盈
+//     firstStopProfitRate: 5, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
+//     firstProtectProfitRate: 0.9, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
+//     firstStopLossRate: 0, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
+//     isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
+//     profitProtectRate: 0.9, //isProfitRun === 1 时生效，保留多少利润
+//     howManyCandleForProfitRun: 1,
+//     maxStopLossRate: 0.01, // 止损小于10%的情况，最大止损5%
+//     invalidSigleStopRate: 0.1, // 止损在10%，不开单
+//     double: 1, // 是否损失后加倍开仓
+//     maxLossCount: 20, // 损失后加倍开仓，最大倍数
+//     // targetTime: "2025-02-01_00-00-00",
+//     closeLastOrder: true, // 最后一单是否平仓
+//     isUpOpen: true,
+//     isDownOpen: true,
+//     compoundInterest: 1, // 复利
+// });
 
 module.exports = {
     evaluateStrategy: start,
