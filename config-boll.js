@@ -19,8 +19,8 @@ const config = {
         atrPeriod: 5,
         multiplier: 2,
         baseLossRate: 0.5, // 基础止损
-        howManyCandle: 4, // 止盈
-        firstStopProfitRate: 3, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
+        howManyCandle: 3, // 止盈
+        firstStopProfitRate: 2, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
         firstProtectProfitRate: 0.9, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
         firstStopLossRate: 0, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
         isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
@@ -70,7 +70,7 @@ const config = {
         multiplier: 2,
         baseLossRate: 0.5, // 基础止损
         howManyCandle: 6, // 止盈
-        firstStopProfitRate: 5, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
+        firstStopProfitRate: 2, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
         firstProtectProfitRate: 0.9, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
         firstStopLossRate: 0, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
         isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
@@ -158,8 +158,8 @@ const config = {
         atrPeriod: 5,
         multiplier: 2,
         baseLossRate: 0.5, // 基础止损
-        howManyCandle: 4, // 止盈
-        firstStopProfitRate: 3, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
+        howManyCandle: 3, // 止盈
+        firstStopProfitRate: 2, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
         firstProtectProfitRate: 0.9, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
         firstStopLossRate: 0, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
         isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate

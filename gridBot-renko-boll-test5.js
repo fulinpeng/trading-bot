@@ -44,7 +44,7 @@ let {
     invalidSigleStopRate, // 止损在10%，不开单
     double, // 是否损失后加倍开仓
     maxLossCount, // 损失后加倍开仓，最大倍数
-} = config["ada"];
+} = config["1000pepe"];
 
 let highArr = [];
 let lowArr = [];
@@ -64,13 +64,11 @@ let firstStopProfitRate = DefaultFirstStopProfitRate;
 let firstStopLossRate = DefaultFirstStopLossRate;
 let lossCount = 0;
 let isArriveLastStopProfit = false;
-let isFirstArriveBBK = false;
+let isAriveForceLossProtect = false;
 
 let preRenkoClose = null;
 let preRenkoData = null;
 let preDirection = null;
-
-let bollArrConsole = []
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
@@ -151,7 +149,7 @@ let allPositionDetail = {}; // 当前仓位信息
 let bollArr = [];
 let rsiArr = [];
 
-const maxKLinelen = isTestLocal ? 30 : 450; // 储存kLine最大数量
+const maxKLinelen = isTestLocal ? 30 : 1500; // 储存kLine最大数量
 // 日志
 let logStream = null;
 let errorStream = null;
@@ -470,6 +468,7 @@ const judgeIndexLoss = async (currentPrice) => {
 // 止损
 const judgeStopLoss = async (_currentPrice, isFast) => {
     if (!hasOrder) return;
+    console.log("🚀 ~ judgeStopLoss ~ isFast:", isFast)
     isJudgeStopLoss = true;
     const { trend, orderPrice } = tradingInfo;
     const [point1, point2] = TP_SL;
@@ -525,17 +524,17 @@ const judgeForceLossProtect = async (currentPrice) => {
     let [boll5] = getLastFromArr(bollArr, 1);
     let { B2basis, B2upper, B2lower } = boll5;
     if (trend === "up") {
-        if (idx - orderIndex === 3 && !isFirstArriveBBK && firstStopProfitRate) { //  && close > Klower
+        if (idx - orderIndex === 3 && !isAriveForceLossProtect && firstStopProfitRate) {
             TP_SL[0] += brickSize * 0.25;
-            isFirstArriveBBK = true;
+            isAriveForceLossProtect = true;
             isJudgeForceLossProtect = false;
             return;
         }
     }
     if (trend === "down") {
-        if (idx - orderIndex === 3 && !isFirstArriveBBK && firstStopProfitRate) {// && close < Kupper
+        if (idx - orderIndex === 3 && !isAriveForceLossProtect && firstStopProfitRate) {
             TP_SL[1] -= brickSize * 0.25;
-            isFirstArriveBBK = true;
+            isAriveForceLossProtect = true;
             isJudgeForceLossProtect = false;
             return;
         }
@@ -637,7 +636,7 @@ const judgeProfitRunOrProfit = async (currentPrice) => {
     if (isProfitRun) {
         // 移动止盈
         // 判断止盈：high 大于 point2 就止盈利，否则继续持有
-        if (trend === "up" && (currentPrice >= point2 || (!firstStopProfitRate && currentPrice >= boll5.B2upper))) {
+        if (trend === "up" && currentPrice >= point2) {
             TP_SL = [
                 orderPrice + Math.abs(point2 - orderPrice) * profitProtectRate, // 止损(这个收益高点)
                 // point2 - brickSize * howManyCandleForProfitRun, // 止损
@@ -648,11 +647,33 @@ const judgeProfitRunOrProfit = async (currentPrice) => {
             console.log("🚀 ~ judgeProfitRunOrProfit up ~ 移动止盈");
             return;
         }
+        if (trend === "up" && (!firstStopProfitRate && currentPrice >= boll5.B2upper)) {
+            TP_SL = [
+                orderPrice + Math.abs(currentPrice - orderPrice) * profitProtectRate, // 止损(这个收益高点)
+                // point2 - brickSize * howManyCandleForProfitRun, // 止损
+                currentPrice + brickSize * howManyCandleForProfitRun, // 止盈
+            ];
+            isArriveLastStopProfit = true;
+            isJudgeProfitRunOrProfit = false;
+            console.log("🚀 ~ judgeProfitRunOrProfit up ~ 移动止盈");
+            return;
+        }
         // low 小于 point1 就止盈利，否则继续持有
-        if (trend === "down" && (currentPrice <= point1 || (!firstStopProfitRate && currentPrice <= boll5.B2lower))) {
+        if (trend === "down" && currentPrice <= point1) {
             TP_SL = [
                 point1 - brickSize * howManyCandleForProfitRun, // 止盈
                 orderPrice - Math.abs(orderPrice - point1) * profitProtectRate, // 止损(这个收益高点)
+                // point1 + brickSize * howManyCandleForProfitRun, // 止损
+            ];
+            isArriveLastStopProfit = true;
+            isJudgeProfitRunOrProfit = false;
+            console.log("🚀 ~ judgeProfitRunOrProfit down ~ 移动止盈");
+            return;
+        }
+        if (trend === "down" && (!firstStopProfitRate && currentPrice <= boll5.B2lower)) {
+            TP_SL = [
+                currentPrice - brickSize * howManyCandleForProfitRun, // 止盈
+                orderPrice - Math.abs(orderPrice - currentPrice) * profitProtectRate, // 止损(这个收益高点)
                 // point1 + brickSize * howManyCandleForProfitRun, // 止损
             ];
             isArriveLastStopProfit = true;
@@ -765,7 +786,7 @@ const judgeAndTrading = async () => {
             firstStopLossRate = DefaultFirstStopLossRate;
             isArriveLastStopProfit = false;
             orderIndex = idx;
-            isFirstArriveBBK = false;
+            isAriveForceLossProtect = false;
             break;
         case "down":
             await teadeSell();
@@ -775,7 +796,7 @@ const judgeAndTrading = async () => {
             readyTradingDirection = "hold";
             isArriveLastStopProfit = false;
             orderIndex = idx;
-            isFirstArriveBBK = false;
+            isAriveForceLossProtect = false;
             break;
         default:
             break;
@@ -802,12 +823,12 @@ const calculateTradingSignal = () => {
 
     if (readyTradingDirection === "up" && close > open) {
         min = min - atr;
-        if (min < close * (1 - invalidSigleStopRate)) {
-            return {
-                trend: "hold",
-            };
-        }
-        if (min < close * (1 - maxStopLossRate)) min = close * (1 - maxStopLossRate);
+        // if (min < close * (1 - invalidSigleStopRate)) {
+        //     return {
+        //         trend: "hold",
+        //     };
+        // }
+        // if (min < close * (1 - maxStopLossRate)) min = close * (1 - maxStopLossRate);
         const stopLoss = min;
         return {
             trend: "up",
@@ -818,12 +839,12 @@ const calculateTradingSignal = () => {
 
     if (readyTradingDirection === "down" && close < open) {
         max = max + atr;
-        if (max > close * (1 + invalidSigleStopRate)) {
-            return {
-                trend: "hold",
-            };
-        }
-        if (max > close * (1 + maxStopLossRate)) max = close * (1 + maxStopLossRate);
+        // if (max > close * (1 + invalidSigleStopRate)) {
+        //     return {
+        //         trend: "hold",
+        //     };
+        // }
+        // if (max > close * (1 + maxStopLossRate)) max = close * (1 + maxStopLossRate);
         const stopLoss = max;
         return {
             trend: "down",
@@ -1161,7 +1182,6 @@ const recoverHistoryData = async (historyDatas) => {
         firstStopProfitRate: __firstStopProfitRate,
         firstStopLossRate: __firstStopLossRate,
         lossCount: __lossCount,
-        bollArr: __bollArr,
     } = historyDatas;
 
     prePrice = __prePrice; // 记录当前价格的前一个
@@ -1176,7 +1196,6 @@ const recoverHistoryData = async (historyDatas) => {
     firstStopProfitRate = __firstStopProfitRate;
     firstStopLossRate = __firstStopLossRate;
     lossCount = __lossCount;
-    bollArr = __bollArr;
 };
 const recoverHistoryDataByPosition = async (historyDatas, { up, down }) => {
     //
@@ -1517,9 +1536,13 @@ const startWebSocket = async () => {
 
             // 止损的要快，大概率都是要损的就尽量少损点
             // 止盈保护的可以不用那么快，在gridPointClearTrading去执行
-            if (firstStopProfitRate) {
+
+            if (!firstStopProfitRate) { // 这个效果最好
                 await judgeStopLoss(currentPrice, true);
             }
+            // if (idx - orderIndex >= 2) {
+            //     await judgeStopLoss(currentPrice, true);
+            // }
         }
 
         const curKLine = {
@@ -1581,9 +1604,7 @@ const startWebSocket = async () => {
     });
     // 添加 'close' 事件处理程序
     ws.on("close", (code) => {
-        console.log(`WebSocket 关闭: `, code, {
-            kLineData, bollArrConsole
-        });
+        console.log(`WebSocket 关闭: `, code);
         process.exit(code);
     });
 
@@ -1709,13 +1730,13 @@ function cleanup() {
 
 // 监听进程的 exit 事件
 process.on("exit", (code) => {
-    console.log("on exit...", {kLineData, bollArrConsole});
+    console.log("on exit...");
     cleanup();
 });
 
 // 监听中断信号（如 Ctrl+C）
 process.on("SIGINT", (e) => {
-    console.log("Received SIGINT. Cleaning up...", {kLineData, bollArrConsole});
+    console.log("Received SIGINT. Cleaning up...");
     process.exit();
 });
 
@@ -1747,7 +1768,6 @@ function saveGlobalVariables() {
                 firstStopProfitRate,
                 firstStopLossRate,
                 lossCount,
-                bollArr,
             });
             fs.writeFileSync(
                 `data/${isTest ? "test" : "prod"}-${strategyType}-${isUpOpen ? 'up' : 'down'}-${SYMBOL}.js`,
@@ -1756,7 +1776,6 @@ function saveGlobalVariables() {
                     flag: "w",
                 }
             );
-            console.log(`Global variables saved to data/${SYMBOL}.js`);
         }
     }, 0);
 }

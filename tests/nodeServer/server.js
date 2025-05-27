@@ -35,6 +35,7 @@ if (!strategy) {
 
 // 用于动态更新文件内容
 let kLineData = [];
+let boll = [];
 let data = {};
 
 // 序列化
@@ -88,11 +89,12 @@ function resolveModulePath(moduleName, currentFilePath) {
 // 加载数据
 function reloadData() {
     // const sourcePath = path.resolve(__dirname, `source/${symbol}-${timeLevel}.js`);
-    const sourcePath = path.resolve(__dirname, `source/renko-${symbol}-${timeLevel}.js`);
-    // const sourcePath = path.resolve(__dirname, `../../logs/${symbol}.js`); // 测试用，刚从logs拿到的数据
+    // const sourcePath = path.resolve(__dirname, `source/renko-${symbol}-${timeLevel}.js`);
+    const sourcePath = path.resolve(__dirname, `../../logs/${symbol}.js`); // 测试用，刚从logs拿到的数据
     const dataPath = path.resolve(__dirname, `data/${symbol}-${strategy}.js`);
 
     kLineData = require(sourcePath).kLineData || [];
+    boll = require(sourcePath).boll || [];
     data = require(dataPath) || {};
 }
 
@@ -118,11 +120,12 @@ chokidar
 // 动态生成 HTML
 app.get("/", (req, res) => {
     // const htmlPath = path.resolve(__dirname, "index.html");
-    const htmlPath = path.resolve(__dirname, "index-renko-boll3.html");
+    const htmlPath = path.resolve(__dirname, "index-renko-boll3-logs.html");
     const htmlTemplate = fs.readFileSync(htmlPath, "utf-8");
 
     const injectedHTML = htmlTemplate
         .replace("{{kLineData}}", jsonString(kLineData))
+        .replace("{{boll}}", jsonString(boll))
         .replace("{{option}}", jsonString(data.option))
         .replace("{{openHistory}}", jsonString(data.openHistory))
         .replace("{{closeHistory}}", jsonString(data.closeHistory))
