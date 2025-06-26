@@ -8,7 +8,7 @@
 function calculateSSLChannel(klineData, len = 20) {
     // 检查输入数据是否合法
     if (!Array.isArray(klineData) || klineData.length < len) {
-        throw new Error("K 线数据长度不足以计算指标或格式不正确");
+        throw new Error("calculateSSLChannel K 线数据长度不足以计算指标或格式不正确");
     }
 
     // 计算简单移动平均线 (SMA)
@@ -49,26 +49,71 @@ function calculateSSLChannel(klineData, len = 20) {
     // 返回最新 K 线对应的 SSL 通道值
     return { sslDown, sslUp };
 }
+function calculateLatestSSL(data, length = 200) {
+    const len = length;
+    const lastIndex = data.length - 1;
 
-// // 示例调用
-// const klineData=[
-// 	{high: 105, low: 95, close: 100},
-// 	{high: 110, low: 100, close: 105},
-// 	{high: 115, low: 105, close: 110},
-// 	{high: 120, low: 110, close: 115},
-// 	{high: 125, low: 115, close: 120},
-// 	// 更多 K 线数据...
-// ];
+    if (data.length < len) {
+        console.log("🚀 ~ calculateLatestSSL ~ K 线数据长度不足以计算指标或格式不正确", data)
+        return null;
+    }
 
-// const params={len: 3};
+    // === 加权移动平均 (WMA) ===
+    function wma(series, endIndex, period) {
+        if (series.length < period) {
+            throw new Error("数据长度不足以计算 SMA");
+        }
+        let weightedSum = 0;
+        let weightTotal = 0;
+        for (let i = 0; i < period; i++) {
+            const weight = period - i;
+            weightedSum += series[endIndex - i] * weight;
+            weightTotal += weight;
+        }
+        return weightedSum / weightTotal;
+    }
 
-// try {
-// 	const result=calculateSSLChannel(klineData, params);
-// 	console.log("最新 K 线的 SSL 通道值：", result);
-// } catch (error) {
-// 	console.error("错误：", error.message);
-// }
+    // 准备高低数组
+    const highSeries = data.map(d => d.high);
+    const lowSeries = data.map(d => d.low);
+    const closeSeries = data.map(d => d.close);
+
+    // === 计算当前 WMA 高/低 ===
+    const smaHigh = wma(highSeries, lastIndex, len);
+    const smaLow = wma(lowSeries, lastIndex, len);
+
+    // === HLV 状态计算（取上一根值）
+    let hlvPrev = null;
+    for (let i = lastIndex - 1; i >= len - 1; i--) {
+        const prevSmaHigh = wma(highSeries, i, len);
+        const prevSmaLow = wma(lowSeries, i, len);
+        const prevClose = closeSeries[i];
+        if (prevClose > prevSmaHigh) {
+            hlvPrev = 1;
+            break;
+        } else if (prevClose < prevSmaLow) {
+            hlvPrev = -1;
+            break;
+        }
+    }
+    const currClose = closeSeries[lastIndex];
+    let hlv = hlvPrev;
+    if (currClose > smaHigh) hlv = 1;
+    else if (currClose < smaLow) hlv = -1;
+
+    // === 计算 SSL 通道 ===
+    const sslUp = hlv < 0 ? smaLow : smaHigh;
+    const sslDown = hlv < 0 ? smaHigh : smaLow;
+
+    return {
+        hlv,           // 趋势方向（1 多头，-1 空头）
+        sslUp,         // 上轨
+        sslDown        // 下轨
+    };
+}
+
 
 module.exports = {
     calculateSSL: calculateSSLChannel,
+    calculateLatestSSL,
 };

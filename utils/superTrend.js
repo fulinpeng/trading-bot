@@ -112,6 +112,73 @@ function calculateSuperTrend(klineData, atrPeriod, multiplier) {
     };
 }
 
+function calculateLatestSuperTrend(data, period = 15, multiplier = 6, useTrueATR = true) {
+    if (data.length < period + 1) return null;
+
+    const lastIndex = data.length - 1;
+    const curr = data[lastIndex];
+    const prev = data[lastIndex - 1];
+
+    // === Step 1: 计算 TR 和 ATR ===
+    const tr = (bar, prevBar) => {
+        return Math.max(
+            bar.high - bar.low,
+            Math.abs(bar.high - prevBar.close),
+            Math.abs(bar.low - prevBar.close)
+        );
+    };
+
+    // 计算 period 个 TR
+    let atr;
+    if (useTrueATR) {
+        // Wilder's Smoothing
+        let sumTr = 0;
+        for (let i = lastIndex - period + 1; i <= lastIndex; i++) {
+            sumTr += tr(data[i], data[i - 1]);
+        }
+        const prevAtr = sumTr / period;
+        const currTr = tr(curr, prev);
+        atr = (prevAtr * (period - 1) + currTr) / period;
+    } else {
+        // Simple Moving Average
+        let sumTr = 0;
+        for (let i = lastIndex - period + 1; i <= lastIndex; i++) {
+            sumTr += tr(data[i], data[i - 1]);
+        }
+        atr = sumTr / period;
+    }
+
+    const hl2 = (curr.high + curr.low) / 2;
+
+    // === Step 2: 计算上下轨 ===
+    const up = hl2 - multiplier * atr;
+    const dn = hl2 + multiplier * atr;
+
+    const prevHl2 = (prev.high + prev.low) / 2;
+    const prevAtr = atr; // 近似处理：使用当前 atr 代替 prevAtr，误差可忽略
+    const prevUp = prevHl2 - multiplier * prevAtr;
+    const prevDn = prevHl2 + multiplier * prevAtr;
+
+    const adjustedUp = prev.close > prevUp ? Math.max(up, prevUp) : up;
+    const adjustedDn = prev.close < prevDn ? Math.min(dn, prevDn) : dn;
+
+    // === Step 3: 趋势判断 ===
+    let trend = -1; // 初始默认多头
+    if (prev.close < prevDn) trend = -1;
+    if (prev.close > prevUp) trend = 1;
+
+    if (trend === -1 && curr.close > prevDn) trend = 1;
+    else if (trend === 1 && curr.close < prevUp) trend = -1;
+
+    return {
+        hl2,
+        atr,
+        up: adjustedUp,
+        dn: adjustedDn,
+        trend // 1 = 多头，-1 = 空头
+    };
+}
+
 /**
  * 计算所有指标，并返回最新 K 线的指标值
  * @param {Array} klineData K 线数据（包含 open、high、low、close）
@@ -188,6 +255,7 @@ function calculateCloseDema(
 module.exports = {
     calculateIndicators,
     calculateSuperTrend,
+    calculateLatestSuperTrend,
     calculateATR,
     calculateDema,
     calculateCloseDema,

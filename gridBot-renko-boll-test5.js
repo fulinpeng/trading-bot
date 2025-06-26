@@ -44,7 +44,7 @@ let {
     invalidSigleStopRate, // 止损在10%，不开单
     double, // 是否损失后加倍开仓
     maxLossCount, // 损失后加倍开仓，最大倍数
-} = config["1000pepe"];
+} = config["sol"];
 
 let highArr = [];
 let lowArr = [];
@@ -69,11 +69,12 @@ let isAriveForceLossProtect = false;
 let preRenkoClose = null;
 let preRenkoData = null;
 let preDirection = null;
+let preVolume = null;
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
 const isTest = true; // 将此标志设置为  false/true
-const isTestLocal = true; // 使用本地环境（先确保isTest==true）
+const isTestLocal = false; // 使用本地环境（先确保isTest==true）
 const api = "https://api.binance.com/api";
 const fapi = "https://fapi.binance.com/fapi";
 const localApi = 'http://localhost:3000'
@@ -468,7 +469,6 @@ const judgeIndexLoss = async (currentPrice) => {
 // 止损
 const judgeStopLoss = async (_currentPrice, isFast) => {
     if (!hasOrder) return;
-    console.log("🚀 ~ judgeStopLoss ~ isFast:", isFast)
     isJudgeStopLoss = true;
     const { trend, orderPrice } = tradingInfo;
     const [point1, point2] = TP_SL;
@@ -480,10 +480,9 @@ const judgeStopLoss = async (_currentPrice, isFast) => {
         // low 小于 point1 就止损，否则继续持有
         if (_currentPrice <= point1) {
             // 这里非常关键point1/_currentPrice
-            _currentPrice = isTestLocal ? point1 * (1 - slippage) : _currentPrice;
+            // _currentPrice = isTestLocal ? point1 * (1 - slippage) : _currentPrice;
             console.log(
-                isTestLocal ? 'testMoney' : '',
-                `🚀 ~ judgeStopLoss up ~ ${_currentPrice > orderPrice ? '止盈' : '止损'}/平多:currentPrice, point1, 滑点:`,
+                `🚀 ~ judgeStopLoss up ~ ${_currentPrice > orderPrice ? '止盈' : '止损'}/平多:currentPrice, point1:`,
                 _currentPrice,
                 point1,
                 `, 滑点:`, (point1 - _currentPrice)/_currentPrice, '是否盈利:', _currentPrice > orderPrice
@@ -498,10 +497,9 @@ const judgeStopLoss = async (_currentPrice, isFast) => {
         // high 大于 point2 就止损，否则继续持有
         if (_currentPrice >= point2) {
             // 这里非常关键point2/_currentPrice
-            _currentPrice = isTestLocal ? point2 * (1 + slippage) : _currentPrice;
+            // _currentPrice = isTestLocal ? point2 * (1 + slippage) : _currentPrice;
             // 止损/平空
             console.log(
-                isTestLocal ? 'testMoney' : '',
                 `🚀 ~ judgeStopLoss down ~  ${_currentPrice < orderPrice ? '止盈' : '止损'}/平空:currentPrice, point2`,
                 _currentPrice,
                 point2,
@@ -751,7 +749,7 @@ const judgeTradingDirection = () => {
     let { B2basis, B2upper, B2lower } = boll5;
     
     // 反转做多
-    const upTerm1 = kLine5.close < boll5.B2basis && isYin(kLine4) && isYang(kLine5);
+    const upTerm1 = kLine5.close < boll5.B2basis && isYin(kLine3) && isYin(kLine4) && isYang(kLine5);
     const upTerm2 = true;
 
     if (isUpOpen && upTerm1) {
@@ -759,7 +757,7 @@ const judgeTradingDirection = () => {
         return;
     }
     // 反转做空
-    const downTerm1 = kLine5.close > boll5.B2basis && isYang(kLine4) && isYin(kLine5);
+    const downTerm1 = kLine5.close > boll5.B2basis && isYang(kLine3) && isYang(kLine4) && isYin(kLine5);
     const downTerm2 = true
 
     if (isDownOpen && downTerm1 && downTerm2) {
@@ -1089,7 +1087,7 @@ const closeOrder = async (side, quantity, cb) => {
             resetTradingDatas();
             TP_SL = [];
             saveGlobalVariables();
-            console.log("🚀 ~ 平仓：平", side === "BUY" ? "空" : "多", response.data.origQty);
+            console.log("🚀 testMoney ~ 平仓：平", side === "BUY" ? "空" : "多", response.data.origQty);
         } else {
             console.log(
                 "🚀 ~ 平仓：平",
@@ -1321,7 +1319,7 @@ const closeAllOrders = async ({ up, down }) => {
 
             testMoney += curTestMoney;
             setLossCount(curTestMoney);
-            console.log("平多 closeAllOrders ~ curTestMoney testMoney:",curTestMoney, testMoney);
+            console.log("平多 closeAllOrders ~ curTestMoney:",curTestMoney, testMoney);
             console.log("平多完成");
 
             // 发送邮件
@@ -1348,7 +1346,7 @@ const closeAllOrders = async ({ up, down }) => {
             testMoney += curTestMoney;
             setLossCount(curTestMoney);
 
-            console.log("平空 closeAllOrders ~ curTestMoney testMoney:", curTestMoney, testMoney);
+            console.log("平空 closeAllOrders ~ curTestMoney:", curTestMoney, testMoney);
             console.log("平空完成");
 
             // 发送邮件
@@ -1469,6 +1467,7 @@ const gridPointClearTrading = async (currentPrice) => {
 
     onGridPoint = false;
 };
+let _closeTime = ''
 // WebSocket 事件
 const startWebSocket = async () => {
     console.log("🚀 startWebSocket~~~~~");
@@ -1523,6 +1522,8 @@ const startWebSocket = async () => {
             },
         } = realData
 
+        _closeTime = closeTime
+
         if (isTestLocal && realData.error) {
             process.exit(0);
         }
@@ -1530,16 +1531,22 @@ const startWebSocket = async () => {
         currentPrice = Number(close) || 0;
 
         // 测试时就没有这种高频检测，正式情况不一样，需要实时监测
-        if (hasOrder) {
+        if (hasOrder && !isLoading()) {
             // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
             // 下面两个需要实时，要快，甚至需要平仓，或者需要在renkonk线中执行判断
 
             // 止损的要快，大概率都是要损的就尽量少损点
             // 止盈保护的可以不用那么快，在gridPointClearTrading去执行
 
-            if (!firstStopProfitRate) { // 这个效果最好
-                await judgeStopLoss(currentPrice, true);
-            }
+            // if (isTestLocal) {
+            //     await judgeStopLoss(tradingInfo.trend === 'up' ? low : high, true);
+            // } else {
+                await judgeStopLoss(currentPrice, true); // 应该是要疯狂执行才对，才快嘛
+            // }
+
+            // if (!firstStopProfitRate) { // 这个效果最好
+            //     await judgeStopLoss(currentPrice, true);
+            // }
             //  else {
             //     idx - orderIndex >= 1 && idx % 3 === 0 && await judgeStopLoss(currentPrice, true);
             // }
@@ -1560,17 +1567,19 @@ const startWebSocket = async () => {
             takerBuyBaseAssetVolume: Number(takerBuyBaseAssetVolume), // 主动买入的成交量
         };
 
-        const { renkoData, newRenkoClose, newRenkoData, newDirection } = convertToRenko({
+        const { renkoData, newRenkoClose, newRenkoData, newDirection, newVolume } = convertToRenko({
             klineData: curKLine,
             brickSize,
             preRenkoClose,
             preRenkoData,
             preDirection,
+            preVolume,
         });
         // renkoData.length && console.log("🚀 ~ ws.on ~ , preRenkoClose, newRenkoClose:", preRenkoClose, newRenkoClose)
         preRenkoClose = newRenkoClose;
         preRenkoData = newRenkoData;
         preDirection = newDirection;
+        preVolume = newVolume;
         // renkoData 这个值可能大于1，是插针，一般不会??????
         // renko 不怕插针，只是怕流动性不足，会导致不成单
         if (renkoData.length) {
@@ -1585,6 +1594,7 @@ const startWebSocket = async () => {
                     if (!hasOrder) {
                         await kaiDanDaJi();
                         isTestLocal && ws.send('hello');
+                        saveGlobalVariables();
                         return;
                     }
                 }
@@ -1597,11 +1607,11 @@ const startWebSocket = async () => {
             if (renkoData.length){
                 // renko所以没有滞后得说法????
                 let curClose = renkoData[renkoData.length - 1].close;
-                console.log("🚀 ~ ws.on ~ renkoData[renkoData.length - 1].close:", (currentPrice - curClose)/curClose)
-                await gridPointClearTrading(isTest ? renkoData[renkoData.length - 1].close : currentPrice);
+                console.log("🚀 ~ ws.on ~ (currentPrice - curClose)/curClose:", (currentPrice - curClose)/curClose)
+                await gridPointClearTrading(isTest ? curClose : currentPrice);
+                // 所有执行完再存一次
+                saveGlobalVariables();
             }
-            // 所有执行完再存一次
-            saveGlobalVariables();
         }
         isTestLocal && ws.send('hello');
     });
@@ -1660,7 +1670,7 @@ const createLogs = () => {
         }
         // originalConsoleLog.apply(console, args); // 保留原始 console.log 的功能
         // 将 log 写入文件
-        const date = kLineData.length && isTestLocal ? kLineData[kLineData.length - 1].openTime : getDate();
+        const date = isTestLocal ? _closeTime : getDate();
         logStream.write(
             `${date}: ${args
                 .map((v) => {

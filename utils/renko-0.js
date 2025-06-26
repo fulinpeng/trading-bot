@@ -1,7 +1,7 @@
 // 砖型图数据转换函数
 // 该砖型图，close为最新值，open方向可能存在长长的尾巴，就像彗星一样
 function convertToRenko(params) {
-    let { klineData, brickSize, preRenkoClose, preRenkoData, preDirection, preVolume } = params;
+    let { klineData, brickSize, preRenkoClose, preRenkoData, preDirection } = params;
     let renkoData = [];
     // 解析 K 线数据
     let {
@@ -15,29 +15,10 @@ function convertToRenko(params) {
         isNewLine,
     } = klineData;
 
-    let deltaVolume;
-    if (!preVolume) {
-        preVolume = 0;
-    }
-
-    // 处理 volume 增量
-    deltaVolume = Math.max(0, volume - preVolume);
-
     let preCloseTime = preRenkoData ? preRenkoData.closeTime || openTime : openTime;
-    let preOpenTime; // 上一根砖型图的起始时间，或者引线的起始时间
-    if (preRenkoData) {
-        if (preRenkoData.close) {
-            preOpenTime = preRenkoData.closeTime;
-        } else {
-            preOpenTime = preRenkoData.openTime;
-        }
-    } else {
-        preOpenTime = openTime;
-    }
 
     if (!preRenkoClose) {
         preRenkoClose = close > open ? Math.floor(close / brickSize) * brickSize : Math.ceil(close / brickSize) * brickSize;
-        // renkoData.push({ open, close, high, low, volume, openTime, closeTime });
     }
 
     // 上一根砖型图的方向 1为上涨，-1为下跌
@@ -51,6 +32,11 @@ function convertToRenko(params) {
         preRenkoData = {
             high: value,
             low: value,
+            open: value,
+            close: value,
+            volume: 0,
+            openTime: preCloseTime,
+            closeTime: close,
         }
     }
 
@@ -100,7 +86,6 @@ function convertToRenko(params) {
         if (direction === preDirection) {
             let numOfBricks = Math.floor(Math.abs(priceDifference) / brickSize);
             if (numOfBricks < 1) numOfBricks = 1;
-            let volumePiece = deltaVolume / numOfBricks;
     
             for (let i = 0; i < numOfBricks; i++) {
                 // 计算新砖型图的开盘和收盘价
@@ -109,8 +94,9 @@ function convertToRenko(params) {
                 let newHigh;
                 let newLow;
     
-                if (i === 0 && !preRenkoData.close) {
-                    newHigh = Math.max(newClose, preRenkoData.high);;
+                if (i === 0) {
+                    // i === 0 时，开盘那一头有引线
+                    newHigh = Math.max(newClose, preRenkoData.high);
                     newLow = Math.min(newClose, preRenkoData.low);
                 } else {
                     newHigh = Math.max(newClose, preRenkoClose);
@@ -123,12 +109,12 @@ function convertToRenko(params) {
                     close: newClose,
                     high: newHigh,
                     low: newLow,
-                    volume: volumePiece * (newClose > newOpen ? 1 : -1),
+                    volume: volume / numOfBricks, // 这里可以进一步计算砖型图的成交量
                     openTime: preCloseTime, // 这里是起始时间，通常是上一根 K 线的结束时间
                     closeTime,
                 };
                 preRenkoClose = newClose;
-                preOpenTime = closeTime;
+                preCloseTime = closeTime;
     
                 // 将新的砖型图保存到 renkoData 中
                 renkoData.push(preRenkoData);
@@ -137,7 +123,7 @@ function convertToRenko(params) {
             preRenkoData = {
                 high: Math.max(preRenkoClose, close),
                 low: Math.min(preRenkoClose, close),
-                openTime: preOpenTime,
+                openTime: preCloseTime,
                 closeTime,
             }
         }
@@ -153,31 +139,19 @@ function convertToRenko(params) {
                     let newHigh;
                     let newLow;
                     let newOpen;
-                    let newOpenTime;
         
                     if (i === 0) {
-                        // 反转时，第一个砖块位置是引线
-                        preRenkoData = {
-                            high: Math.max(preRenkoData.high, newClose),
-                            low: Math.min(preRenkoData.low, newClose),
-                            openTime: preRenkoData.openTime,
-                            closeTime: closeTime,
-                        }
-                        preRenkoClose = newClose;
-                        continue;
+                        // 反转时，第一个砖块位置是引线，high/low/volume 不用重新算（反向但不够brickSize * 2就已经加过了）
+                        continue; // 跳过本次循环，这里是细节
                     } else if (i === 1) {
                         newHigh = Math.max(newClose, preRenkoData.high);
                         newLow = Math.min(newClose, preRenkoData.low);
-                        newOpen = preRenkoClose;
-                        newClose = newOpen + direction * brickSize;
-                        newOpenTime = preRenkoData.openTime;
                     } else {
                         newHigh = Math.max(newClose, preRenkoClose);
                         newLow = Math.min(newClose, preRenkoClose);
-                        newOpen = preRenkoClose;
-                        newClose = newOpen + direction * brickSize;
-                        newOpenTime = preOpenTime;
                     }
+                    newOpen = preRenkoClose;
+                    newClose = newOpen + direction * brickSize;
 
                     // 更新 砖型图/收盘价
                     preRenkoData = {
@@ -186,11 +160,11 @@ function convertToRenko(params) {
                         high: newHigh,
                         low: newLow,
                         volume: volume / numOfBricks, // 这里可以进一步计算砖型图的成交量
-                        openTime: newOpenTime, // 这里是起始时间，通常是上一根 K 线的结束时间
+                        openTime: preCloseTime, // 这里是起始时间，通常是上一根 K 线的结束时间
                         closeTime,
                     };
                     preRenkoClose = newClose;
-                    preOpenTime = closeTime;
+                    preCloseTime = closeTime;
         
                     // 将新的砖型图保存到 renkoData 中
                     renkoData.push(preRenkoData);
@@ -199,14 +173,15 @@ function convertToRenko(params) {
                 preRenkoData = {
                     high: Math.max(preRenkoClose, close),
                     low: Math.min(preRenkoClose, close),
-                    openTime: preOpenTime,
+                    openTime: preCloseTime,
                     closeTime,
                 }
             } else {
+                // 反向但不够brickSize * 2，也就没有产生新的砖块
                 preRenkoData = {
                     high: Math.max(preRenkoData.high, close),
                     low: Math.min(preRenkoData.low, close),
-                    openTime: preOpenTime,
+                    openTime: preCloseTime,
                     closeTime,
                 };
             }
@@ -219,15 +194,9 @@ function convertToRenko(params) {
         preRenkoData = {
             high: Math.max(preRenkoData.high, close),
             low: Math.min(preRenkoData.low, close),
-            openTime: preOpenTime,
+            openTime: preCloseTime,
             closeTime,
         };
-    }
-
-    if (isNewLine) {
-        preVolume = 0;
-    } else {
-        preVolume = volume;
     }
 
     return {
@@ -235,7 +204,6 @@ function convertToRenko(params) {
         newRenkoClose: preRenkoClose,
         newRenkoData: preRenkoData,
         newDirection: preDirection,
-        preVolume,
     };
 }
 
