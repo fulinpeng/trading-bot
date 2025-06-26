@@ -193,7 +193,7 @@
         if (volArr.length < dates.length) {
             let dis = dates.length - volArr.length;
             for (let i = 0; i < dis; i++) {
-                volArr.unshift(null);
+                volArr.unshift([null, null]);
             }
         }
         if (ratioArr.length < dates.length) {
@@ -212,11 +212,11 @@
 
         const closePrices = kLineData.map((v) => v.close);
         const [B2basis, dev] = stdev(closePrices, length);
-        const B2dev = dev.map((val) => val * B2mult); // 上下轨为均值 ± 2倍标准差
-        const B2upper = B2basis.map((val, idx) => val + B2dev[idx]); // 上轨
-        const B2lower = B2basis.map((val, idx) => val - B2dev[idx]); // 下轨
+        const B2dev = dev.map((val) => val ? val * B2mult : 145); // 上下轨为均值 ± 2倍标准差
+        const B2upper = B2basis.map((val, idx) => val ? (val + B2dev[idx]) : 145); // 上轨
+        const B2lower = B2basis.map((val, idx) => val ? (val - B2dev[idx]) : 145); // 下轨
 
-        // console.log("🚀 ~ B2basis B2dev B2upper B2lower:", B2basis, B2dev, B2upper, B2lower)
+        console.log("🚀 ~ B2basis B2dev B2upper B2lower:", B2basis, B2dev, B2upper, B2lower)
 
         const markArea = openHistory.map((t, i) => {
             if (i === 1) {
@@ -626,7 +626,30 @@
                     },
                 },
                 {
-                    name: 'volArr',
+                    name: 'vol',
+                    type: 'line',
+                    symbol: 'none',
+                    xAxisIndex: 1,
+                    yAxisIndex: 1,
+                    itemStyle: {
+                        color: '#339933'
+                    },
+                    data: volArr.map(([v]) => v),
+                    smooth: true,
+                    markLine: {
+                        precision: 4,
+                        data: [
+                            {
+                                yAxis: 0.004
+                            },
+                            {
+                                yAxis: 0.0011
+                            },
+                        ]
+                    },
+                },
+                {
+                    name: 'maVol',
                     type: 'line',
                     symbol: 'none',
                     xAxisIndex: 1,
@@ -634,7 +657,7 @@
                     itemStyle: {
                         color: '#d24f4f'
                     },
-                    data: volArr,
+                    data: volArr.map(([v, mav]) => mav),
                     smooth: true,
                     markLine: {
                         precision: 4,

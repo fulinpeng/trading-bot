@@ -12,8 +12,9 @@ const { calculateTSI } = require("../utils/tsi.js");
 const { getSmaRatio } = require("../utils/renko.js");
 const { calculateWilliamsR } = require("../utils/williams.js");
 const { calculateMACD } = require("../utils/macd.js");
+const { getFibonacciLevels } = require("../utils/fib.js");
 const fs = require("fs");
-const symbol = "1000pepeUSDT";
+const symbol = "solUSDT";
 
 let { kLineData } = require(`./source/renko-${symbol}-1m.js`);
 // let { kLineData } = require(`../logs/${symbol}.js`);
@@ -304,7 +305,7 @@ const setVolArr = (klines) => {
     // volArr.length >= 10 && volArr.shift();
     // 计算成交量均值
     const volMA = calculateSimpleMovingAverage(volumes, 3);
-    volArr.push([volMA, klines[klines.length - 1].volume]);
+    volArr.push(volMA);
 };
 const setEmaArr = (historyClosePrices) => {
     emaShortArr.length >= 10 && emaShortArr.shift();
@@ -431,6 +432,7 @@ const start = (params) => {
         }
         // 有仓位就准备平仓
         else {
+
             const [point1, point2] = TP_SL;
 
             //////////////////////////// 指标移动止损位置 /////////////////////////// start
@@ -733,9 +735,13 @@ const judgeTradingDirection = (curKLines) => {
 
     // 反转做多
     const upTerm1 = kLine5.close < boll5.B2basis && isYin(kLine4) && isYang(kLine5);
-    const upTerm2 = true;
-    // const upTerm1 = kLine5.close > boll5.B2upper && isYang(kLine5);
-    // const upTerm2 = macd5.macd > macd4.macd;
+    let upTerm2 =  false; // 上升趋势的fib回撤
+    if (high5 > low5 && low5 > low4 && close > low5) {
+        const fibRes = getFibonacciLevels(low4, high5, 'retracement');
+        if (low <= fibRes['0.5'] && low >= fibRes['0.618']) { // ??????
+            upTerm2 = true;
+        }
+    }
 
     if (isUpOpen && upTerm1 && upTerm2) {
         readyTradingDirection = "up";
@@ -743,9 +749,13 @@ const judgeTradingDirection = (curKLines) => {
     }
     // 反转做空
     const downTerm1 = kLine5.close > boll5.B2basis && isYang(kLine4) && isYin(kLine5);
-    const downTerm2 = true;
-    // const downTerm1 = kLine5.close < boll5.B2lower && isYin(kLine5);
-    // const downTerm2 = macd5.macd < macd4.macd;
+    let downTerm2 = false; // 下降趋势的fib回撤
+    if (high4 > high5 && high5 > low5 && close < high5) {
+        const fibRes = getFibonacciLevels(high4, low5, 'retracement');
+        if (high >= fibRes['0.5'] && high <= fibRes['0.618']) { // ??????
+            downTerm2 = true;
+        }
+    }
 
     if (isDownOpen && downTerm1 && downTerm2) {
         readyTradingDirection = "down";
@@ -1069,36 +1079,8 @@ function run(params) {
 // });
 
 // 1000pepe
-run({
-    brickSize: 0.0001,
-    priorityFee: 0.0007, // 0.0007,
-    slippage: 0.0002, // 滑点
-    B2Period: 20, // boll周期
-    B2mult: 1.5, // boll倍数
-    atrPeriod: 5,
-    multiplier: 2,
-    baseLossRate: 0.5, // 基础止损
-    howManyCandle: 6, // 止盈
-    firstStopProfitRate: 2, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
-    firstProtectProfitRate: 0.9, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
-    firstStopLossRate: 0, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
-    isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
-    profitProtectRate: 0.9, //isProfitRun === 1 时生效，保留多少利润
-    howManyCandleForProfitRun: 1,
-    maxStopLossRate: 0.01, // 止损小于10%的情况，最大止损5%
-    invalidSigleStopRate: 0.1, // 止损在10%，不开单
-    double: 1, // 是否损失后加倍开仓
-    maxLossCount: 20, // 损失后加倍开仓，最大倍数
-    // targetTime: "2025-02-01_00-00-00",
-    closeLastOrder: true, // 最后一单是否平仓
-    isUpOpen: true,
-    isDownOpen: true,
-    compoundInterest: 1, // 复利
-});
-
-// sol
 // run({
-//     brickSize: 0.5,
+//     brickSize: 0.0001,
 //     priorityFee: 0.0007, // 0.0007,
 //     slippage: 0.0002, // 滑点
 //     B2Period: 20, // boll周期
@@ -1121,12 +1103,37 @@ run({
 //     closeLastOrder: true, // 最后一单是否平仓
 //     isUpOpen: true,
 //     isDownOpen: true,
-//     compoundInterest: 0, // 复利
+//     compoundInterest: 1, // 复利
 // });
+
+// sol
+run({
+    brickSize: 0.5,
+    priorityFee: 0.0007, // 0.0007,
+    slippage: 0.0002, // 滑点
+    B2Period: 20, // boll周期
+    B2mult: 1.5, // boll倍数
+    atrPeriod: 5,
+    multiplier: 2,
+    baseLossRate: 0.5, // 基础止损
+    howManyCandle: 6, // 止盈
+    firstStopProfitRate: 2, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
+    firstProtectProfitRate: 0, // 0.9, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
+    firstStopLossRate: 0, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
+    isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
+    profitProtectRate: 0.9, //isProfitRun === 1 时生效，保留多少利润
+    howManyCandleForProfitRun: 1,
+    maxStopLossRate: 0.01, // 止损小于10%的情况，最大止损5%
+    invalidSigleStopRate: 0.1, // 止损在10%，不开单
+    double: 1, // 是否损失后加倍开仓
+    maxLossCount: 20, // 损失后加倍开仓，最大倍数
+    // targetTime: "2025-02-01_00-00-00",
+    closeLastOrder: true, // 最后一单是否平仓
+    isUpOpen: true,
+    isDownOpen: true,
+    compoundInterest: 0, // 复利
+});
 
 module.exports = {
     evaluateStrategy: start,
 };
-
-
-// doge 不适合用这个方式

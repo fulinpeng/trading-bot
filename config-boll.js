@@ -11,7 +11,7 @@ const config = {
         klineStage: "1m", // k线级别
         numForAverage: 12, // 多少根k线求取candleHeight
         
-        brickSize: 0.0005,
+        brickSize: 0.001,
         priorityFee: 0.0007, // 0.0007,
         slippage: 0.0002, // 滑点
         B2Period: 20, // boll周期
@@ -150,7 +150,7 @@ const config = {
         invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
         klineStage: "1m", // k线级别
 
-        brickSize: 0.0025,
+        brickSize: 0.002,
         priorityFee: 0.0007, // 0.0007,
         slippage: 0.0002, // 滑点
         B2Period: 20, // boll周期

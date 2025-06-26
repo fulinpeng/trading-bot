@@ -1540,7 +1540,10 @@ const startWebSocket = async () => {
             if (!firstStopProfitRate) { // 这个效果最好
                 await judgeStopLoss(currentPrice, true);
             }
-            // if (idx - orderIndex >= 2) {
+            //  else {
+            //     idx - orderIndex >= 1 && idx % 3 === 0 && await judgeStopLoss(currentPrice, true);
+            // }
+            // if (idx - orderIndex >= 1 && firstStopProfitRate) {
             //     await judgeStopLoss(currentPrice, true);
             // }
         }
