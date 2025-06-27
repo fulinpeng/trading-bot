@@ -1,44 +1,87 @@
 function cacleSwimingFree(src, rngPer = 50, rngQty = 2.5) {
-    if (src.length < rngPer * 2) throw new Error("数据长度不足");
-    
+    if (!Array.isArray(src) || src.length < rngPer + 2) {
+        throw new Error("输入数据不足");
+    }
 
     const ema = (data, period) => {
-        let k = 2 / (period + 1);
-        return data.reduce((acc, val, i) => {
-            if (i === 0) acc.push(val);
-            else acc.push(val * k + acc[i - 1] * (1 - k));
-            return acc;
-        }, []);
+        const k = 2 / (period + 1);
+        const result = [];
+        for (let i = 0; i < data.length; i++) {
+            if (i === 0) {
+                result.push(data[i]);
+            } else {
+                const prev = result[i - 1];
+                result.push(data[i] * k + prev * (1 - k));
+            }
+        }
+        return result;
     };
 
-    const diff = src.slice(1).map((v, i) => Math.abs(v - src[i]));
-    const ema1 = ema(diff, rngPer);
-    const ema2 = ema(ema1, rngPer * 2 - 1);
-    const rngSize = ema2[ema2.length - 1] * rngQty;
+    const absDiff = [];
+    for (let i = 1; i < src.length; i++) {
+        absDiff.push(Math.abs(src[i] - src[i - 1]));
+    }
+    absDiff.unshift(absDiff[0]);
 
-    const x = src[src.length - 1];
-    const prev = src[src.length - 2];
-    let filt = prev;
-    if (x - rngSize > prev) filt = x - rngSize;
-    else if (x + rngSize < prev) filt = x + rngSize;
+    const ema1 = ema(absDiff, rngPer);
+    while (ema1.length < src.length) ema1.unshift(ema1[0]);
+    const ema2 = ema(ema1, (rngPer * 2) - 1);
+    while (ema2.length < src.length) ema2.unshift(ema2[0]);
+    const rngSizeArr = ema2.map(x => (typeof x === 'number' && !isNaN(x) ? x : 0) * rngQty);
 
-    const hiBand = filt + rngSize;
-    const loBand = filt - rngSize;
+    let rfiltArr = [src[0], src[0]];
+    let filtArr = [src[0]];
+    let fdirArr = [0];
+    let condIniArr = [0];
 
-    const fdir = filt > prev ? 1 : filt < prev ? -1 : 0;
+    for (let i = 1; i < src.length; i++) {
+        const x = src[i];
+        const r = rngSizeArr[i];
+
+        rfiltArr[1] = rfiltArr[0];
+        if (x - r > rfiltArr[1]) {
+            rfiltArr[0] = x - r;
+        } else if (x + r < rfiltArr[1]) {
+            rfiltArr[0] = x + r;
+        } else {
+            rfiltArr[0] = rfiltArr[1];
+        }
+        const filt = rfiltArr[0];
+        filtArr.push(filt);
+
+        const lastFilt = filtArr[i - 1];
+        let fdir = fdirArr[i - 1];
+        if (filt > lastFilt) fdir = 1;
+        else if (filt < lastFilt) fdir = -1;
+        fdirArr.push(fdir);
+
+        let longCond = ((x > filt && x > src[i - 1] && fdir === 1) || (x > filt && x < src[i - 1] && fdir === 1));
+        let shortCond = ((x < filt && x < src[i - 1] && fdir === -1) || (x < filt && x > src[i - 1] && fdir === -1));
+        let condIni = condIniArr[i - 1];
+        if (longCond) condIni = 1;
+        else if (shortCond) condIni = -1;
+        condIniArr.push(condIni);
+    }
+
+    const i = src.length - 1;
+    const filt = filtArr[i];
+    const hiBand = filt + rngSizeArr[i];
+    const loBand = filt - rngSizeArr[i];
+    const fdir = fdirArr[i];
     const upward = fdir === 1;
     const downward = fdir === -1;
 
-    const longCond = (x > filt && x > prev && upward) || (x > filt && x < prev && upward);
-    const shortCond = (x < filt && x < prev && downward) || (x < filt && x > prev && downward);
+    const longCond = ((src[i] > filt && src[i] > src[i - 1] && upward) || (src[i] > filt && src[i] < src[i - 1] && upward));
+    const shortCond = ((src[i] < filt && src[i] < src[i - 1] && downward) || (src[i] < filt && src[i] > src[i - 1] && downward));
+    const longCondition = longCond && condIniArr[i - 1] === -1;
+    const shortCondition = shortCond && condIniArr[i - 1] === 1;
 
     return {
-        filt,
         hiBand,
         loBand,
         trend: upward ? "up" : downward ? "down" : "flat",
-        longCondition: longCond,
-        shortCondition: shortCond
+        longCondition,
+        shortCondition
     };
 }
 

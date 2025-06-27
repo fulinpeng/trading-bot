@@ -294,10 +294,10 @@ const start = (params) => {
     const prePrices = preKLines.map((v) => v.close);
     initEveryIndex(preKLines, prePrices);
     for (let idx = 31; idx < _kLineData.length; idx++) {
-        const curKLines = _kLineData.slice(idx - 30, idx);
+        const curKLines = _kLineData.slice(idx - 30, idx + 1);
         const historyClosePrices = curKLines.map((v) => v.close);
 
-        candleHeight = brickSize * 2; // calculateCandleHeight(_kLineData.slice(idx - 12, idx));
+        candleHeight = brickSize * 2; // calculateCandleHeight(_kLineData.slice(idx - 12, idx + 1));
 
         // 设置各种指标
         setEveryIndex(curKLines, [...historyClosePrices]);

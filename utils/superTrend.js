@@ -32,7 +32,7 @@ function calculateDEMA(data, period) {
     let ema1 = calculateEMA(data, period);
     // let ema2 = calculateEMA(ema1.slice(period - 1), period); // 第二次 EMA 计算
     let ema2 = calculateEMA(ema1.filter(v => !!v), period); // 第二次 EMA 计算
-    !ema2[ema2.length - 1] && console.log("🚀 ~ calculateDEMA ~ ema2:", ema2[ema2.length - 1], ema1.filter(v => !!v).length)
+    !ema2[ema2.length - 1] && console.log("🚀 ~ calculateDEMA ~ ema2:", ema2[ema2.length - 1], ema1.filter(v => !!v).length);
     let dema = [];
 
     for (let i = 0; i < ema2.length; i++) {
@@ -101,8 +101,8 @@ function calculateSuperTrend(klineData, atrPeriod, multiplier) {
                 ? trend[i - 1] === -1 && klineData[i].close > dn[i - 1]
                     ? 1
                     : trend[i - 1] === 1 && klineData[i].close < up[i - 1]
-                      ? -1
-                      : trend[i - 1]
+                        ? -1
+                        : trend[i - 1]
                 : 1;
     }
     return {
@@ -112,70 +112,106 @@ function calculateSuperTrend(klineData, atrPeriod, multiplier) {
     };
 }
 
-function calculateLatestSuperTrend(data, period = 15, multiplier = 6, useTrueATR = true) {
-    if (data.length < period + 1) return null;
+function calculateRMA(values, period) {
+    let rma = [];
+    let sum = 0;
+    for (let i = 0; i < values.length; i++) {
+        if (i < period) {
+            sum += values[i];
+            rma.push(null);
+            if (i === period - 1) {
+                rma[i] = sum / period;
+            }
+        } else {
+            rma[i] = (rma[i - 1] * (period - 1) + values[i]) / period;
+        }
+    }
+    return rma;
+}
 
-    const lastIndex = data.length - 1;
-    const curr = data[lastIndex];
-    const prev = data[lastIndex - 1];
+function calculateLatestSuperTrend(data, period = 15, multiplier = 6, useATR = true) {
+    const trList = [];
+    const atrList = [];
+    const upList = [];
+    const dnList = [];
+    const trendList = [];
 
-    // === Step 1: 计算 TR 和 ATR ===
-    const tr = (bar, prevBar) => {
-        return Math.max(
-            bar.high - bar.low,
-            Math.abs(bar.high - prevBar.close),
-            Math.abs(bar.low - prevBar.close)
+    for (let i = 0; i < data.length; i++) {
+        const curr = data[i];
+        const prev = data[i - 1];
+
+        const tr1 = Math.max(
+            Math.abs(curr.close - curr.open),
+            prev ? Math.abs(curr.close - prev.open) : 0,
+            prev ? Math.abs(prev.close - prev.open) : 0
         );
-    };
-
-    // 计算 period 个 TR
-    let atr;
-    if (useTrueATR) {
-        // Wilder's Smoothing
-        let sumTr = 0;
-        for (let i = lastIndex - period + 1; i <= lastIndex; i++) {
-            sumTr += tr(data[i], data[i - 1]);
-        }
-        const prevAtr = sumTr / period;
-        const currTr = tr(curr, prev);
-        atr = (prevAtr * (period - 1) + currTr) / period;
-    } else {
-        // Simple Moving Average
-        let sumTr = 0;
-        for (let i = lastIndex - period + 1; i <= lastIndex; i++) {
-            sumTr += tr(data[i], data[i - 1]);
-        }
-        atr = sumTr / period;
+        const tr2 = Math.max(
+            curr.high - curr.low,
+            prev ? Math.abs(curr.high - prev.close) : 0,
+            prev ? Math.abs(curr.low - prev.close) : 0
+        );
+        trList.push(tr1 * 0.4 + tr2 * 0.6); // tr 加权计算法
     }
 
-    const hl2 = (curr.high + curr.low) / 2;
+    // 计算 ATR
+    let atrArr = useATR ? calculateRMA(trList, period) : [];
+    if (!useATR) {
+        // SMA
+        for (let i = 0; i < trList.length; i++) {
+            if (i < period - 1) {
+                atrArr.push(null);
+            } else {
+                let sum = 0;
+                for (let j = i - period + 1; j <= i; j++) {
+                    sum += trList[j];
+                }
+                atrArr.push(sum / period);
+            }
+        }
+    }
 
-    // === Step 2: 计算上下轨 ===
-    const up = hl2 - multiplier * atr;
-    const dn = hl2 + multiplier * atr;
+    for (let i = 0; i < data.length; i++) {
+        if (i < period - 1) {
+            atrList.push(null);
+            upList.push(null);
+            dnList.push(null);
+            trendList.push(1);
+            continue;
+        }
+        const curr = data[i];
+        const prev = data[i - 1];
+        const atr = atrArr[i];
+        atrList.push(atr);
 
-    const prevHl2 = (prev.high + prev.low) / 2;
-    const prevAtr = atr; // 近似处理：使用当前 atr 代替 prevAtr，误差可忽略
-    const prevUp = prevHl2 - multiplier * prevAtr;
-    const prevDn = prevHl2 + multiplier * prevAtr;
+        const src = (curr.high + curr.low) / 2;
+        let up = src - multiplier * atr;
+        let dn = src + multiplier * atr;
 
-    const adjustedUp = prev.close > prevUp ? Math.max(up, prevUp) : up;
-    const adjustedDn = prev.close < prevDn ? Math.min(dn, prevDn) : dn;
+        const up1 = upList[i - 1] ?? up;
+        const dn1 = dnList[i - 1] ?? dn;
 
-    // === Step 3: 趋势判断 ===
-    let trend = -1; // 初始默认多头
-    if (prev.close < prevDn) trend = -1;
-    if (prev.close > prevUp) trend = 1;
+        // 维持轨道方向
+        if (prev && prev.close > up1) up = Math.max(up, up1);
+        if (prev && prev.close < dn1) dn = Math.min(dn, dn1);
 
-    if (trend === -1 && curr.close > prevDn) trend = 1;
-    else if (trend === 1 && curr.close < prevUp) trend = -1;
+        upList.push(up);
+        dnList.push(dn);
+
+        let trend = trendList[i - 1] ?? 1;
+        if (prev) {
+            if (trend === -1 && curr.close > dn1) trend = 1;
+            else if (trend === 1 && curr.close < up1) trend = -1;
+            // if (trend === -1 && curr.close > dn) trend = 1;
+            // else if (trend === 1 && curr.close < up) trend = -1;
+            // curr.openTime === '2025-06-26_09-25-00' && console.log("🚀 ~ calculateLatestSuperTrend ~ curr:", {curr, dn1, trend})
+        }
+        trendList.push(trend);
+    }
 
     return {
-        hl2,
-        atr,
-        up: adjustedUp,
-        dn: adjustedDn,
-        trend // 1 = 多头，-1 = 空头
+        trend: trendList[trendList.length - 1],
+        up: upList[upList.length - 1],
+        dn: dnList[dnList.length - 1]
     };
 }
 
@@ -241,8 +277,8 @@ function calculateCloseDema(
     let demaLongs = calculateDEMA(closePrices, demaLongPeriod);
 
 
-    let demaShort=  demaShorts[demaShorts.length - 1];
-    let demaLong=demaLongs[demaLongs.length - 1];
+    let demaShort = demaShorts[demaShorts.length - 1];
+    let demaLong = demaLongs[demaLongs.length - 1];
     // demaLong && console.log("🚀 ~ demaShortPeriod:", demaShort, demaLong)
 
     return {

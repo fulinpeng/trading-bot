@@ -243,7 +243,7 @@ const start = (params) => {
         preKLines.map((v) => v.close)
     );
     for (let idx = 500; idx < _kLineData.length; idx++) {
-        const curKLines = _kLineData.slice(idx - 500, idx);
+        const curKLines = _kLineData.slice(idx - 500, idx + 1);
         const historyClosePrices = curKLines.map((v) => v.close);
 
         candleHeight = calculateCandleHeight(_kLineData.slice(idx - numForAverage, idx));

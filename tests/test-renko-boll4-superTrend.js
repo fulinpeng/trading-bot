@@ -392,7 +392,7 @@ const start = (params) => {
     const prePrices = preKLines.map((v) => v.close);
     initEveryIndex(prePrices, preKLines);
     for (let idx = 31; idx < _kLineData.length; idx++) {
-        const curKLines = _kLineData.slice(idx - 30, idx);
+        const curKLines = _kLineData.slice(idx - 30, idx + 1);
         const historyClosePrices = curKLines.map((v) => v.close);
 
         // 设置各种指标

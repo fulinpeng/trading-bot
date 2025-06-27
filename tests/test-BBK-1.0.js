@@ -212,7 +212,7 @@ const start = (params) => {
     const prePrices = preKLines.map((v) => v.close);
     initEveryIndex(prePrices, preKLines);
     for (let idx = 201; idx < _kLineData.length; idx++) {
-        const curKLines = _kLineData.slice(idx - 200, idx);
+        const curKLines = _kLineData.slice(idx - 200, idx + 1);
         const historyClosePrices = curKLines.map((v) => v.close);
 
         candleHeight = calculateCandleHeight(_kLineData.slice(idx - numForAverage, idx));

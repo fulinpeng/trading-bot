@@ -228,7 +228,7 @@ const start = (params) => {
     const preKLines = _kLineData.slice(0, 500);
     initEveryIndex(preKLines);
     for (let idx = 500; idx < _kLineData.length; idx++) {
-        const curKLines = _kLineData.slice(idx - 500, idx);
+        const curKLines = _kLineData.slice(idx - 500, idx + 1);
 
         candleHeight = calculateCandleHeight(_kLineData.slice(idx - numForAverage, idx));
 
