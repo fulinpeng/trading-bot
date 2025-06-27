@@ -228,7 +228,7 @@ const start = (params) => {
         const curKLines = _kLineData.slice(idx - 500, idx + 1);
         const historyClosePrices = curKLines.map((v) => v.close);
 
-        candleHeight = calculateCandleHeight(_kLineData.slice(idx - numForAverage, idx));
+        candleHeight = calculateCandleHeight(_kLineData.slice(idx - numForAverage, idx + 1));
 
         // 设置各种指标
         setEveryIndex([...historyClosePrices], curKLines);
