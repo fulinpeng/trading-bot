@@ -9,9 +9,12 @@ const WebSocket = require("ws"); // WebSocket库
 const fs = require("fs");
 const { getDate, hasUpDownVal, getLastFromArr, getSequenceArr } = require("./utils/functions.js");
 const { calculateBollingerBands } = require("./utils/boll.js");
-const { convertToRenko } = require("./utils/renko.js");
-const config = require("./config-boll.js");
+const config = require("./config-superTrend_swim_fee.js");
 const { isYang, isYin, } = require("./utils/kLineTools.js");
+const { cacleSwimingFreeWma, cacleSwimingFreeEma } = require("./utils/swimingFree.js");
+const { calculateLatestSuperTrend } = require("./utils/superTrend.js");
+const { calculateLatestSSL } = require("./utils/SSL_CMF_VO/SSLChannel.js");
+const { calculateFBB } = require("./utils/fib.js");
 
 let testMoney = 0;
 const diff = 2;
@@ -32,22 +35,27 @@ let {
     slippage, // 滑点(测试)
     B2Period,
     B2mult,
+    atrPeriod,
+    multiplier,
+    swimingFreePeriod,
+    sslPeriod,
     howManyCandle, // 初始止盈，盈亏比
     baseLossRate,
-    firstStopProfitRate: DefaultFirstStopProfitRate, // 是否开启初始止盈(比例基于止损)（到初始止盈点时，移动止损到开仓价）
     firstProtectProfitRate,
-    firstStopLossRate: DefaultFirstStopLossRate, // 是否开启初始止损（到初始止损点时，移动止盈到开仓价）
+    arriveStopProfitCount,
     isProfitRun, // 是否开启移动止盈
-    profitProtectRate, // 移动止盈，保留盈利比例
-    howManyCandleForProfitRun,
     maxStopLossRate, // 止损小于10%的情况，最大止损5%
     invalidSigleStopRate, // 止损在10%，不开单
     double, // 是否损失后加倍开仓
     maxLossCount, // 损失后加倍开仓，最大倍数
-} = config["ada"];
+} = config["sol"];
 
 let highArr = [];
 let lowArr = [];
+let swimingFreeArr = [];
+let superTrendArr = [];
+let sslArr = [];
+let fibArr = [];
 // 指标趋势
 // let indexTrend = 'hold'; // up down breakAndUp breakAndDown hold
 const MOD_HIGH = 'MOD_HIGH'
@@ -60,17 +68,13 @@ let isDownOpen = true;
 const MA_RSI = { rsiLength: 14, smaLength: 20 };
 
 let availableMoney = DefaultAvailableMoney;
-let firstStopProfitRate = DefaultFirstStopProfitRate;
-let firstStopLossRate = DefaultFirstStopLossRate;
 let lossCount = 0;
-let isArriveLastStopProfit = false;
-let isFirstArriveBBK = false;
 
-let preRenkoClose = null;
-let preRenkoData = null;
-let preDirection = null;
+let downArrivedProfit = 0;
+let sellstopLossPrice = 0;
 
-let bollArrConsole = []
+let sslRateUp = -0.0005;
+let sslRateDown = 0.00002;
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
@@ -140,8 +144,6 @@ let tradingInfo = {
     quantity: 0,
     times: 0,
 };
-let idx = 0;
-let orderIndex = 0;
 
 // 以下参数会在程序启动时初始化
 let historyClosePrices = []; // 历史收盘价，用来计算EMA
@@ -151,7 +153,7 @@ let allPositionDetail = {}; // 当前仓位信息
 let bollArr = [];
 let rsiArr = [];
 
-const maxKLinelen = isTestLocal ? 30 : 450; // 储存kLine最大数量
+const maxKLinelen = 250; // 储存kLine最大数量
 // 日志
 let logStream = null;
 let errorStream = null;
@@ -164,6 +166,7 @@ let onGridPoint = false; // TP/SL上
 let loadingInit = false;
 let isOrdering = false; // 是否在收盘后的计算中
 let isJudgeStopLoss = false;
+let isUpdateSellstopLossPrice = false
 let isJudgeFirstProfit = false;
 let isJudgeFirstLoss = false;
 let isJudgeProfitRunOrProfit = false;
@@ -185,7 +188,8 @@ const isLoading = () => {
         loadingPlaceOrder ||
         loadingCloseOrder ||
         onGridPoint ||
-        isJudgeForceLossProtect
+        isJudgeForceLossProtect ||
+        isUpdateSellstopLossPrice
     );
 };
 
@@ -289,49 +293,28 @@ const getKLineData = async (symbol, interval, limit) => {
 
 // 获取收盘价
 const getHistoryClosePrices = async () => {
-    // 在getKLineData方法中获取至少15分钟内的价格数据
     const kLines = await getKLineData(B_SYMBOL, `${klineStage}`, maxKLinelen);
-    if (isTestLocal) {
-        kLineData = kLines;
-        historyClosePrices = kLineData.map((data) => data.close); // K线数据有一个close字段表示收盘价，根据实际情况调整
-    } else {
-        console.log("🚀 ~ getHistoryClosePrices ~ kLines.length:", kLines.length);
-        kLines.forEach((v) => {
-            const { renkoData, newRenkoClose, newRenkoData } = convertToRenko({
-                klineData: v,
-                brickSize,
-                preRenkoClose,
-                preRenkoData,
-            });
-            preRenkoClose = newRenkoClose;
-            preRenkoData = newRenkoData;
-            renkoData.length && kLineData.push(...renkoData);
-        });
-        console.log("🚀 ~ getHistoryClosePrices ~ kLineData:", kLineData.length);
-
-        historyClosePrices = kLineData.map((data) => data.close);
-        console.log(
-            "初始化k线收盘价:kLineData.length, historyClosePrices.length",
-            kLineData.length,
-            historyClosePrices.length
-        );
-    }
+    kLineData = kLines;
+    historyClosePrices = kLineData.map((data) => data.close); // K线数据有一个close字段表示收盘价，根据实际情况调整
 };
 
 const initEveryIndex = (historyClosePrices) => {
     const len = historyClosePrices.length;
     for (let i = len - 10; i < len; i++) {
-        setEveryIndex(historyClosePrices.slice(0, i), kLineData[i]);
+        setEveryIndex(historyClosePrices.slice(0, i), kLineData.slice(0, i));
     }
 };
 const setEveryIndex = (historyClosePrices, curKLine) => {
-    setBollArr(historyClosePrices, curKLine);
+    // setBollArr(historyClosePrices, curKLine);
     // setRsiArr(historyClosePrices);
+    setSperTrendArr(curKLine);
+    setSwimingFreeArr(curKLine);
+    setSslArr(curKLine);
+    setFibArr(curKLine);
 };
 const setBollArr = (historyClosePrices, curKLine) => {
     bollArr.length >= 6 && bollArr.shift();
     const boll = calculateBollingerBands(historyClosePrices, B2Period, B2mult);
-    console.log("🚀 ~ setBollArr ~ boll:", boll)
     if (!boll) return;
     bollArr.push(boll);
     
@@ -383,11 +366,35 @@ const setRsiArr = (historyClosePrices) => {
     rsiArr.length >= 10 && rsiArr.shift();
     rsiArr.push(calculateRSI(historyClosePrices, MA_RSI));
 };
+const setSperTrendArr = (klines) => {
+    superTrendArr.length >= 10 && superTrendArr.shift();
+    const superTrend = calculateLatestSuperTrend(klines, atrPeriod, multiplier);
 
+    superTrendArr.push(superTrend);
+};
+const setSwimingFreeArr = (klines) => {
+    swimingFreeArr.length >= 10 && swimingFreeArr.shift();
+    const swimingFree = cacleSwimingFreeEma(klines, swimingFreePeriod, 2.5);
+
+    swimingFreeArr.push(swimingFree);
+};
+const setSslArr = (klines) => {
+    sslArr.length >= 10 && sslArr.shift();
+    const ssl = calculateLatestSSL(klines, sslPeriod);
+
+    sslArr.push(ssl);
+};
+
+const setFibArr = (klines) => {
+    fibArr.length >= 10 && fibArr.shift();
+    const fib = calculateFBB(klines);
+
+    fibArr.push(fib);
+};
 // 更新kLine信息
 const setKLinesTemp = (curKLine) => {
-    kLineData.length >= 30 && kLineData.shift();
-    historyClosePrices.length >= 30 && historyClosePrices.shift();
+    kLineData.length >= maxKLinelen && kLineData.shift();
+    historyClosePrices.length >= maxKLinelen && historyClosePrices.shift();
 
     kLineData.push(curKLine);
     historyClosePrices.push(curKLine.close);
@@ -403,21 +410,20 @@ const refreshKLineAndIndex = (curKLine) => {
     setKLinesTemp(curKLine);
 
     // 设置各种指标
-    setEveryIndex([...historyClosePrices], curKLine);
+    setEveryIndex([...historyClosePrices], kLineData);
 
 };
 
 // 开仓
 const kaiDanDaJi = async () => {
     isOrdering = true;
-    if (!bollArr.length) return;
+    // if (!bollArr.length) return;
 
     if (readyTradingDirection === "hold") {
         // 判断趋势
         judgeTradingDirection();
         // 指标判断趋势
         // judgeTradingDirectionByIndex();
-        console.log("🚀 ~ judgeTradingDirection ~ 判断趋势:", readyTradingDirection);
     }
     // if (!hasOrder && readyTradingDirection !== "hold") {
     //     // 趋势是否被破坏
@@ -428,6 +434,8 @@ const kaiDanDaJi = async () => {
         // 开仓：没有仓位就根据 readyTradingDirection 开单
         // 开单完成后会重置 readyTradingDirection
         if (readyTradingDirection !== "hold") {
+            let [fib1, fib2, fib3] = getLastFromArr(fibArr, 3);
+            // console.log("@@🚀 ~ kaiDanDaJi ~ hasOrder:", fib3)
             await judgeAndTrading();
         }
     }
@@ -443,28 +451,8 @@ const judgeIndexLoss = async (currentPrice) => {
     const { open, close, openTime, closeTime, low, high } = kLineData[kLineData.length - 1];
     const { B2upper, B2lower } = bollArr[bollArr.length - 1];
     const { trend, orderPrice } = tradingInfo;
-    // trend === "up" 时，close超出上轨，就移动到开仓价
-    if (
-        trend === "up" &&
-        firstStopLossRate &&
-        (currentPrice >= B2upper) //  || (isYin(kLine0) && isYin(kLine1) && isYin(kLine2) && isYin(kLine3))
-    ) {
-        TP_SL[0] = orderPrice - brickSize * 1.5;
-        firstStopLossRate = 0;
-        isJudgeIndexLoss = false;
-        return;
-    }
-    // trend === "down" ，close超出下轨，就移动到开仓价
-    if (
-        trend === "down" &&
-        firstStopLossRate &&
-        (currentPrice <= B2lower) // ||  (isYang(kLine0) && isYang(kLine1) && isYang(kLine2) && isYang(kLine3))
-    ) {
-        TP_SL[1] = orderPrice + brickSize * 1.5;
-        firstStopLossRate = 0;
-        isJudgeIndexLoss = false;
-        return;
-    }
+    
+
     isJudgeIndexLoss = false;
 }
 // 止损
@@ -473,47 +461,70 @@ const judgeStopLoss = async (_currentPrice, isFast) => {
     isJudgeStopLoss = true;
     const { trend, orderPrice } = tradingInfo;
     const [point1, point2] = TP_SL;
+    let [superTrend1, superTrend2, superTrend3] = getLastFromArr(superTrendArr, 3);
+    let [ssl1, ssl2, ssl3] = getLastFromArr(sslArr, 3);
+    let [swimingFree1, swimingFree2, swimingFree3] = getLastFromArr(swimingFreeArr, 3);
+    
+    let max = Math.max(superTrend3.up, superTrend3.dn);
+    let min = Math.min(superTrend3.up, superTrend3.dn);
+
+    if (trend === "up" && (
+        _currentPrice <= min ||
+        (sellstopLossPrice && _currentPrice < sellstopLossPrice)
+    )) {
+        await closeUp();
+        isJudgeStopLoss = false;
+        return;
+    }
+
+    if (trend === "down" && (
+        _currentPrice >= max ||
+        (sellstopLossPrice && _currentPrice > sellstopLossPrice)
+    )) {
+        await closeDown();
+        isJudgeStopLoss = false;
+        return;
+    }
+    isJudgeStopLoss = false;
+};
+const updateSellstopLossPrice = async (_currentPrice) => {
+    if (!hasOrder) return;
+    isUpdateSellstopLossPrice = true;
+    const { trend, orderPrice } = tradingInfo;
     const [kLine1, kLine2, kLine3] = getLastFromArr(kLineData, 3);
-    let [boll5] = getLastFromArr(bollArr, 1);
-    let { B2basis, B2upper, B2lower } = boll5;
+    const { open, close, openTime, closeTime, low, high } = kLine3
+    // let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
+    let [superTrend1, superTrend2, superTrend3] = getLastFromArr(superTrendArr, 3);
+    let [ssl1, ssl2, ssl3] = getLastFromArr(sslArr, 3);
+    let [swimingFree1, swimingFree2, swimingFree3] = getLastFromArr(swimingFreeArr, 3);
+    let [fib1, fib2, fib3] = getLastFromArr(fibArr, 3);
+    
+    let max = Math.max(superTrend3.up, superTrend3.dn);
+    let min = Math.min(superTrend3.up, superTrend3.dn);
 
     if (trend === "up") {
-        // low 小于 point1 就止损，否则继续持有
-        if (_currentPrice <= point1) {
-            // 这里非常关键point1/_currentPrice
-            _currentPrice = isTestLocal ? point1 * (1 - slippage) : _currentPrice;
-            console.log(
-                isTestLocal ? 'testMoney' : '',
-                `🚀 ~ judgeStopLoss up ~ ${_currentPrice > orderPrice ? '止盈' : '止损'}/平多:currentPrice, point1, 滑点:`,
-                _currentPrice,
-                point1,
-                `, 滑点:`, (point1 - _currentPrice)/_currentPrice, '是否盈利:', _currentPrice > orderPrice
-            );
-            // 止损/平多
-            await closeUp(_currentPrice);
-            isJudgeStopLoss = false;
-            return;
+        if (close >= max) {
+            downArrivedProfit = downArrivedProfit + 1
+            if (downArrivedProfit == 1) {
+                sellstopLossPrice = orderPrice + Math.abs(_currentPrice - orderPrice) * firstProtectProfitRate
+            }
+            if (high >= fib3.upper_7 && downArrivedProfit >= 1) {
+                sellstopLossPrice = orderPrice + Math.abs(high - orderPrice) * 0.9
+            }
         }
     }
     if (trend === "down") {
-        // high 大于 point2 就止损，否则继续持有
-        if (_currentPrice >= point2) {
-            // 这里非常关键point2/_currentPrice
-            _currentPrice = isTestLocal ? point2 * (1 + slippage) : _currentPrice;
-            // 止损/平空
-            console.log(
-                isTestLocal ? 'testMoney' : '',
-                `🚀 ~ judgeStopLoss down ~  ${_currentPrice < orderPrice ? '止盈' : '止损'}/平空:currentPrice, point2`,
-                _currentPrice,
-                point2,
-                `, 滑点:`, (_currentPrice - point2)/point2, '是否盈利:', _currentPrice < orderPrice
-            );
-            await closeDown(_currentPrice);
-            isJudgeStopLoss = false;
-            return;
+        if (close <= min) {
+            downArrivedProfit = downArrivedProfit + 1
+            if (downArrivedProfit == 1) {
+                sellstopLossPrice = orderPrice - Math.abs(_currentPrice - orderPrice) * firstProtectProfitRate
+            }
+            if (low <= fib3.lower_7 && downArrivedProfit >= 1) {
+                sellstopLossPrice = orderPrice - Math.abs(low - orderPrice) * 0.9
+            }
         }
     }
-    isJudgeStopLoss = false;
+    isUpdateSellstopLossPrice = false;
 };
 // 强制保本损
 const judgeForceLossProtect = async (currentPrice) => {
@@ -525,20 +536,8 @@ const judgeForceLossProtect = async (currentPrice) => {
     let [boll5] = getLastFromArr(bollArr, 1);
     let { B2basis, B2upper, B2lower } = boll5;
     if (trend === "up") {
-        if (idx - orderIndex === 2 && !isFirstArriveBBK && firstStopProfitRate) { //  && close > Klower
-            TP_SL[0] += brickSize * 0.25;
-            isFirstArriveBBK = true;
-            isJudgeForceLossProtect = false;
-            return;
-        }
     }
     if (trend === "down") {
-        if (idx - orderIndex === 2 && !isFirstArriveBBK && firstStopProfitRate) {// && close < Kupper
-            TP_SL[1] -= brickSize * 0.25;
-            isFirstArriveBBK = true;
-            isJudgeForceLossProtect = false;
-            return;
-        }
     }
     isJudgeForceLossProtect = false;
 }
@@ -550,35 +549,8 @@ const judgeFirstLossProtect = async (currentPrice) => {
     const [point1, point2] = TP_SL;
 
     if (trend === "up") {
-        if (firstStopLossRate) {
-            const firstStopPrice = orderPrice - Math.abs(orderPrice - point1) * firstStopLossRate;
-            if (currentPrice <= firstStopPrice) {
-                // 到初始止损点时，并且该k线是大阴线，移动止损到该k线的下方，避免亏损太多
-                // 仓位还在，说明没有 low 没有触发止损，所以low在point1上方
-                // 0.8还是比较苛刻，比较难触发，所以不会频繁触发
-                // 这里不再修改止盈点，避免打破策略的平衡
-                // 减少止盈利接近开盘价
-                TP_SL[0] = Math.abs(currentPrice + point1) / 2; // 取currentPrice 、 point1的中间值
-                firstStopLossRate = 0;
-                isJudgeFirstLoss = false;
-                console.log("🚀 ~ judgeFirstProfitProtect up ~ 到初始止损点:TP_SL", TP_SL);
-                return;
-            }
-        }
     }
     if (trend === "down") {
-        if (firstStopLossRate) {
-            const firstStopPrice = orderPrice + Math.abs(orderPrice - point2) * firstStopLossRate;
-            if (currentPrice >= firstStopPrice) {
-                // 到初始止损点时，并且该k线是阴线，移动止盈到开仓价，避免亏损太多
-                // 减少止损
-                console.log("🚀 ~ judgeFirstProfitProtect down ~ 到初始止损点:TP_SL", TP_SL);
-                TP_SL[1] = Math.abs(currentPrice + point2) / 2; // 取currentPrice 、 point2的中间值
-                firstStopLossRate = 0;
-                isJudgeFirstLoss = false;
-                return;
-            }
-        }
     }
     isJudgeFirstLoss = false;
 };
@@ -592,35 +564,8 @@ const judgeFirstProfitProtect = async (currentPrice) => {
     let { B2basis, B2upper, B2lower } = boll5;
 
     if (trend === "up") {
-        if (firstStopProfitRate) {
-            // const firstProfitPrice = orderPrice + Math.abs(orderPrice - point1) * firstStopProfitRate; // (开仓价 - 止损)* 初始止盈倍数
-            const firstProfitPrice = orderPrice + brickSize * firstStopProfitRate;
-            if (currentPrice >= firstProfitPrice || (currentPrice >= boll5.B2upper)) {
-                // 到初始止盈点时，避免盈利回撤
-                TP_SL[0] = orderPrice + Math.abs(orderPrice - firstProfitPrice) * firstProtectProfitRate;
-                firstStopProfitRate = 0;
-                firstStopLossRate = 0; // 防止同时触发止损
-                isJudgeFirstProfit = false;
-                console.log("🚀 ~ judgeFirstProfitProtect up ~ 到初始止盈点:TP_SL", TP_SL);
-                return;
-            }
-        }
     }
     if (trend === "down") {
-        if (firstStopProfitRate) {
-            // const firstProfitPrice = orderPrice - Math.abs(orderPrice - point2) * firstStopProfitRate; // (开仓价 - 止损)* 初始止盈倍数
-            const firstProfitPrice = orderPrice - brickSize * firstStopProfitRate;
-            if (currentPrice <= firstProfitPrice || (currentPrice <= boll5.B2lower)) {
-                // 到初始止盈点时，并且该k线是阳线，移动止损到开仓价，避免盈利回撤
-                // 减少止损
-                TP_SL[1] = orderPrice - Math.abs(orderPrice - firstProfitPrice) * firstProtectProfitRate;
-                firstStopProfitRate = 0;
-                firstStopLossRate = 0; // 防止同时触发止损
-                isJudgeFirstProfit = false;
-                console.log("🚀 ~ judgeFirstProfitProtect down ~ 到初始止盈点:TP_SL", TP_SL);
-                return;
-            }
-        }
     }
     isJudgeFirstProfit = false;
 };
@@ -631,54 +576,35 @@ const judgeProfitRunOrProfit = async (currentPrice) => {
     isJudgeProfitRunOrProfit = true;
     const { trend, orderPrice } = tradingInfo;
     const [point1, point2] = TP_SL;
-    let [boll5] = getLastFromArr(bollArr, 1);
-    let { B2basis, B2upper, B2lower } = boll5;
+    const [kLine1, kLine2, kLine3] = getLastFromArr(kLineData, 3);
+    let [superTrend1, superTrend2, superTrend3] = getLastFromArr(superTrendArr, 3);
+    let [ssl1, ssl2, ssl3] = getLastFromArr(sslArr, 3);
+    let [swimingFree1, swimingFree2, swimingFree3] = getLastFromArr(swimingFreeArr, 3);
+    const { open, close, openTime, closeTime, low, high } = kLine3;
+    
+    let max = Math.max(superTrend3.up, superTrend3.dn);
+    let min = Math.min(superTrend3.up, superTrend3.dn);
 
-    if (isProfitRun) {
-        // 移动止盈
-        // 判断止盈：high 大于 point2 就止盈利，否则继续持有
-        if (trend === "up" && (currentPrice >= point2 || (!firstStopProfitRate && currentPrice >= boll5.B2upper))) {
-            TP_SL = [
-                orderPrice + Math.abs(point2 - orderPrice) * profitProtectRate, // 止损(这个收益高点)
-                // point2 - brickSize * howManyCandleForProfitRun, // 止损
-                point2 + brickSize * howManyCandleForProfitRun, // 止盈
-            ];
-            isArriveLastStopProfit = true;
-            isJudgeProfitRunOrProfit = false;
-            console.log("🚀 ~ judgeProfitRunOrProfit up ~ 移动止盈");
-            return;
-        }
-        // low 小于 point1 就止盈利，否则继续持有
-        if (trend === "down" && (currentPrice <= point1 || (!firstStopProfitRate && currentPrice <= boll5.B2lower))) {
-            TP_SL = [
-                point1 - brickSize * howManyCandleForProfitRun, // 止盈
-                orderPrice - Math.abs(orderPrice - point1) * profitProtectRate, // 止损(这个收益高点)
-                // point1 + brickSize * howManyCandleForProfitRun, // 止损
-            ];
-            isArriveLastStopProfit = true;
-            isJudgeProfitRunOrProfit = false;
-            console.log("🚀 ~ judgeProfitRunOrProfit down ~ 移动止盈");
-            return;
-        }
-    } else {
-        // 判断止盈：上面没有被止损，也没被止盈，那看下面是否能止盈，high 大于 point2 就止盈利，否则继续持有
-        if (hasOrder && trend === "up" && (currentPrice >= point2 || (!firstStopProfitRate && currentPrice >= boll5.B2upper))) {
-            // 平多
-            console.log("🚀 ~ judgeProfitRunOrProfit ~ 止盈平多");
-            await closeUp();
-            isArriveLastStopProfit = true;
-            isJudgeProfitRunOrProfit = false;
-            return;
-        }
-        // 上面没有被止损，那看是否能止盈，low 小于 point1 就止盈利，否则继续持有
-        if (hasOrder && trend === "down" && (currentPrice <= point1 || (!firstStopProfitRate && currentPrice <= boll5.B2lower))) {
-            // 平空
-            console.log("🚀 ~ judgeProfitRunOrProfit ~ 止盈平空");
-            await closeDown();
-            isArriveLastStopProfit = true;
-            isJudgeProfitRunOrProfit = false;
-            return;
-        }
+    if (trend === "up" && (
+        close <= min ||
+        // superTrend3.trend == -1 ||
+        (downArrivedProfit >= arriveStopProfitCount && high >= max) ||
+        (sellstopLossPrice && close < sellstopLossPrice)
+    )) {
+        await closeUp();
+        isJudgeProfitRunOrProfit = false;
+        return;
+    }
+
+    if (trend === "down" && (
+        close >= max ||
+        // superTrend3.trend == 1 ||
+        (downArrivedProfit >= arriveStopProfitCount && low <= min) ||
+        (sellstopLossPrice && close > sellstopLossPrice)
+    )) {
+        await closeDown();
+        isJudgeProfitRunOrProfit = false;
+        return;
     }
     isJudgeProfitRunOrProfit = false;
 };
@@ -692,8 +618,6 @@ const judgeIndexProfit = async (currentPrice) => {
     const { trend, orderPrice } = tradingInfo;
     if (
         trend === "up" &&
-        !firstStopProfitRate &&
-        // isArriveLastStopProfit && // 效果好一点点
         (currentPrice <= B2lower) // boll值变化不大可以直接对比
     ) {
         // 平多
@@ -704,8 +628,6 @@ const judgeIndexProfit = async (currentPrice) => {
     }
     if (
         trend === "down" &&
-        !firstStopProfitRate &&
-        // isArriveLastStopProfit && // 效果好一点点
         (currentPrice >= B2upper) // boll值变化不大可以直接对比
         // 这里是否需要判断 high 和 close 是否大于 B2upper
     ) {
@@ -721,27 +643,35 @@ const judgeIndexProfit = async (currentPrice) => {
 // 通过指标判断交易方向
 const judgeTradingDirection = () => {
     const [kLine1, kLine2, kLine3, kLine4, kLine5] = getLastFromArr(kLineData, 5);
+    const [superTrend1, superTrend2, superTrend3] = getLastFromArr(superTrendArr, 3);
+    const [ssl1, ssl2, ssl3] = getLastFromArr(sslArr, 3);
+    const [swimingFree1, swimingFree2, swimingFree3] = getLastFromArr(swimingFreeArr, 3);
 
-    const { close, low, high } = kLine5;
+    const { openTime, high, low, open, close } = kLine5;
 
-    let [boll5] = getLastFromArr(bollArr, 1);
-    // let [rsi1, rsi2, rsi3, rsi4, rsi5] = getLastFromArr(rsiArr, 5);
-    
-    let { B2basis, B2upper, B2lower } = boll5;
-    
-    // 反转做多
-    const upTerm1 = kLine5.close < boll5.B2basis && isYin(kLine4) && isYang(kLine5);
-    const upTerm2 = true;
+    const maxSSL = Math.max(ssl3.sslUp, ssl3.sslDown);
+    const minSSL = Math.min(ssl3.sslUp, ssl3.sslDown);
+    const maxSSL1 = Math.max(ssl1.sslUp, ssl1.sslDown);
+    const minSSL1 = Math.min(ssl1.sslUp, ssl1.sslDown);
 
-    if (isUpOpen && upTerm1) {
+    //  trend == 1 and longCond and (close > open and close > math.max(close[1], open[1])) and close > maxSSL and math.min(low, low[1]) <= maxSSL and (maxSSL - math.max(smaHigh[2], smaLow[2]))/math.max(smaHigh[2], smaLow[2]) > sslRateUp
+    // 做多
+    const upTerm1 = superTrend3.trend == 1 && swimingFree3.trend === 'up';
+    const upTerm2 = close > open// && close > Math.max(kLine4.close, kLine4.open);
+    const upTerm3 = close > maxSSL && Math.min(low, kLine4.low) <= maxSSL  && (maxSSL - maxSSL1)/maxSSL1 > sslRateUp;
+
+    if (isUpOpen && upTerm1 && upTerm2 && upTerm3) {
         readyTradingDirection = "up";
         return;
     }
-    // 反转做空
-    const downTerm1 = kLine5.close > boll5.B2basis && isYang(kLine4) && isYin(kLine5);
-    const downTerm2 = true
 
-    if (isDownOpen && downTerm1 && downTerm2) {
+    // trend == -1 and shortCond and (close < open and close < math.min(close[1], open[1])) and close < minSSL and math.max(high, high[1]) >= minSSL and (maxSSL - math.max(smaHigh[2], smaLow[2]))/math.max(smaHigh[2], smaLow[2]) < sslRateDown
+    // 做空
+    const downTerm1 = superTrend3.trend == -1 && swimingFree3.trend === 'down';
+    const downTerm2 = close < open// && close < Math.min(kLine4.close, kLine4.open);
+    const downTerm3 = close < minSSL && Math.max(high, kLine4.high) >= minSSL  && (minSSL - minSSL1)/minSSL1 < sslRateDown;
+
+    if (isDownOpen && downTerm1 && downTerm2 && downTerm3) {
         readyTradingDirection = "down";
         return;
     }
@@ -759,23 +689,12 @@ const judgeAndTrading = async () => {
     switch (trend) {
         case "up":
             await teadeBuy();
-            setTP_SL("up", stopLoss, stopProfit); // 这里下设置止盈止损 ????
-            readyTradingDirection = "hold";
-            firstStopProfitRate = DefaultFirstStopProfitRate;
-            firstStopLossRate = DefaultFirstStopLossRate;
-            isArriveLastStopProfit = false;
-            orderIndex = idx;
-            isFirstArriveBBK = false;
+            // setTP_SL("up", stopLoss, stopProfit);
+            hasOrder = true;
             break;
         case "down":
             await teadeSell();
-            setTP_SL("down", stopLoss, stopProfit); // 这里下设置止盈止损 ????
-            firstStopProfitRate = DefaultFirstStopProfitRate;
-            firstStopLossRate = DefaultFirstStopLossRate;
-            readyTradingDirection = "hold";
-            isArriveLastStopProfit = false;
-            orderIndex = idx;
-            isFirstArriveBBK = false;
+            // setTP_SL("down", stopLoss, stopProfit);
             break;
         default:
             break;
@@ -788,47 +707,53 @@ const judgeAndTrading = async () => {
 const calculateTradingSignal = () => {
     const [kLine1, kLine2, kLine3] = getLastFromArr(kLineData, 3);
     const { open, close, openTime, closeTime, low, high } = kLine3;
-
-    // let [boll5] = getLastFromArr(bollArr,1);
-    // let { B2basis, B2upper, B2lower } = boll5;
+    
+    let [superTrend1, superTrend2, superTrend3] = getLastFromArr(superTrendArr, 3);
+    let [ssl1, ssl2, ssl3] = getLastFromArr(sslArr, 3);
+    let [swimingFree1, swimingFree2, swimingFree3] = getLastFromArr(swimingFreeArr, 3);
 
     // let max = Math.max(kLine1.high, kLine2.high, kLine3.high);
     // let min = Math.min(kLine1.low, kLine2.low, kLine3.low);
-    let max = Math.max(kLine1.close, kLine2.close, kLine3.close, kLine1.open, kLine2.open, kLine3.open);
-    let min = Math.min(kLine1.close, kLine2.close, kLine3.close, kLine1.open, kLine2.open, kLine3.open);
-    
-    // 计算ATR
-    const atr = brickSize * baseLossRate;
+    let max = Math.max(superTrend3.up, superTrend3.dn);
+    let min = Math.min(superTrend3.up, superTrend3.dn);
 
-    if (readyTradingDirection === "up" && close > open) {
-        min = min - atr;
-        if (min < close * (1 - invalidSigleStopRate)) {
-            return {
-                trend: "hold",
-            };
-        }
-        if (min < close * (1 - maxStopLossRate)) min = close * (1 - maxStopLossRate);
-        const stopLoss = min;
+    // 计算ATR
+    // const atr = brickSize * baseLossRate; // calculateATR(kLines, slAtrPeriod).atr;
+
+    const signalUpTerm0 = readyTradingDirection === "up" && close > open;
+    const signalUpTerm1 = true;// isNewLine 
+
+    if (signalUpTerm0 && signalUpTerm1) {
+        // min = min - atr; // stopLoss ? stopLoss : min - atr;
+        // if (min < close * (1 - invalidSigleStopRate)) {
+        //     return {
+        //         trend: "hold",
+        //     };
+        // }
+        // if (min < close * (1 - maxStopLossRate)) min = close * (1 - maxStopLossRate);
         return {
             trend: "up",
-            stopLoss, // 止损
-            stopProfit: close + brickSize * howManyCandle // (close - stopLoss) * howManyCandle, // 止盈 //
+            stopLoss: min, // 止损
+            // stopProfit: close + brickSize * howManyCandle, // 止盈
+            stopProfit: close + (close - min) * howManyCandle, // 止盈
         };
     }
 
-    if (readyTradingDirection === "down" && close < open) {
-        max = max + atr;
-        if (max > close * (1 + invalidSigleStopRate)) {
-            return {
-                trend: "hold",
-            };
-        }
-        if (max > close * (1 + maxStopLossRate)) max = close * (1 + maxStopLossRate);
-        const stopLoss = max;
+    const signalDownTerm0 = readyTradingDirection === "down" && close < open;
+    const signalDownTerm1 = true;// isNewLine
+    if (signalDownTerm0 && signalDownTerm1) {
+        // max = max + atr; // stopLoss ? stopLoss : max + atr;
+        // if (max > close * (1 + invalidSigleStopRate)) {
+        //     return {
+        //         trend: "hold",
+        //     };
+        // }
+        // if (max > close * (1 + maxStopLossRate)) max = close * (1 + maxStopLossRate);
         return {
             trend: "down",
-            stopLoss, // 止损
-            stopProfit: close - brickSize * howManyCandle // (stopLoss - close) * howManyCandle, // 止盈 // 
+            stopLoss: max, // 止损
+            // stopProfit: close - brickSize * howManyCandle, // 止盈
+            stopProfit: close - (max - close) * howManyCandle, // 止盈
         };
     }
     return {
@@ -1061,14 +986,13 @@ const closeOrder = async (side, quantity, cb) => {
 
         if (response && response.data && response.data.origQty) {
             cb && cb();
-            firstStopProfitRate = DefaultFirstStopProfitRate;
-            firstStopLossRate = DefaultFirstStopLossRate;
             readyTradingDirection = "hold";
             hasOrder = false;
+            sellstopLossPrice = 0;
+            downArrivedProfit = 0;
             resetTradingDatas();
             TP_SL = [];
             saveGlobalVariables();
-            console.log("🚀 ~ 平仓：平", side === "BUY" ? "空" : "多", response.data.origQty);
         } else {
             console.log(
                 "🚀 ~ 平仓：平",
@@ -1158,10 +1082,7 @@ const recoverHistoryData = async (historyDatas) => {
         hasOrder: __hasOrder,
 
         availableMoney: __availableMoney,
-        firstStopProfitRate: __firstStopProfitRate,
-        firstStopLossRate: __firstStopLossRate,
         lossCount: __lossCount,
-        bollArr: __bollArr,
     } = historyDatas;
 
     prePrice = __prePrice; // 记录当前价格的前一个
@@ -1173,10 +1094,7 @@ const recoverHistoryData = async (historyDatas) => {
     readyTradingDirection = __readyTradingDirection; // 是否准备开单
 
     availableMoney = __availableMoney;
-    firstStopProfitRate = __firstStopProfitRate;
-    firstStopLossRate = __firstStopLossRate;
     lossCount = __lossCount;
-    bollArr = __bollArr;
 };
 const recoverHistoryDataByPosition = async (historyDatas, { up, down }) => {
     //
@@ -1284,7 +1202,7 @@ const startTrading = async () => {
 
 const getQuantity = () => {
     availableMoney = DefaultAvailableMoney * times[lossCount];
-    let q = Math.round(availableMoney / currentPrice);
+    let q = Math.round((availableMoney / currentPrice) * 10000) / 10000;
     // q = q * 1000 % 2 === 0 ? q : q + 0.002;
     return q;
 };
@@ -1302,7 +1220,7 @@ const closeAllOrders = async ({ up, down }) => {
 
             testMoney += curTestMoney;
             setLossCount(curTestMoney);
-            console.log("平多 closeAllOrders ~ curTestMoney testMoney:",curTestMoney, testMoney);
+            console.log("平多 closeAllOrders ~ curTestMoney:",curTestMoney, testMoney);
             console.log("平多完成");
 
             // 发送邮件
@@ -1329,7 +1247,7 @@ const closeAllOrders = async ({ up, down }) => {
             testMoney += curTestMoney;
             setLossCount(curTestMoney);
 
-            console.log("平空 closeAllOrders ~ curTestMoney testMoney:", curTestMoney, testMoney);
+            console.log("平空 closeAllOrders ~ curTestMoney:", curTestMoney, testMoney);
             console.log("平空完成");
 
             // 发送邮件
@@ -1359,14 +1277,16 @@ const closeUp = async (testCurrentPrice) => {
         testMoney += curTestMoney;
         setLossCount(curTestMoney);
         console.log(
-            "closeUp ~ testMoney:",
+            "@@closeUp:",
             tradingInfo.orderTime,
             kLineData[kLineData.length - 1].openTime,
-            tradingInfo.orderPrice,
-            _currentPrice,
-            curTestMoney,
-            testMoney,
-            lossCount
+            {
+                orderP: tradingInfo.orderPrice,
+                orderQ: tradingInfo.quantity,
+                curTtM: curTestMoney,
+                tM: testMoney,
+                lossCount
+            }
         );
         console.log("平多完成");
 
@@ -1402,14 +1322,16 @@ const closeDown = async (testCurrentPrice) => {
         testMoney += curTestMoney;
         setLossCount(curTestMoney);
         console.log(
-            "closeDown ~ testMoney:",
+            "@@closeDown:",
             tradingInfo.orderTime,
             kLineData[kLineData.length - 1].openTime,
-            tradingInfo.orderPrice,
-            _currentPrice,
-            curTestMoney,
-            testMoney,
-            lossCount
+            {
+                orderP: tradingInfo.orderPrice,
+                orderQ: tradingInfo.quantity,
+                curTtM: curTestMoney,
+                tM: testMoney,
+                lossCount
+            }
         );
         console.log("平空完成");
 
@@ -1430,26 +1352,28 @@ const gridPointClearTrading = async (currentPrice) => {
 
     onGridPoint = true;
 
-    // 止损 / 移动盈利的平仓
-    await judgeStopLoss(currentPrice);
+    // 止盈 | 移动止盈
+    await judgeProfitRunOrProfit(currentPrice);
+
+    // 高频判断止损
+    // await judgeStopLoss(currentPrice);
 
     // 首次盈利保护
-    await judgeFirstProfitProtect(currentPrice);
+    await updateSellstopLossPrice(currentPrice);
 
     // 首次亏损保护
     // await judgeFirstLossProtect(currentPrice);
 
-    // 止盈 | 移动止盈
-    await judgeProfitRunOrProfit(currentPrice);
 
     // 指标止盈
     // await judgeIndexProfit(currentPrice);
 
     // 强制保本损
-    await judgeForceLossProtect(currentPrice);
+    // await judgeForceLossProtect(currentPrice);
 
     onGridPoint = false;
 };
+
 // WebSocket 事件
 const startWebSocket = async () => {
     console.log("🚀 startWebSocket~~~~~");
@@ -1477,7 +1401,7 @@ const startWebSocket = async () => {
                         h: parsedData.high,
                         l: parsedData.low,
                         v: parsedData.volume,
-                        x: parsedData.isNewLine || false,
+                        x: true, // ?????????????????? parsedData.isNewLine || false,
                     }
                 }
             } catch (error) {
@@ -1487,7 +1411,7 @@ const startWebSocket = async () => {
             realData = JSON.parse(data);
         }
         if ((isTestLocal && !realData) || (!isTestLocal && realData.e !== "kline")) {
-            console.log("🚀 ~ ws.on ~ data:", data, data.toString('utf8'))
+            console.error("🚀 ~ ws.on ~ data:", data, data.toString('utf8'))
             return;
         }
         const {
@@ -1503,24 +1427,24 @@ const startWebSocket = async () => {
                 V: takerBuyBaseAssetVolume, // 主动买入的成交量
             },
         } = realData
-
-        if (isTestLocal && realData.error) {
+        
+        if (isTestLocal && (realData.error || !openTime)) {
+            console.log('end data')
             process.exit(0);
         }
         prePrice = currentPrice; // 不能删除
         currentPrice = Number(close) || 0;
 
         // 测试时就没有这种高频检测，正式情况不一样，需要实时监测
-        if (hasOrder) {
-            // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
-            // 下面两个需要实时，要快，甚至需要平仓，或者需要在renkonk线中执行判断
+        // if (hasOrder && !isLoading()) {
+        //     // 每秒会触发4次左右，但是需要快速判断是否进入交易点，所以不节流
+        //     // 下面两个需要实时，要快，甚至需要平仓，或者需要在renkonk线中执行判断
 
-            // 止损的要快，大概率都是要损的就尽量少损点
-            // 止盈保护的可以不用那么快，在gridPointClearTrading去执行
-            if (firstStopProfitRate) {
-                await judgeStopLoss(currentPrice, true);
-            }
-        }
+        //     // 更新止损位
+        //     // await updateSellstopLossPrice(currentPrice);
+        //     // 应该是要疯狂执行才对，才快嘛
+        //     await judgeStopLoss(currentPrice, true);
+        // }
 
         const curKLine = {
             openTime: isTestLocal ? openTime : getDate(openTime), // 这根K线的起始时间
@@ -1533,57 +1457,26 @@ const startWebSocket = async () => {
             isNewLine, // 这根K线是否完结(是否已经开始下一根K线)
             takerBuyBaseAssetVolume: Number(takerBuyBaseAssetVolume), // 主动买入的成交量
         };
-
-        const { renkoData, newRenkoClose, newRenkoData, newDirection } = convertToRenko({
-            klineData: curKLine,
-            brickSize,
-            preRenkoClose,
-            preRenkoData,
-            preDirection,
-        });
-        // renkoData.length && console.log("🚀 ~ ws.on ~ , preRenkoClose, newRenkoClose:", preRenkoClose, newRenkoClose)
-        preRenkoClose = newRenkoClose;
-        preRenkoData = newRenkoData;
-        preDirection = newDirection;
-        // renkoData 这个值可能大于1，是插针，一般不会??????
-        // renko 不怕插针，只是怕流动性不足，会导致不成单
-        if (renkoData.length) {
-            for (let i = 0; i < renkoData.length; i++) {
-                idx++;
-                const line = renkoData[i];
-                console.log("🚀 ~ ws.on ~ renkoData:", (Math.abs(currentPrice - line.close)/currentPrice).toFixed(4), renkoData.length, renkoData);
-                // 更新k线和指标数据
-                refreshKLineAndIndex(line);
-                // 最后一个开单
-                if (i === renkoData.length - 1) {
-                    if (!hasOrder) {
-                        await kaiDanDaJi();
-                        isTestLocal && ws.send('hello');
-                        return;
-                    }
-                }
+        if (isNewLine) {
+            // 更新k线和指标数据
+            refreshKLineAndIndex(curKLine);
+            if (!hasOrder) {
+                await kaiDanDaJi();
+                isTestLocal && ws.send('hello');
+                return;
             }
-        }
-        // 相等的话直接退出，因为它到不了任何交易点，继续执行也没有意义
-        // 没有订单也不继续了
-        if (isLoading() || prePrice === currentPrice) {
-        } else {
-            if (renkoData.length){
-                // renko所以没有滞后得说法????
-                let curClose = renkoData[renkoData.length - 1].close;
-                console.log("🚀 ~ ws.on ~ renkoData[renkoData.length - 1].close:", (currentPrice - curClose)/curClose)
-                await gridPointClearTrading(isTest ? renkoData[renkoData.length - 1].close : currentPrice);
+            // 相等的话直接退出，因为它到不了任何交易点，继续执行也没有意义
+            // 没有订单也不继续了
+            if (isLoading() || prePrice === currentPrice) {
+            } else {
+                await gridPointClearTrading(currentPrice);
             }
-            // 所有执行完再存一次
-            saveGlobalVariables();
         }
         isTestLocal && ws.send('hello');
     });
     // 添加 'close' 事件处理程序
     ws.on("close", (code) => {
-        console.log(`WebSocket 关闭: `, code, {
-            kLineData, bollArrConsole
-        });
+        console.log(`WebSocket 关闭: `, code);
         process.exit(code);
     });
 
@@ -1630,15 +1523,15 @@ const createLogs = () => {
     // 重写 console.log
     console.log = function (...args) {
         if (isTestLocal) {
-            if (args[0].indexOf('testMoney') < 0) {
+            if (args[0].indexOf('@@') < 0) {
                 return;
             }
         }
         // originalConsoleLog.apply(console, args); // 保留原始 console.log 的功能
         // 将 log 写入文件
-        const date = kLineData.length && isTestLocal ? kLineData[kLineData.length - 1].openTime : getDate();
+        const date = isTestLocal ? '' : getDate() + ': ';
         logStream.write(
-            `${date}: ${args
+            `${date}${args
                 .map((v) => {
                     if (typeof v === "object") {
                         return JSON.stringify(v);
@@ -1709,13 +1602,13 @@ function cleanup() {
 
 // 监听进程的 exit 事件
 process.on("exit", (code) => {
-    console.log("on exit...", {kLineData, bollArrConsole});
+    console.log("on exit...");
     cleanup();
 });
 
 // 监听中断信号（如 Ctrl+C）
 process.on("SIGINT", (e) => {
-    console.log("Received SIGINT. Cleaning up...", {kLineData, bollArrConsole});
+    console.log("Received SIGINT. Cleaning up...");
     process.exit();
 });
 
@@ -1744,10 +1637,7 @@ function saveGlobalVariables() {
                 TP_SL: TP_SL, // TP_SL
                 readyTradingDirection, // 是否准备开单
                 availableMoney,
-                firstStopProfitRate,
-                firstStopLossRate,
                 lossCount,
-                bollArr,
             });
             fs.writeFileSync(
                 `data/${isTest ? "test" : "prod"}-${strategyType}-${isUpOpen ? 'up' : 'down'}-${SYMBOL}.js`,
@@ -1756,7 +1646,6 @@ function saveGlobalVariables() {
                     flag: "w",
                 }
             );
-            console.log(`Global variables saved to data/${SYMBOL}.js`);
         }
     }, 0);
 }

@@ -19,14 +19,14 @@ if (!symbol) {
 const data1 = require(`../../tests/source/${symbol}-1m.js`);
 
 // mac 小地球仪
-let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
+let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:7890");
 // 创建公用的 Axios 实例
 const axiosInstance = axios.create({
     // headers: {
     //     "Content-Type": "application/json",
     //     "X-MBX-APIKEY": apiKey,
     // },
-    // httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
+    httpsAgent: httpProxyAgent, // 设置 SOCKS5 代理
 });
 const getKLineData = async (symbol, interval, limit, startTime) => {
     try {

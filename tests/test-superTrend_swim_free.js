@@ -12,15 +12,19 @@ const { calculateTSI } = require("../utils/tsi.js");
 const { getSmaRatio } = require("../utils/renko.js");
 const { calculateWilliamsR } = require("../utils/williams.js");
 const { calculateMACD } = require("../utils/macd.js");
-const { getFibonacciLevels } = require("../utils/fib.js");
-const { cacleSwimingFree } = require("../utils/swimingFree.js");
+const { calculateFBB } = require("../utils/fib.js");
+const { cacleSwimingFreeWma, cacleSwimingFreeEma } = require("../utils/swimingFree.js");
 const { calculateLatestSuperTrend } = require("../utils/superTrend.js");
 const { calculateLatestSSL } = require("../utils/SSL_CMF_VO/SSLChannel.js");
+// const { convertCsvDataToTrainingSet } = require("../models/DNN/optimizer-superTrend_swim_free/tranCsvData.js");
+// const { predict } = require("../models/DNN/optimizer-superTrend_swim_free/src/predict.js");
 
 const fs = require("fs");
+const path = require('path');
 const symbol = "solUSDT";
 
 let { kLineData } = require(`./source/${symbol}-5m.js`);
+// let { kLineData } = require(`./source/renko-${symbol}-1m.js`);
 
 let lastRenkoClose = null;
 let brickSize = 0.0005;
@@ -29,19 +33,21 @@ let priorityFee = 0.0007;
 const DefaultAvailableMoney = 10;
 let maxAvailableMoney = 0;
 let _kLineData = [...kLineData];
-console.log("kLineData.length:", _kLineData.length);
 let double = 0;
 let lossCount = 0;
 let maxLossCount = 2;
 let availableMoney = 0;
 let howManyCandle = 1;
 let isProfitRun = 0;
+let arriveStopProfitCount = 0;
 let firstStopProfitRate = 0;
 let slippage = 0;
 let arriveLastStopLoss = 0;
 let B2Period = 11; // boll周期
 let B2mult = 1.5; // boll倍数
 let firstProtectProfitRate = 0;
+let swimingFreePeriod = 50;
+let sslPeriod = 200;
 let firstStopLossRate = 0;
 let profitProtectRate = 0.6;
 let howManyCandleForProfitRun = 0.5;
@@ -57,7 +63,7 @@ let curStopProfit = 0; // 如果达到最终止盈就计数一次,每次开单�
 
 let stopLoss = 0;
 let maxLoss = {};
-
+// let csvData = []
 // const getQuantity = (currentPrice) => {
 //     availableMoney = DefaultAvailableMoney * (1 + lossCount);
 //     if (maxAvailableMoney < availableMoney) maxAvailableMoney = availableMoney;
@@ -70,7 +76,7 @@ const getQuantity = (currentPrice) => {
     availableMoney = DefaultAvailableMoney * times[lossCount] + (compoundInterest && testMoney > 0 ? (testMoney > 1000 ? 1000 : testMoney) : 0);
     // 修改time有可能会成功平仓但是不盈利的情况，所以用改availableMoney的方式
     if (availableMoney > maxAvailableMoney) maxAvailableMoney = availableMoney;
-    let q = Math.round(availableMoney / currentPrice);
+    let q = Math.round((availableMoney / currentPrice) * 10000) / 10000;
     // q = q * 1000 % 2 === 0 ? q : q + 0.002;
     return q;
 };
@@ -121,6 +127,7 @@ let lowArr = [];
 let swimingFreeArr = [];
 let superTrendArr = [];
 let sslArr = [];
+let fibArr = [];
 
 let sslRateUp = -0.0005;
 let sslRateDown = 0.00002;
@@ -171,10 +178,14 @@ const setProfit = (orderPrice, currentPrice, time) => {
             maxLossMoney = minMoney;
             maxLossMoneyPercent = (maxLossMoney / (DefaultAvailableMoney * times[0] + testMoney)) * 100;
         }
+        // csvData
+        // csvData[csvData.length - 1].result.isWin = false;
     }
     if (curTestMoney > 0) {
         winNum++;
         minMoney = 0;
+        // csvData
+        // csvData[csvData.length - 1].result.isWin = true;
     }
     if (testMoney > maxMoney) maxMoney = testMoney;
     curTestMoneyHistory.push(curTestMoney);
@@ -202,21 +213,22 @@ const initEveryIndex = (historyClosePrices, klines) => {
 };
 const setEveryIndex = (historyClosePrices, klines) => {
     // 计算 boll
-    setBollArr(historyClosePrices, klines);
+    // setBollArr(historyClosePrices, klines);
     // 计算 rsi
-    setRsiArr(historyClosePrices);
+    // setRsiArr(historyClosePrices);
     // 计算 ema
     // setEmaArr(historyClosePrices);
     // 计算tsi
     // setTsiArr(historyClosePrices);
     // 计算vol
-    setVolArr(klines);
+    // setVolArr(klines);
     // 计算Williams
     // setWilliamsArr(klines);
-    setMacdArr(historyClosePrices);
+    // setMacdArr(historyClosePrices);
     setSperTrendArr(klines);
-    setSwimingFreeArr(historyClosePrices);
+    setSwimingFreeArr(klines);
     setSslArr(klines);
+    setFibArr(klines);
 };
 const setBollArr = (historyClosePrices, klines) => {
     bollArr.length >= 10 && bollArr.shift();
@@ -233,23 +245,29 @@ const setBollArr = (historyClosePrices, klines) => {
 };
 const setSperTrendArr = (klines) => {
     superTrendArr.length >= 10 && superTrendArr.shift();
-    const superTrend = calculateLatestSuperTrend(klines, atrPeriod, multiplier);
+    const superTrend = calculateLatestSuperTrend(klines.slice(-atrPeriod), atrPeriod, multiplier);
 
     superTrendArr.push(superTrend);
 
     totalSuperTrendArr.push(superTrend);
 };
-const setSwimingFreeArr = (historyClosePrices) => {
+const setSwimingFreeArr = (klines) => {
     swimingFreeArr.length >= 10 && swimingFreeArr.shift();
-    const swimingFree = cacleSwimingFree(historyClosePrices, 50, 2.5);
+    const swimingFree = cacleSwimingFreeEma(klines, swimingFreePeriod, 2.5);
 
     swimingFreeArr.push(swimingFree);
 };
 const setSslArr = (klines) => {
     sslArr.length >= 10 && sslArr.shift();
-    const ssl = calculateLatestSSL(klines, 200);
+    const ssl = calculateLatestSSL(klines, sslPeriod);
 
     sslArr.push(ssl);
+};
+const setFibArr = (klines) => {
+    fibArr.length >= 10 && fibArr.shift();
+    const fib = calculateFBB(klines);
+
+    fibArr.push(fib);
 };
 // 储存高低点
 const setHighLowArr = (boll, curKline) => {
@@ -349,10 +367,13 @@ const resetInit = () => {
     lossCount = 0;
     maxLossCount = 2;
     firstStopProfitRate = 0;
+    arriveStopProfitCount = 0;
     slippage = 0;
     B2Period = 11; // boll周期
     B2mult = 1.5; // boll倍数
     firstProtectProfitRate = 0;
+    swimingFreePeriod = 50;
+    sslPeriod = 50;
     firstStopLossRate = 0;
     profitProtectRate = 0.6;
     howManyCandleForProfitRun = 0.5;
@@ -380,13 +401,46 @@ const resetInit = () => {
     slAtrPeriod = 14;
     atrPeriod = 10;
     multiplier = 3;
+    sslRateUp = -0.0005;
+    sslRateDown = 0.00002;
 };
 let arriveLastStopProfit = 0;
 let arrivefirstStopProfit = 0;
 let arriveFirstStopLoss = 0;
 let zhibiaoWinNum = 0;
 let isArriveLastStopProfit = false;
-const start = (params) => {
+const start = async (params) => {
+    params = {
+        brickSize: 0.5,
+        priorityFee: 0.0007, // 0.0007,
+        slippage: 0.0002, // 滑点
+        B2Period: 20, // boll周期
+        B2mult: 1.5, // boll倍数
+        atrPeriod: 9,
+        sslRateUp: -0.0005,
+        sslRateDown: 0.00002,
+        multiplier: 8,
+        baseLossRate: 0.5, // 基础止损
+        howManyCandle: 6, // 止盈
+        firstStopProfitRate: 2, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
+        firstProtectProfitRate: 0.9, // 0.9, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
+        swimingFreePeriod: 50,
+        sslPeriod: 200,
+        firstStopLossRate: 0, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
+        isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
+        profitProtectRate: 0.9, //isProfitRun === 1 时生效，保留多少利润
+        howManyCandleForProfitRun: 1,
+        maxStopLossRate: 0.01, // 止损小于10%的情况，最大止损5%
+        invalidSigleStopRate: 0.1, // 止损在10%，不开单
+        double: 1, // 是否损失后加倍开仓
+        maxLossCount: 20, // 损失后加倍开仓，最大倍数
+        // targetTime: "2025-06-01_00-00-00",
+        closeLastOrder: true, // 最后一单是否平仓
+        isUpOpen: true,
+        isDownOpen: true,
+        compoundInterest: 0, // 复利
+        ...params,
+    }
     // 每次需要初始化 ???? 检查初始化是否覆盖所有全局变量
     resetInit();
     if (params) {
@@ -398,8 +452,11 @@ const start = (params) => {
         B2Period = params.B2Period;
         B2mult = params.B2mult;
         firstStopProfitRate = params.firstStopProfitRate;
+        arriveStopProfitCount = params.arriveStopProfitCount;
         slippage = params.slippage;
         firstProtectProfitRate = params.firstProtectProfitRate;
+        swimingFreePeriod = params.swimingFreePeriod;
+        sslPeriod = params.sslPeriod;
         firstStopLossRate = params.firstStopLossRate;
         profitProtectRate = params.profitProtectRate;
         howManyCandleForProfitRun = params.howManyCandleForProfitRun;
@@ -408,6 +465,8 @@ const start = (params) => {
         invalidSigleStopRate = params.invalidSigleStopRate;
         slAtrPeriod = params.slAtrPeriod;
         atrPeriod = params.atrPeriod;
+        sslRateUp= params.sslRateUp;
+        sslRateDown=params.sslRateDown;
         multiplier = params.multiplier;
         double = params.double;
         maxLossCount = params.maxLossCount;
@@ -438,260 +497,69 @@ const start = (params) => {
         let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
         let [superTrend1, superTrend2, superTrend3] = getLastFromArr(superTrendArr, 3);
         let [ssl1, ssl2, ssl3] = getLastFromArr(sslArr, 3);
+        let [fib1, fib2, fib3] = getLastFromArr(fibArr, 3);
         let [swimingFree1, swimingFree2, swimingFree3] = getLastFromArr(swimingFreeArr, 3);
-        let { B2basis, B2upper, B2lower } = boll5;
-        // console.log("🚀 ~ start ~ B2basis, B2upper, B2lower:", B2basis, B2upper, B2lower)
+        // let { B2basis, B2upper, B2lower } = boll5;
 
         // 准备开仓
         if (readyTradingDirection === "hold") {
             // 初略判断趋势
             judgeTradingDirection(curKLines);
         }
-        openTime === '2025-06-26_09-25-00' && console.log("@@@@@@@@@@:", readyTradingDirection, {
-            kLine3, superTrend: [superTrend1, superTrend2, superTrend3], swimingFree: [swimingFree1, swimingFree2, swimingFree3], ssl: [ssl1, ssl2, ssl3]
-        })
+        
         if (!hasOrder && readyTradingDirection !== "hold") {
-            // 趋势是否被破坏
+            console.log("🚀 ~ start ~ kLine3:", {kLine3, superTrend3, ssl3, swimingFree3, fib3})
+            // 趋势是否符合模型
+            // await judgeTradingDirectionSecond(curKLines);
         }
         if (!hasOrder) {
             // 开仓：没有仓位就根据 readyTradingDirection 开单
             // 开单完成后会重置 readyTradingDirection
             if (readyTradingDirection !== "hold") {
                 judgeAndTrading(curKLines, params, idx);
+                // 添加csvData数据
+                // csvData.push({
+                //     // kLineData是最近5条k线数据
+                //     kLineData: getLastFromArr(curKLines, 5),
+                //     indicatorData: {
+                //         superTrendArr: getLastFromArr(superTrendArr, 5),
+                //         swimingFreeArr: getLastFromArr(swimingFreeArr, 5),
+                //         sslArr: getLastFromArr(sslArr, 5),
+                //         fibArr: getLastFromArr(fibArr, 5),
+                //     },
+                //     result: {
+                //         readyTradingDirection
+                //     }
+                // });
             }
             continue;
         }
         // 有仓位就准备平仓
         else {
 
-            const [point1, point2] = TP_SL;
             let max = Math.max(superTrend3.up, superTrend3.dn);
             let min = Math.min(superTrend3.up, superTrend3.dn);
 
-            if (hasOrder) {
-                if (trend === 'up' && close >= max) {
-                    downArrivedProfit = downArrivedProfit + 1
-                    if (downArrivedProfit == 1) {
-                        sellstopLossPrice = orderPrice + Math.abs(close - orderPrice) * firstProtectProfitRate
-                    }
-                }
-                
-                if (trend === 'down' && close <= min) {
-                    downArrivedProfit = downArrivedProfit + 1
-                    if (downArrivedProfit == 1) {
-                        sellstopLossPrice = orderPrice - Math.abs(close - orderPrice) * firstProtectProfitRate
-                    }
-                }
-            }
-
-            //////////////////////////// 指标移动止损位置 /////////////////////////// start
-            // if (
-            //     hasOrder &&
-            //     trend === "up" &&
-            //     firstStopLossRate &&
-            //     (close >= B2upper)
-            // ) {
-            //     TP_SL[0] = orderPrice - brickSize * 0;
-            //     firstStopLossRate = 0;
-            //     continue;
-            // }
-            // // trend === "down" ，close超出下轨，就移动止损点
-            // if (
-            //     hasOrder &&
-            //     trend === "down" &&
-            //     firstStopLossRate &&
-            //     (close <= B2lower) // || (isYang(kLine0) && isYang(kLine1) && isYang(kLine2) && isYang(kLine3))
-            // ) {
-            //     TP_SL[1] = orderPrice + brickSize * 0;
-            //     firstStopLossRate = 0;
-            //     continue;
-            // }
-            //////////////////////////// 指标移动止损位置 /////////////////////////// end
-
-            // 判断止损
-            // if (trend) {
-            //     // 判断止损
-            //     if (trend === "up") {
-            //         // 强制保本损
-            //         if (idx - orderIndex === 3 && !isAriveForceLossProtect && firstStopProfitRate) {
-            //             TP_SL[0] += brickSize * 0.25;
-            //             isAriveForceLossProtect = true;
-            //             continue;
-            //         }
-            //         // low 小于 point1 就止损，否则继续持有
-            //         if (close <= point1) {
-            //             firstStopProfitRate && (arriveLastStopLoss++);
-            //             let curPrice = point1 * (1 - slippage);
-            //             setProfit(orderPrice, curPrice, openTime);
-            //             reset();
-            //             continue;
-            //         }
-            //         // 初次止盈
-            //         if (firstStopProfitRate) {
-            //             const firstProfitPrice = orderPrice + brickSize * firstStopProfitRate; // (开仓价 - 止损)* 初始止盈倍数
-            //             if (close >= firstProfitPrice || (close >= boll5.B2upper)) {
-            //                 TP_SL[0] = orderPrice + Math.abs(orderPrice - close) * firstProtectProfitRate; // brickSize * firstProtectProfitRate //
-            //                 firstStopProfitRate = 0;
-            //                 firstStopLossRate = 0; // 防止同时触发止损
-            //                 arrivefirstStopProfit++;
-            //                 continue;
-            //             }
-            //         }
-            //         // 初次止损
-            //         if (firstStopLossRate) {
-            //             const firstStopPrice = orderPrice - Math.abs(orderPrice - point1) * firstStopLossRate;
-            //             if (close < firstStopPrice) {
-            //                 // 到初始止损点时，并且该k线是大阴线，移动止损到该k线的下方，避免亏损太多
-            //                 // 仓位还在，说明没有 low 没有触发止损，所以low在point1上方
-            //                 // 0.8还是比较苛刻，比较难触发，所以不会频繁触发
-            //                 // 这里不再修改止盈点，避免打破策略的平衡
-            //                 // if (isBigAndYin(curkLine, 0.8)) {
-            //                 // 移动止损到low下方
-            //                 TP_SL[0] = Math.abs(close + point1) / 2; // 取currentPrice 、 point1的中间值
-            //                 firstStopLossRate = 0;
-            //                 arriveFirstStopLoss++;
-            //                 continue;
-            //                 // }
-            //             }
-            //         }
-            //     }
-            //     if (trend === "down") {
-            //         // 强制保本损
-            //         if (idx - orderIndex === 3 && !isAriveForceLossProtect && firstStopProfitRate) {// && close < Kupper
-            //             TP_SL[1] -= brickSize * 0.25;
-            //             isAriveForceLossProtect = true;
-            //             continue;
-            //         }
-            //         // high 大于 point2 就止损，否则继续持有
-            //         if (close >= point2) {
-            //             firstStopProfitRate && (arriveLastStopLoss++);
-            //             let curPrice = point2 * (1 + slippage);
-            //             setProfit(orderPrice, curPrice, openTime);
-            //             reset();
-            //             continue;
-            //         }
-            //         // 初次止盈
-            //         if (firstStopProfitRate) {
-            //             const firstProfitPrice = orderPrice - brickSize * firstStopProfitRate; // (开仓价 - 止损)* 初始止盈倍数
-            //             if (close <= firstProfitPrice || (close <= boll5.B2lower)) {
-            //                 TP_SL[1] = orderPrice - Math.abs(orderPrice - close) * firstProtectProfitRate; // brickSize * firstProtectProfitRate// 
-            //                 firstStopProfitRate = 0;
-            //                 firstStopLossRate = 0; // 防止同时触发止损
-            //                 arrivefirstStopProfit++;
-            //                 continue;
-            //             }
-            //         }
-            //         // 初次止损
-            //         if (firstStopLossRate) {
-            //             const firstStopPrice = orderPrice + Math.abs(orderPrice - point2) * firstStopLossRate;
-            //             if (close > firstStopPrice) {
-            //                 TP_SL[1] = Math.abs(close + point2) / 2; // 取currentPrice 、 point2的中间值
-            //                 firstStopLossRate = 0;
-            //                 arriveFirstStopLoss++;
-            //                 continue;
-            //             }
-            //         }
-            //     }
-            // }
-
             // 判断止盈
             if (trend) {
-                // if (isProfitRun) {
-                    // // 移动止盈
-                    // // 判断止盈：上面没有被止损，那看是否能止盈，high 大于 point2 就止盈利，否则继续持有
-                    // if (trend === "up" && (close >= point2)) {
-                    //     TP_SL = [
-                    //         orderPrice + Math.abs(point2 - orderPrice) * profitProtectRate, // brickSize * profitProtectRate, // 
-                    //         // point2 - brickSize * howManyCandleForProfitRun,
-                    //         point2 + brickSize * howManyCandleForProfitRun,
-                    //     ];
-                    //     // -------------辅助统计------------start
-                    //     if (curStopProfit && close >= curStopProfit) {
-                    //         curStopProfit = 0;
-                    //         curStopLoss = 0;
-                    //         if (!isArriveLastStopProfit) {
-                    //             arriveLastStopProfit++;
-                    //             isArriveLastStopProfit = true;
-                    //         }
-                    //     }
-                    //     // -------------辅助统计------------end
-                    //     continue;
-                    // }
-                    // if (trend === "up" && (!firstStopProfitRate && close <= boll5.B2lower)) {
-                    //     TP_SL = [
-                    //         orderPrice + Math.abs(close - orderPrice) * profitProtectRate, // brickSize * profitProtectRate, // 
-                    //         // point2 - brickSize * howManyCandleForProfitRun,
-                    //         close + brickSize * howManyCandleForProfitRun,
-                    //     ];
-                    //     // -------------辅助统计------------start
-                    //     if (curStopProfit && close >= curStopProfit) {
-                    //         curStopProfit = 0;
-                    //         curStopLoss = 0;
-                    //         if (!isArriveLastStopProfit) {
-                    //             arriveLastStopProfit++;
-                    //             isArriveLastStopProfit = true;
-                    //         }
-                    //     }
-                    //     // -------------辅助统计------------end
-                    //     continue;
-                    // }
-                    // // 上面没有被止损，那看是否能止盈，low 小于 point1 就止盈利，否则继续持有
-                    // if (trend === "down" && (close <= point1)) {
-                    //     TP_SL = [
-                    //         point1 - brickSize * howManyCandleForProfitRun,
-                    //         orderPrice - Math.abs(orderPrice - point1) * profitProtectRate, // brickSize * profitProtectRate, // 
-                    //         // point1 + brickSize * howManyCandleForProfitRun,
-                    //     ];
-                    //     // -------------辅助统计------------start
-                    //     if (curStopProfit && close <= curStopProfit) {
-                    //         curStopProfit = 0;
-                    //         curStopLoss = 0;
-                    //         if (!isArriveLastStopProfit) {
-                    //             arriveLastStopProfit++;
-                    //             isArriveLastStopProfit = true;
-                    //         }
-                    //     }
-                    //     // -------------辅助统计------------end
-                    //     continue;
-                    // }
-                    // if (trend === "down" && (!firstStopProfitRate && close >= boll5.B2upper)) {
-                    //     TP_SL = [
-                    //         close - brickSize * howManyCandleForProfitRun,
-                    //         orderPrice - Math.abs(orderPrice - close) * profitProtectRate, // brickSize * profitProtectRate, // 
-                    //         // point1 + brickSize * howManyCandleForProfitRun,
-                    //     ];
-                    //     // -------------辅助统计------------start
-                    //     if (curStopProfit && close <= curStopProfit) {
-                    //         curStopProfit = 0;
-                    //         curStopLoss = 0;
-                    //         if (!isArriveLastStopProfit) {
-                    //             arriveLastStopProfit++;
-                    //             isArriveLastStopProfit = true;
-                    //         }
-                    //     }
-                    //     // -------------辅助统计------------end
-                    //     continue;
-                    // }
-                // } else {
-                    // close <= math.min(up, dn) or trend == -1 or (upArrivedProfit >= 1 and close >= math.max(up, dn)) or (bool(buystopLossPrice) and close < buystopLossPrice)
                     if (trend === "up" && (
-                        close <= min ||
-                        superTrend3.trend == -1 ||
-                        (downArrivedProfit >= 2 && close >= max) ||
-                        (sellstopLossPrice && close < sellstopLossPrice)
+                        close <= min || // 止损
+                        // superTrend3.trend == -1 ||
+                        (downArrivedProfit >= arriveStopProfitCount && high >= max) || // 止盈
+                        (sellstopLossPrice && close < sellstopLossPrice) // 止盈保护
                     )) {
-                        setProfit(orderPrice, close, openTime);
+                        setProfit(orderPrice, close, openTime); 
                         reset();
                         arriveLastStopProfit++;
                         isArriveLastStopProfit = true;
                         continue;
                     }
-                    // close >= math.max(up, dn) or trend == 1 or (downArrivedProfit >= 1 and close <= math.min(up, dn)) or (bool(sellstopLossPrice) and close > sellstopLossPrice)
+                    // close >= maxSuper or trend == 1 or (downArrivedProfit >= arriveStopProfitCount and low <= minSuper) or (bool(sellstopLossPrice) and close > sellstopLossPrice)
                     if (trend === "down" && (
-                        close >= max ||
-                        trend == 1 ||
-                        (downArrivedProfit >= 2 && close <= min) ||
-                        (sellstopLossPrice && close > sellstopLossPrice)
+                        close >= max || // 止损
+                        // superTrend3.trend == 1 ||
+                        (downArrivedProfit >= arriveStopProfitCount && low <= min) || // 止盈
+                        (sellstopLossPrice && close > sellstopLossPrice) // 止盈保护
                     )) {
                         setProfit(orderPrice, close, openTime);
                         reset();
@@ -699,37 +567,37 @@ const start = (params) => {
                         isArriveLastStopProfit = true;
                         continue;
                     }
-                // }
-            }
 
-            //////////////////////////// 指标止盈 /////////////////////////// start
-            // trend === "up" 时收到连续三根阴线，立即平仓
-            // if (
-            //     hasOrder &&
-            //     trend === "up" &&
-            //     !firstStopProfitRate &&
-            //     // isArriveLastStopProfit &&
-            //     (close <= B2lower)
-            // ) {
-            //     zhibiaoWinNum += 1;
-            //     setProfit(orderPrice, close, openTime); // 正式环境可能此时还没有收盘 ???? 但是boll值变化不大可以直接对比
-            //     reset();
-            //     continue;
-            // }
-            // // trend === "down" 时收到连续三根阳线，立即平仓
-            // if (
-            //     hasOrder &&
-            //     trend === "down" &&
-            //     !firstStopProfitRate &&
-            //     // isArriveLastStopProfit &&
-            //     (close <= B2lower) // ||  (isYang(kLine0) && isYang(kLine1) && isYang(kLine2) && isYang(kLine3))
-            // ) {
-            //     zhibiaoWinNum += 1;
-            //     setProfit(orderPrice, close, openTime); // 正式环境可能此时还没有收盘 ???? 但是boll值变化不大可以直接对比
-            //     reset();
-            //     continue;
-            // }
-            //////////////////////////// 指标止盈 /////////////////////////// end
+                    if (hasOrder) {
+                        // up 根据superTrend添加止盈保护
+                        if (trend === 'up' && high >= max) {
+                            downArrivedProfit = downArrivedProfit + 1
+                            if (downArrivedProfit == 1) {
+                                sellstopLossPrice = orderPrice + Math.abs(high - orderPrice) * firstProtectProfitRate
+                                continue;
+                            }
+                        }
+                        // up 根据fib添加止盈保护
+                        if (trend === 'up' && high >= fib3.upper_7 && downArrivedProfit >= 1) {
+                            sellstopLossPrice = orderPrice + Math.abs(high - orderPrice) * firstProtectProfitRate
+                            continue;
+                        }
+                        
+                        // down 根据superTrend添加止盈保护
+                        if (trend === 'down' && low <= min) {
+                            downArrivedProfit = downArrivedProfit + 1
+                            if (downArrivedProfit == 1) {
+                                sellstopLossPrice = orderPrice - Math.abs(low - orderPrice) * firstProtectProfitRate
+                                continue;
+                            }
+                        }
+                        // down 根据fib添加止盈保护
+                        if (trend === 'down' && low <= fib3.lower_7 && downArrivedProfit >= 1) {
+                            sellstopLossPrice = orderPrice - Math.abs(low - orderPrice) * firstProtectProfitRate
+                            continue;
+                        }
+                    }
+            }
         }
     }
 
@@ -740,8 +608,32 @@ const start = (params) => {
         const { close, closeTime, openTime, low, high } = curkLine;
         setProfit(orderPrice, close, openTime);
         reset();
-        return;
+        // return;
     }
+    // const timeRange = `${_kLineData[0].openTime} ~ ${_kLineData[_kLineData.length - 1].closeTime}`;
+        // console.log(
+        //     "🚀 targetTime, testMoney, maxMoney, minMoney::",
+        //     symbol,
+        //     // withAllDatas,
+        //     // timeRange,
+        //     Math.round(testMoney * 100) / 100,
+        //     Math.round(maxMoney * 100) / 100,
+        //     Math.round(minMoney * 100) / 100
+        // );
+    return {
+        targetTime,
+        lastKlineTime: _kLineData[_kLineData.length - 1].closeTime,
+        // maxLoss: maxLoss,
+        // availableMoney,
+        maxAvailableMoney,
+        // winNum,
+        // failNum,
+        testMoney,
+        maxMoney,
+        minMoney,
+        // maxStopLossMoney,
+        winRate: winNum / (winNum + failNum),
+    };
 };
 const reset = () => {
     TP_SL = [];
@@ -767,7 +659,7 @@ const judgeTradingDirection = (curKLines) => {
     let [ssl1, ssl2, ssl3] = getLastFromArr(sslArr, 3);
     let [swimingFree1, swimingFree2, swimingFree3] = getLastFromArr(swimingFreeArr, 3);
 
-    let { openTime, high, low, open, close } = kLine5;
+    const { openTime, high, low, open, close } = kLine5;
 
     const maxSSL = Math.max(ssl3.sslUp, ssl3.sslDown);
     const minSSL = Math.min(ssl3.sslUp, ssl3.sslDown);
@@ -776,9 +668,10 @@ const judgeTradingDirection = (curKLines) => {
 
     //  trend == 1 and longCond and (close > open and close > math.max(close[1], open[1])) and close > maxSSL and math.min(low, low[1]) <= maxSSL and (maxSSL - math.max(smaHigh[2], smaLow[2]))/math.max(smaHigh[2], smaLow[2]) > sslRateUp
     // 做多
-    const upTerm1 = superTrend3.trend == 1 && swimingFree3.longCondition;
-    const upTerm2 = close > open && close > Math.max(kLine4.close, kLine4.open);
-    const upTerm3 = close > maxSSL && Math.min(low, kLine4.low) <= maxSSL && (maxSSL - maxSSL1)/maxSSL1 > sslRateUp;
+    const upTerm1 = superTrend3.trend == 1 && swimingFree3.trend === 'up';
+    const upTerm2 = close > open// && close > Math.max(kLine4.close, kLine4.open);
+    const upTerm3 = close > maxSSL && Math.min(low, kLine4.low) <= maxSSL  && (maxSSL - maxSSL1)/maxSSL1 > sslRateUp;
+    const upTerm4 = close < Math.min(superTrend3.up, superTrend3.dn) + Math.abs(superTrend3.up - superTrend3.dn) * 0.55
 
     if (isUpOpen && upTerm1 && upTerm2 && upTerm3) {
         readyTradingDirection = "up";
@@ -787,15 +680,44 @@ const judgeTradingDirection = (curKLines) => {
 
     // trend == -1 and shortCond and (close < open and close < math.min(close[1], open[1])) and close < minSSL and math.max(high, high[1]) >= minSSL and (maxSSL - math.max(smaHigh[2], smaLow[2]))/math.max(smaHigh[2], smaLow[2]) < sslRateDown
     // 做空
-    const downTerm1 = superTrend3.trend == -1 && swimingFree3.shortCondition;
-    const downTerm2 = close < open && close < Math.min(kLine4.close, kLine4.open);
-    const downTerm3 = close < minSSL && Math.max(high, kLine4.high) >= minSSL && (minSSL - minSSL1)/minSSL1 < sslRateDown;
+    const downTerm1 = superTrend3.trend == -1 && swimingFree3.trend === 'down';
+    const downTerm2 = close < open// && close < Math.min(kLine4.close, kLine4.open);
+    const downTerm3 = close < minSSL && Math.max(high, kLine4.high) >= minSSL  && (minSSL - minSSL1)/minSSL1 < sslRateDown;
+    const downTerm4 = close > Math.max(superTrend3.up, superTrend3.dn) - Math.abs(superTrend3.up - superTrend3.dn) * 0.55
 
     if (isDownOpen && downTerm1 && downTerm2 && downTerm3) {
         readyTradingDirection = "down";
         return;
     }
     readyTradingDirection = "hold";
+};
+// 指标判断方向 / 交易
+const judgeTradingDirectionSecond = async (kLineData) => {
+    const k = kLineData.at(-1);
+    const superTrend = superTrendArr.at(-1);
+    const swim = swimingFreeArr.at(-1);
+    const ssl = sslArr.at(-1);
+    const fib = fibArr.at(-1);
+
+    // 构造特征向量
+    const features = [
+        k.open, k.high, k.low, k.close, k.volume,
+        superTrend.trend, superTrend.up, superTrend.dn,
+        swim.filt, swim.hiBand, swim.loBand,
+        swim.trend === 'up' ? 1 : swim.trend === 'down' ? -1 : 0,
+        swim.longCondition ? 1 : 0,
+        swim.shortCondition ? 1 : 0,
+        ssl.hlv, ssl.sslUp, ssl.sslDown,
+        fib.basis,
+        fib.upper_3, fib.upper_4, fib.upper_5, fib.upper_6, fib.upper_7,
+        fib.lower_3, fib.lower_4, fib.lower_5, fib.lower_6, fib.lower_7
+    ];
+
+    let threshold = await predict(features)
+    console.log("🚀 ~ judgeTradingDirectionSecond ~ threshold:", threshold)
+    if (threshold < 0.5) {
+        readyTradingDirection = "hold";
+    }
 };
 
 // 设置网格
@@ -865,7 +787,7 @@ const calculateTradingSignal = (kLines) => {
     let [ssl1, ssl2, ssl3] = getLastFromArr(sslArr, 3);
     let [swimingFree1, swimingFree2, swimingFree3] = getLastFromArr(swimingFreeArr, 3);
 
-    let { B2basis, B2upper, B2lower } = boll5;
+    // let { B2basis, B2upper, B2lower } = boll5;
 
     // let max = Math.max(kLine1.high, kLine2.high, kLine3.high);
     // let min = Math.min(kLine1.low, kLine2.low, kLine3.low);
@@ -917,8 +839,6 @@ const calculateTradingSignal = (kLines) => {
     };
 };
 function writeInFile(fileName, str) {
-    const path = require('path');
-    const fs = require('fs');
     const dir = path.dirname(fileName);
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
@@ -954,6 +874,7 @@ function run(params) {
     console.log("最终结果::", result);
     console.log("length::", openHistory.length, closeHistory.length, trendHistory.length);
     // https://echarts.apache.org/examples/zh/editor.html?c=line-simple
+    // convertCsvDataToTrainingSet(csvData, symbol)
     writeInFile(
         `./tests/data/${symbol}-superTrend_swim_free.js`,
         `
@@ -1041,30 +962,35 @@ function run(params) {
 
 // sol
 run({
-    brickSize: 0.5,
     priorityFee: 0.0007, // 0.0007,
-    slippage: 0,//.0002, // 滑点
-    B2Period: 20, // boll周期
-    B2mult: 1.5, // boll倍数
-    atrPeriod: 15,
-    multiplier: 6,
+    slippage: 0.0002, // 滑点
+    atrPeriod: 11,
+    multiplier: 15,
+    firstProtectProfitRate: 0.5, // 0.9, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
+    arriveStopProfitCount: 3, // 达到止盈次数
+    swimingFreePeriod: 60,
+    sslPeriod: 200,
+    sslRateUp: -0.00004,
+    sslRateDown: -0.00008,
+
+
+    isUpOpen: true,
+    isDownOpen: true,
+    maxLossCount: 20, // 损失后加倍开仓，最大倍数
+    compoundInterest: 0, // 复利
+    brickSize: 0.5,
     baseLossRate: 0.5, // 基础止损
     howManyCandle: 6, // 止盈
     firstStopProfitRate: 2, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
-    firstProtectProfitRate: 0.5, // 0.9, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
     firstStopLossRate: 0, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
-    isProfitRun: 0, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
+    isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
     profitProtectRate: 0.9, //isProfitRun === 1 时生效，保留多少利润
     howManyCandleForProfitRun: 1,
     maxStopLossRate: 0.01, // 止损小于10%的情况，最大止损5%
     invalidSigleStopRate: 0.1, // 止损在10%，不开单
     double: 0, // 是否损失后加倍开仓
-    maxLossCount: 20, // 损失后加倍开仓，最大倍数
-    targetTime: "2025-06-01_00-00-00",
+    targetTime: "2025-06-24_01-00-00",
     closeLastOrder: true, // 最后一单是否平仓
-    isUpOpen: true,
-    isDownOpen: true,
-    compoundInterest: 0, // 复利
 });
 
 module.exports = {

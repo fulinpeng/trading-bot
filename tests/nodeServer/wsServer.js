@@ -26,6 +26,7 @@ app.get('/v1/klines', (req, res) => {
     // const filePath = path.resolve(__dirname, `../../tests/${symbol}2.js`);
     // const filePath = path.resolve(__dirname, `../../tests/source/renko-${symbol}-${klineStage}.js`);
     const filePath = path.resolve(__dirname, `../../tests/source/${symbol}-${klineStage}.js`);
+    console.log("🚀 ~ app.get ~ filePath:", filePath)
     // const filePath = path.resolve(__dirname, `../../tests/source/${symbol}-${klineStage}-part.js`);
   try {
     // 确保读取最新数据

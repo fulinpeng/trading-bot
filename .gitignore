@@ -1,4 +1,5 @@
 node_modules
+**/node_modules
 __MACOSX
 logs
 errors
@@ -14,5 +15,5 @@ source
 *.jsonl
 qualifiedSolutions
 tests/data
-nodeServer/data
-nodeServer/source
+**/data
+**/source

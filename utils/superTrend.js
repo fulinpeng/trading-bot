@@ -129,7 +129,8 @@ function calculateRMA(values, period) {
     return rma;
 }
 
-function calculateLatestSuperTrend(data, period = 15, multiplier = 6, useATR = true) {
+// inertiaRatio 趋势惯性，越大越没有考虑极端行情，实践发现 sol-5m 还是0比较适合，其他的待验证
+function calculateLatestSuperTrend(data, period = 15, multiplier = 6, useATR = true, inertiaRatio = 0) {
     const trList = [];
     const atrList = [];
     const upList = [];
@@ -140,17 +141,19 @@ function calculateLatestSuperTrend(data, period = 15, multiplier = 6, useATR = t
         const curr = data[i];
         const prev = data[i - 1];
 
+        // 优化 更关注K线实体、趋势惯性，适合震荡市
         const tr1 = Math.max(
             Math.abs(curr.close - curr.open),
             prev ? Math.abs(curr.close - prev.open) : 0,
             prev ? Math.abs(prev.close - prev.open) : 0
         );
+        // 传统 极端行情敏感
         const tr2 = Math.max(
             curr.high - curr.low,
             prev ? Math.abs(curr.high - prev.close) : 0,
             prev ? Math.abs(curr.low - prev.close) : 0
         );
-        trList.push(tr1 * 0.4 + tr2 * 0.6); // tr 加权计算法
+        trList.push(tr1 * inertiaRatio + tr2 * (1 - inertiaRatio)); // tr 加权计算法
     }
 
     // 计算 ATR
@@ -199,11 +202,13 @@ function calculateLatestSuperTrend(data, period = 15, multiplier = 6, useATR = t
 
         let trend = trendList[i - 1] ?? 1;
         if (prev) {
+            // 和 上一个 比
             if (trend === -1 && curr.close > dn1) trend = 1;
             else if (trend === 1 && curr.close < up1) trend = -1;
+            // 和 当前的 比
             // if (trend === -1 && curr.close > dn) trend = 1;
             // else if (trend === 1 && curr.close < up) trend = -1;
-            // curr.openTime === '2025-06-26_09-25-00' && console.log("🚀 ~ calculateLatestSuperTrend ~ curr:", {curr, dn1, trend})
+            // curr.openTime === '2025-06-26_09-25-00' && console.log("🚀 ~ calculateLatestSuperTrend ~ curr:", {curr, dn1})
         }
         trendList.push(trend);
     }

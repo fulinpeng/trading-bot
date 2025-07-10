@@ -80,8 +80,79 @@ function getFibonacciLevels(startPrice, endPrice, type = 'retracement') {
 
     throw new Error('Invalid type: must be "retracement" or "extension".');
 }
-  
+function calculateFBB(data, fbbLength = 200, mult = 3.0) {
+    if (!Array.isArray(data) || data.length < fbbLength) {
+        throw new Error("输入数据不足");
+    }
+
+    // 计算 hlc3： (high + low + close) / 3
+    const fbbSrc = data.map(k => (k.high + k.low + k.close) / 3);
+
+    // 计算 VWMA (成交量加权均线)
+    const vwma = (src, vol, length) => {
+        const result = [];
+        for (let i = 0; i < src.length; i++) {
+            if (i < length - 1) {
+                result.push(NaN);
+                continue;
+            }
+            let sumPV = 0;
+            let sumV = 0;
+            for (let j = 0; j < length; j++) {
+                sumPV += src[i - j] * vol[i - j];
+                sumV += vol[i - j];
+            }
+            result.push(sumPV / sumV);
+        }
+        return result;
+    };
+
+    // 计算标准差
+    const stddev = (arr, length) => {
+        const result = [];
+        for (let i = 0; i < arr.length; i++) {
+            if (i < length - 1) {
+                result.push(NaN);
+                continue;
+            }
+            const window = arr.slice(i - length + 1, i + 1);
+            const mean = window.reduce((a, b) => a + b, 0) / length;
+            const variance = window.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / length;
+            result.push(Math.sqrt(variance));
+        }
+        return result;
+    };
+
+    const volume = data.map(k => k.volume);
+    const basisArr = vwma(fbbSrc, volume, fbbLength);
+    const devArr = stddev(fbbSrc, fbbLength).map(std => std * mult);
+
+    const lastIdx = fbbSrc.length - 1;
+    const basis = basisArr[lastIdx];
+    const dev = devArr[lastIdx];
+
+    if (isNaN(basis) || isNaN(dev)) {
+        return null; // 尚未形成有效数据
+    }
+
+    return {
+        basis, // 中轨线（成交量加权均线VWMA）
+        upper_3: basis + 0.5 * dev, // 上轨3（中轨+0.5倍标准差）
+        upper_4: basis + 0.618 * dev, // 上轨4（中轨+0.618倍标准差，黄金分割）
+        upper_5: basis + 0.764 * dev, // 上轨5（中轨+0.764倍标准差）
+        upper_6: basis + 1.0 * dev, // 上轨6（中轨+1倍标准差）
+        upper_7: basis + 1.414 * dev, // 上轨7（中轨+1.414倍标准差）
+        
+        lower_3: basis - 0.5 * dev, // 下轨3（中轨-0.5倍标准差）
+        lower_4: basis - 0.618 * dev, // 下轨4（中轨-0.618倍标准差，黄金分割）
+        lower_5: basis - 0.764 * dev, // 下轨5（中轨-0.764倍标准差）
+        lower_6: basis - 1.0 * dev, // 下轨6（中轨-1倍标准差）
+        lower_7: basis - 1.414 * dev // 下轨7（中轨-1.414倍标准差）
+    };
+}
+
 module.exports = {
     calculateFibonacciLevels,
     getFibonacciLevels,
+    calculateFBB,
 };

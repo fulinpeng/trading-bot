@@ -92,11 +92,13 @@ function convertToRenko(params) {
             numOfBricks = 1;
             console.log('@@@@@@@@@@@@@@@@@@@@@@@@, numOfBricks 怎么可能小于1');
         }
-        let volumePiece = deltaVolume / Math.abs(close - preRenkoData.close); // 按照单位价格来严格计算volume
+        let deltaPrice = Math.abs(close - preRenkoData.close);
+        // if (numOfBricks >=20) throw new Error('numOfBricks >=3');
+        let volumePiece = deltaVolume / (deltaPrice / close < 0.0001 ? 1 : deltaPrice); // 按照单位价格来严格计算volume
 
         for (let i = 0; i < numOfBricks; i++) {
             // 计算新砖型图的开盘和收盘价
-            let newClose = preRenkoClose + direction * brickSize * (i + 1);
+            let newClose = preRenkoClose + direction * brickSize;
 
             let newHigh;
             let newLow;
@@ -133,6 +135,7 @@ function convertToRenko(params) {
             renkoData.push(preRenkoData);
         }
         // 初始化下一砖块的high/low
+        let deltaPrice2 = Math.abs(close - preRenkoData.close)
         preRenkoData = {
             open: preRenkoClose,
             close: preRenkoClose,
@@ -140,7 +143,7 @@ function convertToRenko(params) {
             low: Math.min(preRenkoClose, close),
             openTime: preRenkoData.closeTime,
             closeTime,
-            volume: volumePiece * Math.abs(close - preRenkoData.close),
+            volume: volumePiece * (deltaPrice2 / close < 0.0001 ? 1 : deltaPrice2),
             isNewLine: false,
         }
         preDirection = direction;
