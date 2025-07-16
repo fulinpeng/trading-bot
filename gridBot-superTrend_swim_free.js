@@ -48,7 +48,7 @@ let {
     invalidSigleStopRate, // 止损在10%，不开单
     double, // 是否损失后加倍开仓
     maxLossCount, // 损失后加倍开仓，最大倍数
-} = config["sol"];
+} = config["1000pepe"];
 
 let highArr = [];
 let lowArr = [];
@@ -153,7 +153,7 @@ let allPositionDetail = {}; // 当前仓位信息
 let bollArr = [];
 let rsiArr = [];
 
-const maxKLinelen = 250; // 储存kLine最大数量
+const maxKLinelen = 1000; // 储存kLine最大数量
 // 日志
 let logStream = null;
 let errorStream = null;
@@ -374,13 +374,13 @@ const setSperTrendArr = (klines) => {
 };
 const setSwimingFreeArr = (klines) => {
     swimingFreeArr.length >= 10 && swimingFreeArr.shift();
-    const swimingFree = cacleSwimingFreeEma(klines, swimingFreePeriod, 2.5);
+    const swimingFree = cacleSwimingFreeEma(klines.slice(-swimingFreePeriod*2-10), swimingFreePeriod, 2.5);
 
     swimingFreeArr.push(swimingFree);
 };
 const setSslArr = (klines) => {
     sslArr.length >= 10 && sslArr.shift();
-    const ssl = calculateLatestSSL(klines, sslPeriod);
+    const ssl = calculateLatestSSL(klines.slice(-sslPeriod-10), sslPeriod);
 
     sslArr.push(ssl);
 };

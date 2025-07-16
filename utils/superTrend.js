@@ -189,6 +189,7 @@ function calculateLatestSuperTrend(data, period = 15, multiplier = 6, useATR = t
         const src = (curr.high + curr.low) / 2;
         let up = src - multiplier * atr;
         let dn = src + multiplier * atr;
+        i === 5 && curr.openTime === '2025-07-10_10-25-00' && console.log("🚀 ~ calculateLatestSuperTrend ~ curr:", {up, dn, atr, src})
 
         const up1 = upList[i - 1] ?? up;
         const dn1 = dnList[i - 1] ?? dn;
@@ -205,10 +206,6 @@ function calculateLatestSuperTrend(data, period = 15, multiplier = 6, useATR = t
             // 和 上一个 比
             if (trend === -1 && curr.close > dn1) trend = 1;
             else if (trend === 1 && curr.close < up1) trend = -1;
-            // 和 当前的 比
-            // if (trend === -1 && curr.close > dn) trend = 1;
-            // else if (trend === 1 && curr.close < up) trend = -1;
-            // curr.openTime === '2025-06-26_09-25-00' && console.log("🚀 ~ calculateLatestSuperTrend ~ curr:", {curr, dn1})
         }
         trendList.push(trend);
     }
@@ -219,6 +216,7 @@ function calculateLatestSuperTrend(data, period = 15, multiplier = 6, useATR = t
         dn: dnList[dnList.length - 1]
     };
 }
+
 
 /**
  * 计算所有指标，并返回最新 K 线的指标值
@@ -296,7 +294,7 @@ function calculateCloseDema(
 module.exports = {
     calculateIndicators,
     calculateSuperTrend,
-    calculateLatestSuperTrend,
+    calculateLatestSuperTrend: calculateLatestSuperTrend,
     calculateATR,
     calculateDema,
     calculateCloseDema,

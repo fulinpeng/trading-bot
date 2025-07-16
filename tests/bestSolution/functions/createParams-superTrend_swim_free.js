@@ -3,14 +3,14 @@ const path = require("path");
 
 // 动态参数范围对象
 const paramRangesObj = {
-    atrPeriod: { min: 11, max: 11, step: 1 },
-    multiplier: { min: 15, max: 15, step: 0.5 },
-    firstProtectProfitRate: { min: 0.5, max: 0.5, step: 0.1 },
+    atrPeriod: { min: 9, max: 20, step: 1 },
+    multiplier: { min: 15, max: 21, step: 0.5 },
+    firstProtectProfitRate: { min: 0.1, max: 0.5, step: 0.1 },
     arriveStopProfitCount: { min: 3, max: 3, step: 1 },
     swimingFreePeriod: { min: 60, max: 60, step: 5 },
     sslPeriod: { min: 200, max: 200, step: 20 },
-    sslRateUp: { min: -0.0008, max: 0.0008, step: 0.00002 },
-    sslRateDown: { min: -0.0008, max: 0.0008, step: 0.00002 },
+    sslRateUp: { min: -0.0008, max: 0.0008, step: 0.0001 },
+    sslRateDown: { min: -0.0008, max: 0.0008, step: 0.0001 },
 };
 
 // 参数文件路径

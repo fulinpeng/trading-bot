@@ -31,7 +31,7 @@ process.on("message", async (message) => {
 // 验证最优参数在不同 targetTimeNum 值下的表现
 async function validateOneMore(bestParams) {
     let finalRes = [];
-    let strtime = "2025/05/02 00:00:00";
+    let strtime = "2025/05/16 00:00:00";
     let date = new Date(strtime);
     let month = 24 * 60 * 60 * 1000 * 30; // 一个月
     let total = 1; // 从 2025-05 到 2025-06 共1个月
@@ -44,7 +44,7 @@ async function validateOneMore(bestParams) {
         // console.log("🚀 ~ validateOneMore ~ evaluation:", evaluation)
 
         // Math.abs(evaluation.minMoney) > evaluation.testMoney
-        if (evaluation.testMoney < 40 || evaluation.winRate < 0.6) {
+        if (evaluation.testMoney < 20 || evaluation.winRate < 0.6) {
             // 直接返回 null 表示验证失败，不再进行后续验证
             return null;
         } else {

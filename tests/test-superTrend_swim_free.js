@@ -21,7 +21,8 @@ const { calculateLatestSSL } = require("../utils/SSL_CMF_VO/SSLChannel.js");
 
 const fs = require("fs");
 const path = require('path');
-const symbol = "solUSDT";
+// const symbol = "solUSDT";
+const symbol = "1000pepeUSDT";
 
 let { kLineData } = require(`./source/${symbol}-5m.js`);
 // let { kLineData } = require(`./source/renko-${symbol}-1m.js`);
@@ -245,7 +246,7 @@ const setBollArr = (historyClosePrices, klines) => {
 };
 const setSperTrendArr = (klines) => {
     superTrendArr.length >= 10 && superTrendArr.shift();
-    const superTrend = calculateLatestSuperTrend(klines.slice(-atrPeriod), atrPeriod, multiplier);
+    const superTrend = calculateLatestSuperTrend(klines, atrPeriod, multiplier);
 
     superTrendArr.push(superTrend);
 
@@ -253,13 +254,13 @@ const setSperTrendArr = (klines) => {
 };
 const setSwimingFreeArr = (klines) => {
     swimingFreeArr.length >= 10 && swimingFreeArr.shift();
-    const swimingFree = cacleSwimingFreeEma(klines, swimingFreePeriod, 2.5);
+    const swimingFree = cacleSwimingFreeEma(klines.slice(-swimingFreePeriod*2), swimingFreePeriod, 2.5);
 
     swimingFreeArr.push(swimingFree);
 };
 const setSslArr = (klines) => {
     sslArr.length >= 10 && sslArr.shift();
-    const ssl = calculateLatestSSL(klines, sslPeriod);
+    const ssl = calculateLatestSSL(klines.slice(-sslPeriod*2), sslPeriod);
 
     sslArr.push(ssl);
 };
@@ -478,13 +479,13 @@ const start = async (params) => {
     if (targetTime) {
         targetTime = params.targetTime;
         let start = kLineData.findIndex((v) => v.openTime === targetTime);
-        _kLineData = [...kLineData].slice(start - 250);
+        _kLineData = [...kLineData].slice(start - 1000);
     }
-    const preKLines = _kLineData.slice(0, 250);
+    const preKLines = _kLineData.slice(0, 1000);
     const prePrices = preKLines.map((v) => v.close);
     initEveryIndex(prePrices, preKLines);
-    for (let idx = 250; idx < _kLineData.length; idx++) {
-        const curKLines = _kLineData.slice(idx - 250, idx + 1);
+    for (let idx = 1000; idx < _kLineData.length; idx++) {
+        const curKLines = _kLineData.slice(idx - 1000, idx + 1);
         const historyClosePrices = curKLines.map((v) => v.close);
 
         // 设置各种指标
@@ -508,7 +509,7 @@ const start = async (params) => {
         }
         
         if (!hasOrder && readyTradingDirection !== "hold") {
-            console.log("🚀 ~ start ~ kLine3:", {kLine3, superTrend3, ssl3, swimingFree3, fib3})
+            // console.log("🚀 ~ start ~ kLine3:", {kLine3, superTrend3, ssl3, swimingFree3, fib3})
             // 趋势是否符合模型
             // await judgeTradingDirectionSecond(curKLines);
         }
@@ -579,7 +580,7 @@ const start = async (params) => {
                         }
                         // up 根据fib添加止盈保护
                         if (trend === 'up' && high >= fib3.upper_7 && downArrivedProfit >= 1) {
-                            sellstopLossPrice = orderPrice + Math.abs(high - orderPrice) * firstProtectProfitRate
+                            sellstopLossPrice = orderPrice + Math.abs(high - orderPrice) * 0.9
                             continue;
                         }
                         
@@ -593,7 +594,7 @@ const start = async (params) => {
                         }
                         // down 根据fib添加止盈保护
                         if (trend === 'down' && low <= fib3.lower_7 && downArrivedProfit >= 1) {
-                            sellstopLossPrice = orderPrice - Math.abs(low - orderPrice) * firstProtectProfitRate
+                            sellstopLossPrice = orderPrice - Math.abs(low - orderPrice) * 0.9
                             continue;
                         }
                     }
@@ -961,37 +962,37 @@ function run(params) {
 }
 
 // sol
-run({
-    priorityFee: 0.0007, // 0.0007,
-    slippage: 0.0002, // 滑点
-    atrPeriod: 11,
-    multiplier: 15,
-    firstProtectProfitRate: 0.5, // 0.9, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
-    arriveStopProfitCount: 3, // 达到止盈次数
-    swimingFreePeriod: 60,
-    sslPeriod: 200,
-    sslRateUp: -0.00004,
-    sslRateDown: -0.00008,
+// run({
+//     priorityFee: 0.0007, // 0.0007,
+//     slippage: 0.0002, // 滑点
+//     atrPeriod: 11,
+//     multiplier: 15,
+//     firstProtectProfitRate: 0.5, // 0.9, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
+//     arriveStopProfitCount: 3, // 达到止盈次数
+//     swimingFreePeriod: 60,
+//     sslPeriod: 200,
+//     sslRateUp: -0.00004,
+//     sslRateDown: -0.00008,
 
 
-    isUpOpen: true,
-    isDownOpen: true,
-    maxLossCount: 20, // 损失后加倍开仓，最大倍数
-    compoundInterest: 0, // 复利
-    brickSize: 0.5,
-    baseLossRate: 0.5, // 基础止损
-    howManyCandle: 6, // 止盈
-    firstStopProfitRate: 2, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
-    firstStopLossRate: 0, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
-    isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
-    profitProtectRate: 0.9, //isProfitRun === 1 时生效，保留多少利润
-    howManyCandleForProfitRun: 1,
-    maxStopLossRate: 0.01, // 止损小于10%的情况，最大止损5%
-    invalidSigleStopRate: 0.1, // 止损在10%，不开单
-    double: 0, // 是否损失后加倍开仓
-    targetTime: "2025-06-24_01-00-00",
-    closeLastOrder: true, // 最后一单是否平仓
-});
+//     isUpOpen: true,
+//     isDownOpen: true,
+//     maxLossCount: 20, // 损失后加倍开仓，最大倍数
+//     compoundInterest: 0, // 复利
+//     brickSize: 0.5,
+//     baseLossRate: 0.5, // 基础止损
+//     howManyCandle: 6, // 止盈
+//     firstStopProfitRate: 2, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
+//     firstStopLossRate: 0, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
+//     isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
+//     profitProtectRate: 0.9, //isProfitRun === 1 时生效，保留多少利润
+//     howManyCandleForProfitRun: 1,
+//     maxStopLossRate: 0.01, // 止损小于10%的情况，最大止损5%
+//     invalidSigleStopRate: 0.1, // 止损在10%，不开单
+//     double: 0, // 是否损失后加倍开仓
+//     // targetTime: "2025-06-23_01-00-00",
+//     closeLastOrder: true, // 最后一单是否平仓
+// });
 
 module.exports = {
     evaluateStrategy: start,
