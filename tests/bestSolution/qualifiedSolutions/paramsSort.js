@@ -42,25 +42,51 @@ function saveQualifiedSolutions(newSolutions) {
 
 	console.log("🚀 ~ 未过滤，过滤::", qualifiedSolutions.length, newSolutions.length);
 
-	let allSolutions=[...originSolutions, ...existingSolutions].sort((a, b) => {
-		let resulta=a.result||a.results||[];
-		let resultb=b.result||b.results||[];
-		// let aRatial=resulta.reduce((sum, cur) => sum+Math.abs(cur.testMoney/cur.minMoney), 0)/resulta.length;
-		// let bRatial=resultb.reduce((sum, cur) => sum+Math.abs(cur.testMoney/cur.minMoney), 0)/resultb.length;
-		// let aRatial = resulta.reduce((sum, cur) => sum + Math.abs(cur.maxMoney / cur.minMoney), 0) / resulta.length;
-		// let bRatial = resultb.reduce((sum, cur) => sum + Math.abs(cur.maxMoney / cur.minMoney), 0) / resultb.length;
-		// let aRatial = resulta.reduce((sum, cur) => sum + Math.abs(cur.testMoney / cur.maxMoney), 0) / resulta.length;
-		// let bRatial = resultb.reduce((sum, cur) => sum + Math.abs(cur.testMoney / cur.maxMoney), 0) / resultb.length;
-		// let aRatial = resulta.reduce((sum, cur) => sum + cur.minMoney, 0) / resulta.length;
-		// let bRatial = resultb.reduce((sum, cur) => sum + cur.minMoney, 0) / resultb.length;
-		// let aRatial=resulta.reduce((sum, cur) => sum+cur.testMoney, 0)/resulta.length;
-		// let bRatial=resultb.reduce((sum, cur) => sum+cur.testMoney, 0)/resultb.length;
-		// let aRatial=resulta.reduce((sum, cur) => sum+cur.winRate, 0)/resulta.length;
-		// let bRatial=resultb.reduce((sum, cur) => sum+cur.winRate, 0)/resultb.length;
-		let aRatial=resulta.reduce((sum, cur) => sum+cur.winRate*cur.testMoney, 0)/resulta.length;
-		let bRatial=resultb.reduce((sum, cur) => sum+cur.winRate*cur.testMoney, 0)/resultb.length;
-		return bRatial-aRatial;
-	});
+	// let allSolutions=[...originSolutions, ...existingSolutions].sort((a, b) => {
+	// 	let resulta=a.result||a.results||[];
+	// 	let resultb=b.result||b.results||[];
+	// 	// let aRatial=resulta.reduce((sum, cur) => sum+Math.abs(cur.testMoney/cur.minMoney), 0)/resulta.length;
+	// 	// let bRatial=resultb.reduce((sum, cur) => sum+Math.abs(cur.testMoney/cur.minMoney), 0)/resultb.length;
+	// 	// let aRatial = resulta.reduce((sum, cur) => sum + Math.abs(cur.maxMoney / cur.minMoney), 0) / resulta.length;
+	// 	// let bRatial = resultb.reduce((sum, cur) => sum + Math.abs(cur.maxMoney / cur.minMoney), 0) / resultb.length;
+	// 	// let aRatial = resulta.reduce((sum, cur) => sum + Math.abs(cur.testMoney / cur.maxMoney), 0) / resulta.length;
+	// 	// let bRatial = resultb.reduce((sum, cur) => sum + Math.abs(cur.testMoney / cur.maxMoney), 0) / resultb.length;
+	// 	// let aRatial = resulta.reduce((sum, cur) => sum + cur.minMoney, 0) / resulta.length;
+	// 	// let bRatial = resultb.reduce((sum, cur) => sum + cur.minMoney, 0) / resultb.length;
+	// 	// let aRatial=resulta.reduce((sum, cur) => sum+cur.testMoney, 0)/resulta.length;
+	// 	// let bRatial=resultb.reduce((sum, cur) => sum+cur.testMoney, 0)/resultb.length;
+	// 	// let aRatial=resulta.reduce((sum, cur) => sum+cur.winRate, 0)/resulta.length;
+	// 	// let bRatial=resultb.reduce((sum, cur) => sum+cur.winRate, 0)/resultb.length;
+	// 	let aRatial=resulta.reduce((sum, cur) => sum+cur.winRate*cur.testMoney, 0)/resulta.length;
+	// 	let bRatial=resultb.reduce((sum, cur) => sum+cur.winRate*cur.testMoney, 0)/resultb.length;
+	// 	return bRatial-aRatial;
+	// });
+
+
+    let allSolutions = [...originSolutions, ...existingSolutions].sort((a, b) => {
+        const extractScore = (item) => {
+            let results = item.result || item.results || [];
+            if (results.length === 0) return -Infinity;
+    
+            let totalWinRate = 0;
+            let totalMoney = 0;
+    
+            for (let r of results) {
+                totalWinRate += r.winRate ?? 0;
+                totalMoney += r.testMoney ?? 0;
+            }
+    
+            let avgWinRate = totalWinRate / results.length;
+            let avgMoney = totalMoney / results.length;
+    
+            // ✅ 可调权重（例如：70% winRate，30% testMoney）
+            let score = avgWinRate * 0.7 + avgMoney * 0.3;
+            return score;
+        };
+    
+        return extractScore(b) - extractScore(a);
+    });
+    
 	fs.writeFileSync(outputPath, `module.exports = { qualifiedSolutions: ${JSON.stringify(allSolutions, null, 2)} }`);
 }
 

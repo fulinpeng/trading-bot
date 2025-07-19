@@ -111,14 +111,14 @@ const config = {
         slippage: 0.0002, // 滑点
         B2Period: 20, // boll周期
         B2mult: 1.5, // boll倍数
-        atrPeriod: 11,
-        multiplier: 15,
-        firstProtectProfitRate: 0.5,
+        atrPeriod: 9,
+        multiplier: 16,
+        firstProtectProfitRate: 0.1,
         arriveStopProfitCount: 3,
         swimingFreePeriod: 50,
         sslPeriod: 200,
-        sslRateUp: -0.00004,
-        sslRateDown: -0.00008,
+        sslRateUp: -0.0001,
+        sslRateDown: -0.0003,
         baseLossRate: 0.5, // 基础止损
         howManyCandle: 10, // 止盈
         firstStopProfitRate: 2, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
