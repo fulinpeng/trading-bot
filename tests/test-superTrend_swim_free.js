@@ -21,8 +21,8 @@ const { calculateLatestSSL } = require("../utils/SSL_CMF_VO/SSLChannel.js");
 
 const fs = require("fs");
 const path = require('path');
-// const symbol = "solUSDT";
-const symbol = "1000pepeUSDT";
+const symbol = "solUSDT";
+// const symbol = "1000pepeUSDT";
 
 let { kLineData } = require(`./source/${symbol}-5m.js`);
 // let { kLineData } = require(`./source/renko-${symbol}-1m.js`);
@@ -962,18 +962,49 @@ function run(params) {
 }
 
 // sol
+run({
+    priorityFee: 0.0007, // 0.0007,
+    slippage: 0.0002, // 滑点
+    atrPeriod: 11,
+    multiplier: 15,
+    firstProtectProfitRate: 0.1, // 0.9, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
+    arriveStopProfitCount: 3, // 达到止盈次数
+    swimingFreePeriod: 60,
+    sslPeriod: 200,
+    sslRateUp: -0.00004,
+    sslRateDown: -0.00008,
+
+
+    isUpOpen: true,
+    isDownOpen: true,
+    maxLossCount: 20, // 损失后加倍开仓，最大倍数
+    compoundInterest: 0, // 复利
+    brickSize: 0.5,
+    baseLossRate: 0.5, // 基础止损
+    howManyCandle: 6, // 止盈
+    firstStopProfitRate: 2, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
+    firstStopLossRate: 0, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
+    isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
+    profitProtectRate: 0.9, //isProfitRun === 1 时生效，保留多少利润
+    howManyCandleForProfitRun: 1,
+    maxStopLossRate: 0.01, // 止损小于10%的情况，最大止损5%
+    invalidSigleStopRate: 0.1, // 止损在10%，不开单
+    double: 0, // 是否损失后加倍开仓
+    targetTime: "2025-07-03_06-00-00",
+    closeLastOrder: true, // 最后一单是否平仓
+});
+
 // run({
 //     priorityFee: 0.0007, // 0.0007,
 //     slippage: 0.0002, // 滑点
-//     atrPeriod: 11,
-//     multiplier: 15,
-//     firstProtectProfitRate: 0.5, // 0.9, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
+//     atrPeriod: 9,
+//     multiplier: 16,
+//     firstProtectProfitRate: 0.1, // 0.9, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
 //     arriveStopProfitCount: 3, // 达到止盈次数
 //     swimingFreePeriod: 60,
 //     sslPeriod: 200,
-//     sslRateUp: -0.00004,
-//     sslRateDown: -0.00008,
-
+//     sslRateUp: -0.0001,
+//     sslRateDown: -0.0003,
 
 //     isUpOpen: true,
 //     isDownOpen: true,
@@ -993,37 +1024,6 @@ function run(params) {
 //     // targetTime: "2025-06-23_01-00-00",
 //     closeLastOrder: true, // 最后一单是否平仓
 // });
-
-run({
-    priorityFee: 0.0007, // 0.0007,
-    slippage: 0.0002, // 滑点
-    atrPeriod: 9,
-    multiplier: 16,
-    firstProtectProfitRate: 0.1, // 0.9, // firstStopProfitRate > 0 时生效，达到首次止盈保留多少利润
-    arriveStopProfitCount: 3, // 达到止盈次数
-    swimingFreePeriod: 60,
-    sslPeriod: 200,
-    sslRateUp: -0.0001,
-    sslRateDown: -0.0003,
-
-    isUpOpen: true,
-    isDownOpen: true,
-    maxLossCount: 20, // 损失后加倍开仓，最大倍数
-    compoundInterest: 0, // 复利
-    brickSize: 0.5,
-    baseLossRate: 0.5, // 基础止损
-    howManyCandle: 6, // 止盈
-    firstStopProfitRate: 2, // 盈亏比达到该值时止损移动到多于开盘价（首次止盈，只用一次后失效）
-    firstStopLossRate: 0, // 当前亏损/止损区间 >= firstStopLossRate 时修改止损移到当前k线下方（只用一次后失效）
-    isProfitRun: 1, // 选胜率最高的howManyCandle才开启移动止盈，开启后，再找最佳profitProtectRate
-    profitProtectRate: 0.9, //isProfitRun === 1 时生效，保留多少利润
-    howManyCandleForProfitRun: 1,
-    maxStopLossRate: 0.01, // 止损小于10%的情况，最大止损5%
-    invalidSigleStopRate: 0.1, // 止损在10%，不开单
-    double: 0, // 是否损失后加倍开仓
-    // targetTime: "2025-06-23_01-00-00",
-    closeLastOrder: true, // 最后一单是否平仓
-});
 
 module.exports = {
     evaluateStrategy: start,

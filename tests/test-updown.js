@@ -39,8 +39,8 @@ const { calculateATR } = require("../utils/atr.js");
 const { calculateRSI } = require("../utils/rsi.js");
 const { emaMacrossover } = require("../utils/ema_ma_crossover.js");
 const fs = require("fs");
-const symbol = "dogeUSDT";
-let { kLineData } = require(`./source/${symbol}-1h.js`);
+const symbol = "solUSDT";
+let { kLineData } = require(`./source/${symbol}-5m.js`);
 
 // const DefaultAvailableMoney=10
 // const times=getSequenceArr(diff, 100);
@@ -242,9 +242,9 @@ const initEveryIndex = (historyClosePrices) => {
 };
 const setEveryIndex = (historyClosePrices) => {
     // 计算 ema
-    setEmaMaArr(historyClosePrices);
+    // setEmaMaArr(historyClosePrices);
     // 计算 rsi
-    setRsiArr(historyClosePrices);
+    // setRsiArr(historyClosePrices);
 };
 const setEmaMaArr = (historyClosePrices) => {
     emaMaArr.length >= 10 && emaMaArr.shift();
@@ -511,7 +511,7 @@ run({
     buyStopLossRate: 0.97,
     sellStopLossRate: 1.03,
     roc: 1,
-    targetTime: "2025-01-01_00-00-00",
+    // targetTime: "2025-01-01_00-00-00",
 });
 module.exports = {
     evaluateStrategy: start,

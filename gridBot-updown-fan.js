@@ -148,7 +148,7 @@ async function closeLongPositions(currentPrice, totalProfit) {
         console.log(
             "平多 gridPointClearTrading ~ testMoney longProfit size:",
             testMoney,
-            totalProfit, {longSize: longPositions.length, shortSize: shortPositions.length}
+            totalProfit, {longSize: longPositions.length, shortSize: shortPositions.length, maxAvailableMoney}
         );
         console.log("平多完成");
         longPositions = [];
@@ -164,7 +164,7 @@ async function closeShortPositions(currentPrice, totalProfit) {
         console.log(
             "平空 gridPointClearTrading ~ testMoney shortProfit size:",
             testMoney,
-            totalProfit, {longSize: longPositions.length, shortSize: shortPositions.length}
+            totalProfit, {longSize: longPositions.length, shortSize: shortPositions.length, maxAvailableMoney}
         );
         console.log("平空完成");
         shortPositions = [];
