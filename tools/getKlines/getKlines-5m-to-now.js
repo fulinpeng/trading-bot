@@ -19,7 +19,7 @@ if (!symbol) {
 const data1 = require(`../../tests/source/${symbol}-5m.js`);
 
 // mac 小地球仪
-let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:7890");
+let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:15715");
 // 创建公用的 Axios 实例
 const axiosInstance = axios.create({
     // headers: {

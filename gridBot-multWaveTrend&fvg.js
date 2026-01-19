@@ -8,13 +8,18 @@ const WebSocket = require("ws"); // WebSocket库
 // const { SocksProxyAgent } = require("socks-proxy-agent");
 const fs = require("fs");
 const { getDate, hasUpDownVal, getLastFromArr, getSequenceArr } = require("./utils/functions.js");
-const { calculateBollingerBands } = require("./utils/boll.js");
-const config = require("./config-superTrend_swim_fee.js");
-const { isYang, isYin, } = require("./utils/kLineTools.js");
-const { cacleSwimingFreeWma, cacleSwimingFreeEma } = require("./utils/swimingFree.js");
-const { calculateLatestSuperTrend } = require("./utils/superTrend.js");
-const { calculateLatestSSL } = require("./utils/SSL_CMF_VO/SSLChannel.js");
-const { calculateFBB } = require("./utils/fib.js");
+const config = require("./config-multWaveTrend&fvg.js");
+const { calculateLatestWaveTrend } = require("./utils/waveTrend.js");
+const { 
+    calculateAvgCandleHeight, 
+    detectLongFVGInRange, 
+    detectShortFVGInRange,
+} = require("./utils/fvg.js");
+const {
+    calculatePivotLow,
+    calculatePivotHigh,
+} = require("./utils/pivot.js");
+const { calculateSmaArr } = require("./utils/ma.js");
 
 let testMoney = 0;
 const diff = 2;
@@ -30,51 +35,80 @@ let {
     logsFolder,
     errorsFolder,
     //////////////////////////////
-    brickSize,
     priorityFee,
     slippage, // 滑点(测试)
-    B2Period,
-    B2mult,
-    atrPeriod,
-    multiplier,
-    swimingFreePeriod,
-    sslPeriod,
-    howManyCandle, // 初始止盈，盈亏比
-    baseLossRate,
-    firstProtectProfitRate,
-    arriveStopProfitCount,
-    isProfitRun, // 是否开启移动止盈
-    maxStopLossRate, // 止损小于10%的情况，最大止损5%
-    invalidSigleStopRate, // 止损在10%，不开单
+    // WaveTrend 参数
+    wtChannelLength, // WT Channel Length (n1, 默认10)
+    wtAverageLength, // WT Average Length (n2, 默认21)
+    // 做多参数
+    longRiskRewardRatio, // 做多盈亏比 (默认2.5)
+    longP5UpperLimit, // 做多开仓p5上限 (默认50)
+    longP15LowerLimit, // 做多开仓p15下限 (默认0)
+    longReadyBuyThreshold, // 做多readyBuy阈值 (默认-50)
+    longP1h1UpperLimit, // 做多readyBuy的p1h1上限 (默认25)
+    longThresholdLevel, // 做多阈值水平 (默认50)
+    longFvgLookbackBars, // 做多FVG回溯K线数量 (默认5)
+    longFvgWaitBars, // 做多FVG等待K线数量 (默认0)
+    longFvgGapMultiplier, // 做多FVG gap倍数 (默认5)
+    longEnableFvgPriceCheck, // 做多启用FVG价格检查 (默认true)
+    longPartialCloseLevel, // 做多移动止损触发p5阈值 (默认55)
+    longBreakevenFactor, // 做多保本止损系数 (默认1.001)
+    longEnableProfitTarget2, // 做多启用止盈条件2 (默认true)
+    longPivotLength, // 做多摆动低点周期 (默认7)
+    longAvgHeightLength, // 做多K线平均高度周期 (默认21)
+    // 做空参数
+    shortRiskRewardRatio, // 做空盈亏比 (默认2.5)
+    shortP5LowerLimit, // 做空开仓p5下限 (默认-50)
+    shortP15UpperLimit, // 做空开仓p15上限 (默认0)
+    shortReadySellThreshold, // 做空readySell阈值 (默认50)
+    shortP1h1LowerLimit, // 做空readySell的p1h1下限 (默认-25)
+    shortThresholdLevel, // 做空阈值水平 (默认-50)
+    shortFvgLookbackBars, // 做空FVG回溯K线数量 (默认5)
+    shortFvgWaitBars, // 做空FVG等待K线数量 (默认0)
+    shortFvgGapMultiplier, // 做空FVG gap倍数 (默认5)
+    shortEnableFvgPriceCheck, // 做空启用FVG价格检查 (默认true)
+    shortPartialCloseLevel, // 做空移动止损触发p5阈值 (默认-55)
+    shortBreakevenFactor, // 做空保本止损系数 (默认0.999)
+    shortEnableProfitTarget2, // 做空启用止盈条件2 (默认true)
+    shortPivotLength, // 做空摆动高点周期 (默认7)
+    shortAvgHeightLength, // 做空K线平均高度周期 (默认21)
+    // 通用参数
     double, // 是否损失后加倍开仓
     maxLossCount, // 损失后加倍开仓，最大倍数
-} = config["1000pepe"];
+} = config["tbc"];
 
-let highArr = [];
-let lowArr = [];
-let swimingFreeArr = [];
-let superTrendArr = [];
-let sslArr = [];
-let fibArr = [];
-// 指标趋势
-// let indexTrend = 'hold'; // up down breakAndUp breakAndDown hold
-const MOD_HIGH = 'MOD_HIGH'
-const MOD_LOW = 'MOD_LOW'
-let preAction = '';
+// WaveTrend 指标数组 (5m, 15m, 1h)
+let wt5mArr = []; // 5分钟WaveTrend
+let wt15mArr = []; // 15分钟WaveTrend (需要多时间框架数据)
+let wt1hArr = []; // 1小时WaveTrend (需要多时间框架数据)
+
+// FVG 相关变量
+let avgCandleHeight = 0; // 平均K线高度
+
+// 做多策略状态
+let longReadyBuy = false; // 准备做多标志
+let longFvgWindowActive = false; // FVG等待窗口是否激活
+let longFvgWindowStart = null; // FVG等待窗口开始时的K线索引
+let longFvgLookbackStart = null; // FVG回溯起始K线索引
+let longLastSwingLow = null; // 最近的摆动低点
+let longMovedToBreakeven = false; // 是否已移动到保本
+
+// 做空策略状态
+let shortReadySell = false; // 准备做空标志
+let shortFvgWindowActive = false; // FVG等待窗口是否激活
+let shortFvgWindowStart = null; // FVG等待窗口开始时的K线索引
+let shortFvgLookbackStart = null; // FVG回溯起始K线索引
+let shortLastSwingHigh = null; // 最近的摆动高点
+let shortMovedToBreakeven = false; // 是否已移动到保本
 
 let isUpOpen = true;
 let isDownOpen = true;
 
-const MA_RSI = { rsiLength: 14, smaLength: 20 };
-
 let availableMoney = DefaultAvailableMoney;
 let lossCount = 0;
 
-let downArrivedProfit = 0;
-let sellstopLossPrice = 0;
-
-let sslRateUp = -0.0005;
-let sslRateDown = 0.00002;
+let sellstopLossPrice = 0; // 移动止损价格
+let isProfitRun = false; // 是否开启移动止盈（保留用于兼容）
 
 // 环境变量
 const B_SYMBOL = SYMBOL.toUpperCase();
@@ -150,8 +184,7 @@ let historyClosePrices = []; // 历史收盘价，用来计算EMA
 let serverTimeOffset = 0; // 服务器时间偏移
 let allPositionDetail = {}; // 当前仓位信息
 
-let bollArr = [];
-let rsiArr = [];
+// 已移除旧指标数组
 
 const maxKLinelen = 1000; // 储存kLine最大数量
 // 日志
@@ -305,91 +338,28 @@ const initEveryIndex = (historyClosePrices) => {
     }
 };
 const setEveryIndex = (historyClosePrices, curKLine) => {
-    // setBollArr(historyClosePrices, curKLine);
-    // setRsiArr(historyClosePrices);
-    setSperTrendArr(curKLine);
-    setSwimingFreeArr(curKLine);
-    setSslArr(curKLine);
-    setFibArr(curKLine);
-};
-const setBollArr = (historyClosePrices, curKLine) => {
-    bollArr.length >= 6 && bollArr.shift();
-    const boll = calculateBollingerBands(historyClosePrices, B2Period, B2mult);
-    if (!boll) return;
-    bollArr.push(boll);
-    
-    // 计算高低点
-    // setHighLowArr(boll, curKLine)
+    setWaveTrend5m(curKLine);
+    setAvgCandleHeight(curKLine);
+    // TODO: 多时间框架需要从外部获取数据，暂时只计算5m
+    // setWaveTrend15m(curKLine);
+    // setWaveTrend1h(curKLine);
 };
 
-// 储存高低点
-const setHighLowArr = (boll, curKline) => {
-    const { B2basis, B2upper, B2lower } = boll;
-    const { close, openTime } = curKline;
-    const preHigh = highArr[highArr.length - 1] || close; // 可能不合适，后续修改
-    const preLow = lowArr[lowArr.length - 1] || close; // 可能不合适，后续修改
-    if (close >= B2upper) {
-        // 本次创了高点，但是上一次操作是更新低点，认为是新的高点
-        if (preAction !== MOD_HIGH) {
-            highArr.push(close);
-            preAction = MOD_HIGH;
-            return;
-        }
+// 计算5分钟WaveTrend
+const setWaveTrend5m = (klines) => {
+    wt5mArr.length >= 10 && wt5mArr.shift();
+    const wt = calculateLatestWaveTrend(klines, wtChannelLength || 10, wtAverageLength || 21);
+    if (wt) {
+        wt5mArr.push(wt);
     }
-    
-    // 和上次一样的操作，认为是调整高点
-    if (preAction === MOD_HIGH) {
-        if (close > preHigh) {
-            highArr[highArr.length - 1] = close;
-            preAction = MOD_HIGH;
-            return;
-        }
+};
+
+// 计算平均K线高度
+const setAvgCandleHeight = (klines) => {
+    const avgHeight = calculateAvgCandleHeight(klines, Math.max(longAvgHeightLength || 21, shortAvgHeightLength || 21));
+    if (avgHeight !== null) {
+        avgCandleHeight = avgHeight;
     }
-    if (close <= B2lower) {
-        // 本次创了低点，但是上一次操作是更新高点，认为是新的低点
-        if (preAction !== MOD_LOW) {
-            lowArr.push(close);
-            preAction = MOD_LOW;
-            return;
-        }
-    }
-    // 和上次一样的操作，认为是调整低点
-    if (preAction === MOD_LOW) {
-        if (close < preLow) {
-            lowArr[lowArr.length - 1] = close;
-            preAction = MOD_LOW;
-            return;
-        }
-    }
-}
-const setRsiArr = (historyClosePrices) => {
-    rsiArr.length >= 10 && rsiArr.shift();
-    rsiArr.push(calculateRSI(historyClosePrices, MA_RSI));
-};
-const setSperTrendArr = (klines) => {
-    superTrendArr.length >= 10 && superTrendArr.shift();
-    const superTrend = calculateLatestSuperTrend(klines, atrPeriod, multiplier);
-
-    superTrendArr.push(superTrend);
-};
-const setSwimingFreeArr = (klines) => {
-    swimingFreeArr.length >= 10 && swimingFreeArr.shift();
-    const swimingFree = cacleSwimingFreeEma(klines.slice(-swimingFreePeriod*2-10), swimingFreePeriod, 2.5);
-
-    swimingFreeArr.push(swimingFree);
-};
-const setSslArr = (klines) => {
-    sslArr.length >= 10 && sslArr.shift();
-    const ssl = calculateLatestSSL(klines.slice(-sslPeriod-10), sslPeriod);
-
-    sslArr.push(ssl);
-};
-
-const setFibArr = (klines) => {
-    fibArr.length >= 10 && fibArr.shift();
-    const fib = calculateFBB(klines);
-
-    fibArr.push(fib);
 };
 // 更新kLine信息
 const setKLinesTemp = (curKLine) => {
@@ -417,25 +387,17 @@ const refreshKLineAndIndex = (curKLine) => {
 // 开仓
 const kaiDanDaJi = async () => {
     isOrdering = true;
-    // if (!bollArr.length) return;
 
     if (readyTradingDirection === "hold") {
-        // 判断趋势
+        // 判断趋势，设置 readyBuy 和 readySell 状态
         judgeTradingDirection();
-        // 指标判断趋势
-        // judgeTradingDirectionByIndex();
     }
-    // if (!hasOrder && readyTradingDirection !== "hold") {
-    //     // 趋势是否被破坏
-    //     judgeBreakTradingDirection();
-    // }
+
     // 没有仓位，准备开仓
     if (!hasOrder) {
         // 开仓：没有仓位就根据 readyTradingDirection 开单
         // 开单完成后会重置 readyTradingDirection
         if (readyTradingDirection !== "hold") {
-            let [fib1, fib2, fib3] = getLastFromArr(fibArr, 3);
-            // console.log("@@🚀 ~ kaiDanDaJi ~ hasOrder:", fib3)
             await judgeAndTrading();
         }
     }
@@ -443,16 +405,11 @@ const kaiDanDaJi = async () => {
     isOrdering = false;
 };
 
-// 设置止损位置
-// 一般先于第一次止损和第一次止盈，多一点胜率（测试胜率高于50%）
+// 设置止损位置（已移除，使用新的止损逻辑）
 const judgeIndexLoss = async (currentPrice) => {
     if (!hasOrder) return;
     isJudgeIndexLoss = true;
-    const { open, close, openTime, closeTime, low, high } = kLineData[kLineData.length - 1];
-    const { B2upper, B2lower } = bollArr[bollArr.length - 1];
-    const { trend, orderPrice } = tradingInfo;
-    
-
+    // 新策略的止损逻辑在 judgeStopLoss 中实现
     isJudgeIndexLoss = false;
 }
 // 止损
@@ -460,113 +417,83 @@ const judgeStopLoss = async (_currentPrice, isFast) => {
     if (!hasOrder) return;
     isJudgeStopLoss = true;
     const { trend, orderPrice } = tradingInfo;
-    const [point1, point2] = TP_SL;
-    let [superTrend1, superTrend2, superTrend3] = getLastFromArr(superTrendArr, 3);
-    let [ssl1, ssl2, ssl3] = getLastFromArr(sslArr, 3);
-    let [swimingFree1, swimingFree2, swimingFree3] = getLastFromArr(swimingFreeArr, 3);
     
-    let max = Math.max(superTrend3.up, superTrend3.dn);
-    let min = Math.min(superTrend3.up, superTrend3.dn);
-
-    if (trend === "up" && (
-        _currentPrice <= min ||
-        (sellstopLossPrice && _currentPrice < sellstopLossPrice)
-    )) {
+    // 新策略的止损逻辑：使用移动止损价格
+    if (trend === "up" && sellstopLossPrice && _currentPrice < sellstopLossPrice) {
         await closeUp();
         isJudgeStopLoss = false;
         return;
     }
 
-    if (trend === "down" && (
-        _currentPrice >= max ||
-        (sellstopLossPrice && _currentPrice > sellstopLossPrice)
-    )) {
+    if (trend === "down" && sellstopLossPrice && _currentPrice > sellstopLossPrice) {
         await closeDown();
         isJudgeStopLoss = false;
         return;
     }
     isJudgeStopLoss = false;
 };
+// 更新移动止损价格（保本止损）
 const updateSellstopLossPrice = async (_currentPrice) => {
     if (!hasOrder) return;
     isUpdateSellstopLossPrice = true;
     const { trend, orderPrice } = tradingInfo;
     const [kLine1, kLine2, kLine3] = getLastFromArr(kLineData, 3);
-    const { open, close, openTime, closeTime, low, high } = kLine3
-    // let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
-    let [superTrend1, superTrend2, superTrend3] = getLastFromArr(superTrendArr, 3);
-    let [ssl1, ssl2, ssl3] = getLastFromArr(sslArr, 3);
-    let [swimingFree1, swimingFree2, swimingFree3] = getLastFromArr(swimingFreeArr, 3);
-    let [fib1, fib2, fib3] = getLastFromArr(fibArr, 3);
+    const { open, close, openTime, closeTime, low, high } = kLine3;
     
-    let max = Math.max(superTrend3.up, superTrend3.dn);
-    let min = Math.min(superTrend3.up, superTrend3.dn);
+    // 获取WaveTrend指标值
+    const [wt5m1, wt5m2, wt5m3] = getLastFromArr(wt5mArr, 3);
+    if (!wt5m3) {
+        isUpdateSellstopLossPrice = false;
+        return;
+    }
+    
+    const p5m1 = wt5m3.wt1;
+    // TODO: 需要15m数据
+    const p15m1 = wt5m3.wt1;
 
+    // 做多移动止损逻辑
     if (trend === "up") {
-        if (close >= max) {
-            downArrivedProfit = downArrivedProfit + 1
-            if (downArrivedProfit == 1) {
-                sellstopLossPrice = orderPrice + Math.abs(_currentPrice - orderPrice) * firstProtectProfitRate
-            }
-            if (high >= fib3.upper_7 && downArrivedProfit >= 1) {
-                sellstopLossPrice = orderPrice + Math.abs(high - orderPrice) * 0.9
-            }
+        // 当p5m1大于等于设定阈值，并且 close > 开仓价格*保本系数 时，把止损移动到保本位置
+        if (!longMovedToBreakeven && 
+            p5m1 >= (longPartialCloseLevel || 55) && 
+            close > orderPrice * (longBreakevenFactor || 1.001)) {
+            sellstopLossPrice = orderPrice * (longBreakevenFactor || 1.001);
+            longMovedToBreakeven = true;
         }
     }
+    
+    // 做空移动止损逻辑
     if (trend === "down") {
-        if (close <= min) {
-            downArrivedProfit = downArrivedProfit + 1
-            if (downArrivedProfit == 1) {
-                sellstopLossPrice = orderPrice - Math.abs(_currentPrice - orderPrice) * firstProtectProfitRate
-            }
-            if (low <= fib3.lower_7 && downArrivedProfit >= 1) {
-                sellstopLossPrice = orderPrice - Math.abs(low - orderPrice) * 0.9
-            }
+        // 当p5m1小于等于设定阈值，并且 close < 开仓价格*保本系数 时，把止损移动到保本位置
+        if (!shortMovedToBreakeven && 
+            p5m1 <= (shortPartialCloseLevel || -55) && 
+            close < orderPrice * (shortBreakevenFactor || 0.999)) {
+            sellstopLossPrice = orderPrice * (shortBreakevenFactor || 0.999);
+            shortMovedToBreakeven = true;
         }
     }
+    
     isUpdateSellstopLossPrice = false;
 };
-// 强制保本损
+// 强制保本损（已移除，使用新的移动止损逻辑）
 const judgeForceLossProtect = async (currentPrice) => {
     if (!hasOrder) return;
     isJudgeForceLossProtect = true;
-    const { trend, orderPrice } = tradingInfo;
-    const [point1, point2] = TP_SL;
-    const [kLine1, kLine2, kLine3] = getLastFromArr(kLineData, 3);
-    let [boll5] = getLastFromArr(bollArr, 1);
-    let { B2basis, B2upper, B2lower } = boll5;
-    if (trend === "up") {
-    }
-    if (trend === "down") {
-    }
+    // 新策略的保本逻辑在 updateSellstopLossPrice 中实现
     isJudgeForceLossProtect = false;
 }
-// 首次亏损保护
+// 首次亏损保护（已移除）
 const judgeFirstLossProtect = async (currentPrice) => {
     if (!hasOrder) return;
     isJudgeFirstLoss = true;
-    const { trend, orderPrice } = tradingInfo;
-    const [point1, point2] = TP_SL;
-
-    if (trend === "up") {
-    }
-    if (trend === "down") {
-    }
+    // 新策略不需要此功能
     isJudgeFirstLoss = false;
 };
-// 首次盈利保护
+// 首次盈利保护（已移除）
 const judgeFirstProfitProtect = async (currentPrice) => {
     if (!hasOrder) return;
     isJudgeFirstProfit = true;
-    const { trend, orderPrice } = tradingInfo;
-    const [point1, point2] = TP_SL;
-    let [boll5] = getLastFromArr(bollArr, 1);
-    let { B2basis, B2upper, B2lower } = boll5;
-
-    if (trend === "up") {
-    }
-    if (trend === "down") {
-    }
+    // 新策略不需要此功能
     isJudgeFirstProfit = false;
 };
 
@@ -575,126 +502,196 @@ const judgeProfitRunOrProfit = async (currentPrice) => {
     if (!hasOrder) return;
     isJudgeProfitRunOrProfit = true;
     const { trend, orderPrice } = tradingInfo;
-    const [point1, point2] = TP_SL;
     const [kLine1, kLine2, kLine3] = getLastFromArr(kLineData, 3);
-    let [superTrend1, superTrend2, superTrend3] = getLastFromArr(superTrendArr, 3);
-    let [ssl1, ssl2, ssl3] = getLastFromArr(sslArr, 3);
-    let [swimingFree1, swimingFree2, swimingFree3] = getLastFromArr(swimingFreeArr, 3);
     const { open, close, openTime, closeTime, low, high } = kLine3;
     
-    let max = Math.max(superTrend3.up, superTrend3.dn);
-    let min = Math.min(superTrend3.up, superTrend3.dn);
-
-    if (trend === "up" && (
-        close <= min ||
-        // superTrend3.trend == -1 ||
-        (downArrivedProfit >= arriveStopProfitCount && high >= max) ||
-        (sellstopLossPrice && close < sellstopLossPrice)
-    )) {
-        await closeUp();
+    // 获取WaveTrend指标值
+    const [wt5m1, wt5m2, wt5m3] = getLastFromArr(wt5mArr, 3);
+    if (!wt5m3) {
         isJudgeProfitRunOrProfit = false;
         return;
     }
+    
+    const p5m1 = wt5m3.wt1;
+    // TODO: 需要15m数据
+    const p15m1 = wt5m3.wt1;
+    
+    // 计算初始止盈价格（基于盈亏比）
+    const initialStopLoss = tradingInfo.initialStopLoss || orderPrice;
+    const riskAmount = Math.abs(orderPrice - initialStopLoss);
+    const longInitialTakeProfit = orderPrice + riskAmount * (longRiskRewardRatio || 2.5);
+    const shortInitialTakeProfit = orderPrice - riskAmount * (shortRiskRewardRatio || 2.5);
 
-    if (trend === "down" && (
-        close >= max ||
-        // superTrend3.trend == 1 ||
-        (downArrivedProfit >= arriveStopProfitCount && low <= min) ||
-        (sellstopLossPrice && close > sellstopLossPrice)
-    )) {
-        await closeDown();
-        isJudgeProfitRunOrProfit = false;
-        return;
+    // 做多止盈条件
+    if (trend === "up") {
+        // 条件1: 盈亏比满足1:3全部止盈
+        if (close >= longInitialTakeProfit) {
+            await closeUp();
+            isJudgeProfitRunOrProfit = false;
+            return;
+        }
+        
+        // 条件2: 当 p5m1 和 p15m1 都大于阈值立即全部平仓
+        if ((longEnableProfitTarget2 !== false) && 
+            p5m1 > (longThresholdLevel || 50) && 
+            p15m1 > (longThresholdLevel || 50)) {
+            await closeUp();
+            isJudgeProfitRunOrProfit = false;
+            return;
+        }
+        
+        // 移动止损触发
+        if (sellstopLossPrice && close < sellstopLossPrice) {
+            await closeUp();
+            isJudgeProfitRunOrProfit = false;
+            return;
+        }
     }
+
+    // 做空止盈条件
+    if (trend === "down") {
+        // 条件1: 盈亏比满足1:3全部止盈
+        if (close <= shortInitialTakeProfit) {
+            await closeDown();
+            isJudgeProfitRunOrProfit = false;
+            return;
+        }
+        
+        // 条件2: 当 p5m1 和 p15m1 都小于阈值立即全部平仓
+        if ((shortEnableProfitTarget2 !== false) && 
+            p5m1 < (shortThresholdLevel || -50) && 
+            p15m1 < (shortThresholdLevel || -50)) {
+            await closeDown();
+            isJudgeProfitRunOrProfit = false;
+            return;
+        }
+        
+        // 移动止损触发
+        if (sellstopLossPrice && close > sellstopLossPrice) {
+            await closeDown();
+            isJudgeProfitRunOrProfit = false;
+            return;
+        }
+    }
+    
     isJudgeProfitRunOrProfit = false;
 };
-// 指标止盈
+// 指标止盈（已移除，止盈逻辑在 judgeProfitRunOrProfit 中实现）
 const judgeIndexProfit = async (currentPrice) => {
-    if (!bollArr.filter(v => v).length) return;
     if (!hasOrder) return;
     isJudgeIndexProfit = true;
-    const { open, close, openTime, closeTime, low, high } = kLineData[kLineData.length - 1];
-    const { B2upper, B2lower } = bollArr[bollArr.length - 1];
-    const { trend, orderPrice } = tradingInfo;
-    if (
-        trend === "up" &&
-        (currentPrice <= B2lower) // boll值变化不大可以直接对比
-    ) {
-        // 平多
-        console.log("🚀 ~ 指标止盈:平多");
-        await closeUp();
-        isJudgeIndexProfit = false;
-        return;
-    }
-    if (
-        trend === "down" &&
-        (currentPrice >= B2upper) // boll值变化不大可以直接对比
-        // 这里是否需要判断 high 和 close 是否大于 B2upper
-    ) {
-        // 平空
-        console.log("🚀 ~ 指标止盈:平空");
-        await closeDown();
-        isJudgeIndexProfit = false;
-        return;
-    }
+    // 新策略的止盈逻辑在 judgeProfitRunOrProfit 中实现
     isJudgeIndexProfit = false;
 };
 
+// 摆动高低点计算已移至 utils/fvg.js
+
 // 通过指标判断交易方向
 const judgeTradingDirection = () => {
-    const [kLine1, kLine2, kLine3, kLine4, kLine5] = getLastFromArr(kLineData, 5);
-    const [superTrend1, superTrend2, superTrend3] = getLastFromArr(superTrendArr, 3);
-    const [ssl1, ssl2, ssl3] = getLastFromArr(sslArr, 3);
-    const [swimingFree1, swimingFree2, swimingFree3] = getLastFromArr(swimingFreeArr, 3);
-
-    const { openTime, high, low, open, close } = kLine5;
-
-    const maxSSL = Math.max(ssl3.sslUp, ssl3.sslDown);
-    const minSSL = Math.min(ssl3.sslUp, ssl3.sslDown);
-    const maxSSL1 = Math.max(ssl1.sslUp, ssl1.sslDown);
-    const minSSL1 = Math.min(ssl1.sslUp, ssl1.sslDown);
-
-    //  trend == 1 and longCond and (close > open and close > math.max(close[1], open[1])) and close > maxSSL and math.min(low, low[1]) <= maxSSL and (maxSSL - math.max(smaHigh[2], smaLow[2]))/math.max(smaHigh[2], smaLow[2]) > sslRateUp
-    // 做多
-    const upTerm1 = superTrend3.trend == 1 && swimingFree3.trend === 'up';
-    const upTerm2 = close > open// && close > Math.max(kLine4.close, kLine4.open);
-    const upTerm3 = close > maxSSL && Math.min(low, kLine4.low) <= maxSSL  && (maxSSL - maxSSL1)/maxSSL1 > sslRateUp;
-
-    if (isUpOpen && upTerm1 && upTerm2 && upTerm3) {
-        readyTradingDirection = "up";
+    if (kLineData.length < 5 || wt5mArr.length < 3) {
+        readyTradingDirection = "hold";
         return;
     }
+
+    const [kLine1, kLine2, kLine3, kLine4, kLine5] = getLastFromArr(kLineData, 5);
+    
+    // 获取WaveTrend指标值
+    const [wt5m1, wt5m2, wt5m3] = getLastFromArr(wt5mArr, 3);
+
+    // TODO: 需要实现多时间框架数据获取
+    // 暂时使用5m数据作为占位符
+    const p5m1 = wt5m3 ? wt5m3.wt1 : 0;
+    const p15m1 = wt5m3 ? wt5m3.wt1 : 0; // TODO: 使用15m数据
+    const p1h1 = wt5m3 ? wt5m3.wt1 : 0; // TODO: 使用1h数据
+
+    if (!wt5m1 || !wt5m2 || !wt5m3) {
+        readyTradingDirection = "hold";
+        return;
+    }
+
+    // ====== 做多 readyBuy 设置条件 ======
+    if (!longReadyBuy) {
+        const longReadyBuyCondition = 
+            p5m1 <= (longReadyBuyThreshold || -50) && 
+            p15m1 <= (longReadyBuyThreshold || -50) && 
+            p1h1 < (longP1h1UpperLimit || 25);
+        
+        if (longReadyBuyCondition) {
+            longReadyBuy = true;
+        }
+    }
+
+    // longReadyBuy 失效条件
+    if (longReadyBuy && !hasOrder && p1h1 > (longThresholdLevel || 50)) {
+        longReadyBuy = false;
+    }
+
+    // ====== 做空 readySell 设置条件 ======
+    if (!shortReadySell) {
+        const shortReadySellCondition = 
+            p5m1 >= (shortReadySellThreshold || 50) && 
+            p15m1 >= (shortReadySellThreshold || 50) && 
+            p1h1 > (shortP1h1LowerLimit || -25);
+        
+        if (shortReadySellCondition) {
+            shortReadySell = true;
+        }
+    }
+
+    // shortReadySell 失效条件
+    if (shortReadySell && !hasOrder && p1h1 < (shortThresholdLevel || -50)) {
+        shortReadySell = false;
+    }
+
+    // 更新摆动低点/高点 (用于止损计算)
+    const pivotLow = calculatePivotLow(kLineData, longPivotLength || 7);
+    if (pivotLow !== null) {
+        longLastSwingLow = pivotLow;
+    }
+
+    const pivotHigh = calculatePivotHigh(kLineData, shortPivotLength || 7);
+    if (pivotHigh !== null) {
+        shortLastSwingHigh = pivotHigh;
+    }
+
+    // 注意: readyTradingDirection 的实际设置会在 calculateTradingSignal 中根据FVG确认后设置
+    readyTradingDirection = "hold";
+};
+
 
     // trend == -1 and shortCond and (close < open and close < math.min(close[1], open[1])) and close < minSSL and math.max(high, high[1]) >= minSSL and (maxSSL - math.max(smaHigh[2], smaLow[2]))/math.max(smaHigh[2], smaLow[2]) < sslRateDown
     // 做空
     const downTerm1 = superTrend3.trend == -1 && swimingFree3.trend === 'down';
-    const downTerm2 = close < open// && close < Math.min(kLine4.close, kLine4.open);
-    const downTerm3 = close < minSSL && Math.max(high, kLine4.high) >= minSSL  && (minSSL - minSSL1)/minSSL1 < sslRateDown;
-
-    if (isDownOpen && downTerm1 && downTerm2 && downTerm3) {
-        readyTradingDirection = "down";
-        return;
-    }
-    readyTradingDirection = "hold";
-};
 
 // 判断+交易
 const judgeAndTrading = async () => {
     loadingTrading = true;
 
-    // 根据指标判断是否可以开单
+    // 根据指标判断是否可以开单（包含FVG确认）
     const { trend, stopLoss, stopProfit } = calculateTradingSignal();
     console.log("预备开仓信息： Trading trend, stopLoss, stopProfit:", trend, stopLoss, stopProfit);
+    
     // 开单
     switch (trend) {
         case "up":
+            readyTradingDirection = "up"; // 设置交易方向
             await teadeBuy();
-            // setTP_SL("up", stopLoss, stopProfit);
             hasOrder = true;
+            // 重置FVG窗口状态
+            longFvgWindowActive = false;
+            longFvgWindowStart = null;
+            longFvgLookbackStart = null;
+            longMovedToBreakeven = false;
             break;
         case "down":
+            readyTradingDirection = "down"; // 设置交易方向
             await teadeSell();
-            // setTP_SL("down", stopLoss, stopProfit);
+            hasOrder = true;
+            // 重置FVG窗口状态
+            shortFvgWindowActive = false;
+            shortFvgWindowStart = null;
+            shortFvgLookbackStart = null;
+            shortMovedToBreakeven = false;
             break;
         default:
             break;
@@ -704,61 +701,215 @@ const judgeAndTrading = async () => {
     loadingTrading = false;
 };
 
+/**
+ * 计算交易信号（包含FVG确认）
+ * 基于WaveTrend多时间框架策略 + FVG确认
+ */
 const calculateTradingSignal = () => {
-    const [kLine1, kLine2, kLine3] = getLastFromArr(kLineData, 3);
-    const { open, close, openTime, closeTime, low, high } = kLine3;
+    if (kLineData.length < 5 || wt5mArr.length < 3) {
+        return { trend: "hold" };
+    }
+
+    const [kLine1, kLine2, kLine3, kLine4, kLine5] = getLastFromArr(kLineData, 5);
+    const { open, close, openTime, closeTime, low, high } = kLine5;
     
-    let [superTrend1, superTrend2, superTrend3] = getLastFromArr(superTrendArr, 3);
-    let [ssl1, ssl2, ssl3] = getLastFromArr(sslArr, 3);
-    let [swimingFree1, swimingFree2, swimingFree3] = getLastFromArr(swimingFreeArr, 3);
+    // 获取WaveTrend指标值
+    const [wt5m1, wt5m2, wt5m3] = getLastFromArr(wt5mArr, 3);
+    if (!wt5m1 || !wt5m2 || !wt5m3) {
+        return { trend: "hold" };
+    }
+    
+    // TODO: 需要15m和1h数据
+    const p5m1 = wt5m3.wt1;
+    const p15m1 = wt5m3.wt1; // TODO: 使用15m数据
+    const p1h1 = wt5m3.wt1; // TODO: 使用1h数据
+    
+    // 获取前一根K线的指标值
+    const p5m1_prev = wt5m2 ? wt5m2.wt1 : p5m1;
+    const p15m1_prev = wt5m2 ? wt5m2.wt1 : p15m1;
+    const p1h1_prev = wt5m2 ? wt5m2.wt1 : p1h1;
 
-    // let max = Math.max(kLine1.high, kLine2.high, kLine3.high);
-    // let min = Math.min(kLine1.low, kLine2.low, kLine3.low);
-    let max = Math.max(superTrend3.up, superTrend3.dn);
-    let min = Math.min(superTrend3.up, superTrend3.dn);
+    // ====== 做多开仓条件检查 ======
+    if (isUpOpen && longReadyBuy && !hasOrder) {
+        // 条件1: 当前k线满足 50 > p5m1 > p15m1 > p1h1
+        const longCondition1 = (longP5UpperLimit || 50) > p5m1 && 
+                                p5m1 > p15m1 && 
+                                p15m1 > p1h1;
+        
+        // 条件2: 当前k线满足 0 > p15m1 > p1h1
+        const longCondition2 = (longP15LowerLimit || 0) > p15m1 && 
+                               p15m1 > p1h1;
+        
+        // 条件3: （当前k线满足 p5m1 > p15m1 并且 前1根k线不满足 p5m1 > p15m1） 
+        //        或 (当前k线满足 p15m1 > p1h1 并且 前1根k线不满足 p15m1 > p1h1)
+        const longCondition3A = p5m1 > p15m1 && !(p5m1_prev > p15m1_prev);
+        const longCondition3B = p15m1 > p1h1 && !(p15m1_prev > p1h1_prev);
+        const longCondition3 = longCondition3A || longCondition3B;
 
-    // 计算ATR
-    // const atr = brickSize * baseLossRate; // calculateATR(kLines, slAtrPeriod).atr;
+        // 如果条件1、2、3都满足，检查FVG
+        if (longCondition1 && longCondition2 && longCondition3) {
+            // 开启FVG等待窗口
+            if (!longFvgWindowActive) {
+                longFvgWindowActive = true;
+                longFvgWindowStart = kLineData.length - 1;
+                longFvgLookbackStart = Math.max(0, kLineData.length - 1 - (longFvgLookbackBars || 5));
+            }
 
-    const signalUpTerm0 = readyTradingDirection === "up" && close > open;
-    const signalUpTerm1 = true;// isNewLine 
+            // 检查FVG
+            if (longFvgWindowActive && longFvgLookbackStart >= 0) {
+                const currentIndex = kLineData.length - 1;
+                const fvg = detectLongFVGInRange(
+                    kLineData,
+                    longFvgLookbackStart,
+                    currentIndex,
+                    avgCandleHeight,
+                    longFvgGapMultiplier || 5
+                );
 
-    if (signalUpTerm0 && signalUpTerm1) {
-        // min = min - atr; // stopLoss ? stopLoss : min - atr;
-        // if (min < close * (1 - invalidSigleStopRate)) {
-        //     return {
-        //         trend: "hold",
-        //     };
-        // }
-        // if (min < close * (1 - maxStopLossRate)) min = close * (1 - maxStopLossRate);
-        return {
-            trend: "up",
-            stopLoss: min, // 止损
-            // stopProfit: close + brickSize * howManyCandle, // 止盈
-            stopProfit: close + (close - min) * howManyCandle, // 止盈
-        };
+                if (fvg && fvg.isValid) {
+                    // 如果启用价格检查，当前K线收盘价必须 > FVG区域最小值
+                    const priceCheckPassed = !(longEnableFvgPriceCheck !== false) || close > fvg.fvgMinPrice;
+                    
+                    if (priceCheckPassed) {
+                        // 计算止损：最近的摆动低点 - 最近N根k线的平均高度
+                        const lowest3Bars = Math.min(kLine3.low, kLine4.low, kLine5.low);
+                        const baseStopLoss = longLastSwingLow && longLastSwingLow < close 
+                            ? longLastSwingLow 
+                            : lowest3Bars;
+                        const calculatedStopLoss = avgCandleHeight 
+                            ? baseStopLoss - avgCandleHeight 
+                            : baseStopLoss;
+                        const stopLoss = calculatedStopLoss > 0 ? calculatedStopLoss : lowest3Bars;
+                        
+                        // 计算止盈：基于盈亏比
+                        const riskAmount = close - stopLoss;
+                        const stopProfit = close + riskAmount * (longRiskRewardRatio || 2.5);
+
+                        // 关闭FVG窗口
+                        longFvgWindowActive = false;
+                        longFvgWindowStart = null;
+                        longFvgLookbackStart = null;
+                        longReadyBuy = false; // 重置readyBuy状态
+
+                        // 保存初始止损用于后续计算
+                        tradingInfo.initialStopLoss = stopLoss;
+
+                        return {
+                            trend: "up",
+                            stopLoss: stopLoss,
+                            stopProfit: stopProfit,
+                        };
+                    }
+                }
+
+                // 检查是否超过等待窗口
+                if (currentIndex - longFvgWindowStart > (longFvgWaitBars || 0)) {
+                    longFvgWindowActive = false;
+                    longFvgWindowStart = null;
+                    longFvgLookbackStart = null;
+                }
+            }
+        } else {
+            // 条件不满足，关闭FVG窗口
+            if (longFvgWindowActive) {
+                longFvgWindowActive = false;
+                longFvgWindowStart = null;
+                longFvgLookbackStart = null;
+            }
+        }
     }
 
-    const signalDownTerm0 = readyTradingDirection === "down" && close < open;
-    const signalDownTerm1 = true;// isNewLine
-    if (signalDownTerm0 && signalDownTerm1) {
-        // max = max + atr; // stopLoss ? stopLoss : max + atr;
-        // if (max > close * (1 + invalidSigleStopRate)) {
-        //     return {
-        //         trend: "hold",
-        //     };
-        // }
-        // if (max > close * (1 + maxStopLossRate)) max = close * (1 + maxStopLossRate);
-        return {
-            trend: "down",
-            stopLoss: max, // 止损
-            // stopProfit: close - brickSize * howManyCandle, // 止盈
-            stopProfit: close - (max - close) * howManyCandle, // 止盈
-        };
+    // ====== 做空开仓条件检查 ======
+    if (isDownOpen && shortReadySell && !hasOrder) {
+        // 条件1: 当前k线满足 -50 < p5m1 < p15m1 < p1h1
+        const shortCondition1 = (shortP5LowerLimit || -50) < p5m1 && 
+                                 p5m1 < p15m1 && 
+                                 p15m1 < p1h1;
+        
+        // 条件2: 当前k线满足 0 < p15m1 < p1h1
+        const shortCondition2 = (shortP15UpperLimit || 0) < p15m1 && 
+                                p15m1 < p1h1;
+        
+        // 条件3: （当前k线满足 p5m1 < p15m1 并且 前1根k线不满足 p5m1 < p15m1） 
+        //        或 (当前k线满足 p15m1 < p1h1 并且 前1根k线不满足 p15m1 < p1h1)
+        const shortCondition3A = p5m1 < p15m1 && !(p5m1_prev < p15m1_prev);
+        const shortCondition3B = p15m1 < p1h1 && !(p15m1_prev < p1h1_prev);
+        const shortCondition3 = shortCondition3A || shortCondition3B;
+
+        // 如果条件1、2、3都满足，检查FVG
+        if (shortCondition1 && shortCondition2 && shortCondition3) {
+            // 开启FVG等待窗口
+            if (!shortFvgWindowActive) {
+                shortFvgWindowActive = true;
+                shortFvgWindowStart = kLineData.length - 1;
+                shortFvgLookbackStart = Math.max(0, kLineData.length - 1 - (shortFvgLookbackBars || 5));
+            }
+
+            // 检查FVG
+            if (shortFvgWindowActive && shortFvgLookbackStart >= 0) {
+                const currentIndex = kLineData.length - 1;
+                const fvg = detectShortFVGInRange(
+                    kLineData,
+                    shortFvgLookbackStart,
+                    currentIndex,
+                    avgCandleHeight,
+                    shortFvgGapMultiplier || 5
+                );
+
+                if (fvg && fvg.isValid) {
+                    // 如果启用价格检查，当前K线收盘价必须 < FVG区域最大值
+                    const priceCheckPassed = !(shortEnableFvgPriceCheck !== false) || close < fvg.fvgMaxPrice;
+                    
+                    if (priceCheckPassed) {
+                        // 计算止损：最近的摆动高点 + 最近N根k线的平均高度
+                        const highest3Bars = Math.max(kLine3.high, kLine4.high, kLine5.high);
+                        const baseStopLoss = shortLastSwingHigh && shortLastSwingHigh > close 
+                            ? shortLastSwingHigh 
+                            : highest3Bars;
+                        const calculatedStopLoss = avgCandleHeight 
+                            ? baseStopLoss + avgCandleHeight 
+                            : baseStopLoss;
+                        const stopLoss = calculatedStopLoss > 0 ? calculatedStopLoss : highest3Bars;
+                        
+                        // 计算止盈：基于盈亏比
+                        const riskAmount = stopLoss - close;
+                        const stopProfit = close - riskAmount * (shortRiskRewardRatio || 2.5);
+
+                        // 关闭FVG窗口
+                        shortFvgWindowActive = false;
+                        shortFvgWindowStart = null;
+                        shortFvgLookbackStart = null;
+                        shortReadySell = false; // 重置readySell状态
+
+                        // 保存初始止损用于后续计算
+                        tradingInfo.initialStopLoss = stopLoss;
+
+                        return {
+                            trend: "down",
+                            stopLoss: stopLoss,
+                            stopProfit: stopProfit,
+                        };
+                    }
+                }
+
+                // 检查是否超过等待窗口
+                if (currentIndex - shortFvgWindowStart > (shortFvgWaitBars || 0)) {
+                    shortFvgWindowActive = false;
+                    shortFvgWindowStart = null;
+                    shortFvgLookbackStart = null;
+                }
+            }
+        } else {
+            // 条件不满足，关闭FVG窗口
+            if (shortFvgWindowActive) {
+                shortFvgWindowActive = false;
+                shortFvgWindowStart = null;
+                shortFvgLookbackStart = null;
+            }
+        }
     }
-    return {
-        trend: "hold",
-    };
+
+    return { trend: "hold" };
 };
 
 // 获取持仓风险，这里要改成村本地
@@ -989,9 +1140,17 @@ const closeOrder = async (side, quantity, cb) => {
             readyTradingDirection = "hold";
             hasOrder = false;
             sellstopLossPrice = 0;
-            downArrivedProfit = 0;
             resetTradingDatas();
             TP_SL = [];
+            // 重置策略状态
+            longMovedToBreakeven = false;
+            shortMovedToBreakeven = false;
+            longFvgWindowActive = false;
+            shortFvgWindowActive = false;
+            longFvgWindowStart = null;
+            shortFvgWindowStart = null;
+            longFvgLookbackStart = null;
+            shortFvgLookbackStart = null;
             saveGlobalVariables();
         } else {
             console.log(
@@ -1080,9 +1239,22 @@ const recoverHistoryData = async (historyDatas) => {
         testMoney: __testMoney,
         readyTradingDirection: __readyTradingDirection, // 是否准备开单
         hasOrder: __hasOrder,
-
         availableMoney: __availableMoney,
         lossCount: __lossCount,
+        // 新策略状态变量
+        longReadyBuy: __longReadyBuy,
+        shortReadySell: __shortReadySell,
+        longFvgWindowActive: __longFvgWindowActive,
+        shortFvgWindowActive: __shortFvgWindowActive,
+        longFvgWindowStart: __longFvgWindowStart,
+        shortFvgWindowStart: __shortFvgWindowStart,
+        longFvgLookbackStart: __longFvgLookbackStart,
+        shortFvgLookbackStart: __shortFvgLookbackStart,
+        longLastSwingLow: __longLastSwingLow,
+        shortLastSwingHigh: __shortLastSwingHigh,
+        longMovedToBreakeven: __longMovedToBreakeven,
+        shortMovedToBreakeven: __shortMovedToBreakeven,
+        sellstopLossPrice: __sellstopLossPrice,
     } = historyDatas;
 
     prePrice = __prePrice; // 记录当前价格的前一个
@@ -1092,16 +1264,30 @@ const recoverHistoryData = async (historyDatas) => {
     isProfitRun = __isProfitRun;
     hasOrder = __hasOrder;
     readyTradingDirection = __readyTradingDirection; // 是否准备开单
-
     availableMoney = __availableMoney;
     lossCount = __lossCount;
+    
+    // 恢复新策略状态变量
+    if (__longReadyBuy !== undefined) longReadyBuy = __longReadyBuy;
+    if (__shortReadySell !== undefined) shortReadySell = __shortReadySell;
+    if (__longFvgWindowActive !== undefined) longFvgWindowActive = __longFvgWindowActive;
+    if (__shortFvgWindowActive !== undefined) shortFvgWindowActive = __shortFvgWindowActive;
+    if (__longFvgWindowStart !== undefined) longFvgWindowStart = __longFvgWindowStart;
+    if (__shortFvgWindowStart !== undefined) shortFvgWindowStart = __shortFvgWindowStart;
+    if (__longFvgLookbackStart !== undefined) longFvgLookbackStart = __longFvgLookbackStart;
+    if (__shortFvgLookbackStart !== undefined) shortFvgLookbackStart = __shortFvgLookbackStart;
+    if (__longLastSwingLow !== undefined) longLastSwingLow = __longLastSwingLow;
+    if (__shortLastSwingHigh !== undefined) shortLastSwingHigh = __shortLastSwingHigh;
+    if (__longMovedToBreakeven !== undefined) longMovedToBreakeven = __longMovedToBreakeven;
+    if (__shortMovedToBreakeven !== undefined) shortMovedToBreakeven = __shortMovedToBreakeven;
+    if (__sellstopLossPrice !== undefined) sellstopLossPrice = __sellstopLossPrice;
 };
 const recoverHistoryDataByPosition = async (historyDatas, { up, down }) => {
     //
     // 从数据库拿出上次的数据，并且与现在的比较，如果数据和的上就用以前的，数据和不上就解析出
     loadingInit = true;
     await recoverHistoryData(historyDatas);
-    if (__isProfitRun) {
+    if (isProfitRun) {
         console.log("上次停止程序时处于利润奔跑模式，当前重启后继续奔跑");
         // await closeOrder(tradingInfo.side, tradingInfo.quantity);
     } else {
@@ -1638,6 +1824,20 @@ function saveGlobalVariables() {
                 readyTradingDirection, // 是否准备开单
                 availableMoney,
                 lossCount,
+                // 新策略状态变量
+                longReadyBuy,
+                shortReadySell,
+                longFvgWindowActive,
+                shortFvgWindowActive,
+                longFvgWindowStart,
+                shortFvgWindowStart,
+                longFvgLookbackStart,
+                shortFvgLookbackStart,
+                longLastSwingLow,
+                shortLastSwingHigh,
+                longMovedToBreakeven,
+                shortMovedToBreakeven,
+                sellstopLossPrice,
             });
             fs.writeFileSync(
                 `data/${isTest ? "test" : "prod"}-${strategyType}-${isUpOpen ? 'up' : 'down'}-${SYMBOL}.js`,

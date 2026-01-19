@@ -1,0 +1,217 @@
+### ====== 做多规则 ======
+
+#### 入场条件
+
+**条件组合**：`section3Up = (section3Up1 or section3Up2 or section3Up3)`
+
+**section3Up1**：
+- 满足所有条件可以SSL入场
+    - `maxSSL > minSSL2`（确定上升趋势）
+    - `trend == 1`（SuperTrend趋势为上升）
+    - 最近三根K线 qqe柱子是红色 and 拐头向上 and 最近三个qqe柱子的最小值 < -`qqe_entryThreshold1`（默认-5）
+        - 拐头向上：`qqeModBar[2] > qqeModBar[1] < qqeModBar[0]`（先下降后上升）
+    - `close > maxSSL`（收盘价在maxSSL上方）
+    - `minSSL > minSSL2 and maxSSL > maxSSL2 and math.min(low, low[1]) <= maxSSL`（当前或前一根K线的最低价触及或下穿maxSSL）
+    - SSL斜率条件：`(maxSSL - maxSSLLookback) / maxSSLLookback > sslRateUp`，补充说明
+        - 即：maxSSL相对于`sslSlopeLookback`（默认21，可配置）根K线前的maxSSL值的上涨幅度 > `sslRateUp`（默认-0.0001，可配置）
+        - 表示SSL通道正在向上倾斜
+
+**section3Up2**：
+- 满足所有条件可以SSL2入场
+    - `maxSSL > minSSL2`（确定上升趋势）
+    - `trend == 1`（SuperTrend趋势为上升）
+    - 最近三根K线 qqe柱子是红色 and 拐头向上 and 最近三个qqe柱子的最小值 < -`qqe_entryThreshold2`（默认-15）
+        - 拐头向上：`qqeModBar[2] > qqeModBar[1] < qqeModBar[0]`（先下降后上升）
+    - `close > maxSSL2`（收盘价在maxSSL2上方）
+    - `minSSL > minSSL2 and maxSSL > maxSSL2 and math.min(low, low[1]) <= maxSSL2`（当前或前一根K线的最低价触及或下穿maxSSL2）
+    - SSL2斜率条件：`(maxSSL2 - maxSSL2Lookback) / maxSSL2Lookback > ssl2RateUp`，补充说明
+        - 即：maxSSL2相对于`ssl2SlopeLookback`（默认21，可配置）根K线前的maxSSL2值的上涨幅度 > `ssl2RateUp`（默认0.0001，可配置）
+        - 表示SSL2通道正在向上倾斜
+
+**section3Up3**：
+- 满足所有条件可以ADX入场
+    - `minSSL > maxSSL2`（确定上升趋势）
+    - `trend == 1`（SuperTrend趋势为上升）
+    - `close > maxSSL2`（收盘价在maxSSL2上方）
+    - ADX 上穿 DIPlus 形成金叉：`ADX0 > DIPlus0 and ADX1 <= DIPlus1` and `ADX0 > ADX1 > ADX2`（ADX上升趋势）
+    - `DIPlus > adx_threshold_low and DIMinus < adx_threshold_low and adx_threshold_low < ADX < adx_threshold_high`（`adx_threshold_low`默认20，`adx_threshold_high`默认40，可配置）
+    - 最近10根K线不能有 `close > upper_6`（Fibonacci上轨）
+
+**开仓条件**：
+- 当前无持仓（`!hasOrder`）
+- `section3Up = true` 且 `readyTradingDirection === "up"`
+- **额外条件**：`close > open`（当前K线为阳线）
+
+#### 开仓设置
+
+- **开仓价**：当前收盘价（`close`）
+- **订单ID**：`'buy'`
+- **订单类型**：市价单（`type: "MARKET"`）
+- **注释**：根据入场方式自动设置
+    - `'多_SSL1'`（SSL1入场）
+    - `'多_SSL2'`（SSL2入场）
+    - `'多_ADX'`（ADX入场）
+
+#### 止损
+
+1. 使用SuperTrend下轨（`minSuper`）为动态止损位
+2. 达到任何位置都可以止损：`close < effectiveStopLoss || low < effectiveStopLoss` 立即平仓全部仓位
+    - `effectiveStopLoss`：当前SuperTrend下轨或移动止损位（如果已激活）
+
+#### 移动止损（默认关闭移动止损，多空使用同一个开关 `enableTrailingStop`）
+
+1. 触发条件：QQE柱子值（`qqeModBar`）> `qqeTrailingThresholdLong`（默认30.0，可配置）
+2. 第一次触发时：移动一次止损位置到 `max(订单的当前限价止损价, preLow)`
+    - `订单的当前限价止损价`：当前SuperTrend下轨（`minSuper`）
+    - `preLow`：前低点（通过`swingLength`周期计算，默认21，可配置）
+3. 移动止损激活后，止损位固定为移动后的值，不再更新
+
+#### 止盈
+
+1. **固定止盈**：1:`riskRewardRatio`（`riskRewardRatio`默认3.0，可配置）作为止盈位，全部平仓
+    - 止盈价 = `entryPrice + (entryPrice - initialLongStopLoss) * riskRewardRatio`
+    - 达到任何位置都可以止盈：`close >= longTakeProfit || high >= longTakeProfit` 立即平仓全部仓位
+
+2. **指标止盈**（可配置，默认关闭 `enableSupertrendTakeProfit` / `enableFibonacciTakeProfit`）
+    - 到达一次指标止盈位计数加1，随后5根K线之内如果再次满足该条件不计数，超过5根K线再次到达的需要增加一次计数
+    - 冷却期：5根K线（使用`currentKLineCount`跟踪）
+    - 容差机制：目标价格 * (1 - `priceTolerance`)（`priceTolerance`默认0.0005，可配置）
+    - 触发条件（满足任一即可）：
+        - `close > SuperTrend上轨 * (1 - priceTolerance) || high > SuperTrend上轨 * (1 - priceTolerance)`（需开启`enableSupertrendTakeProfit`）
+        - `close > Fibonacci上轨(upper_7) * (1 - priceTolerance) || high > Fibonacci上轨(upper_7) * (1 - priceTolerance)`（需开启`enableFibonacciTakeProfit`）
+    - 首次达到指标止盈时：移动一次止损位置到 `max(订单的当前限价止损价, preLow)`（如果移动止损未激活）
+
+3. **指标止盈计数**：计数大于等于`indicatorTPCountThreshold`（默认3，可配置），立即全部平仓
+
+4. **首次指标止盈部分平仓**：首次达到指标止盈位置时，平仓初始仓位的`indicatorTPPartialRatio`比例（默认0.5即50%，可配置），剩余仓位博弈更多的可能
+    - 如果`indicatorTPPartialRatio`配置为0，不执行平仓逻辑，认为是关闭了分批止盈
+    - 部分平仓使用市价单，平仓后不重置`hasOrder`，继续持有剩余仓位
+
+**平仓注释**：
+- 全部平仓时，根据 `close > entryPrice` 判断：
+    - `close > entryPrice`：`'止盈平多'`
+    - `close <= entryPrice`：`'止损平多'`
+
+---
+
+### ====== 做空规则 ======
+
+#### 入场条件
+
+**条件组合**：`section3Down = (section3Down1 or section3Down2 or section3Down3)`
+
+**section3Down1**：
+- 满足所有条件可以SSL入场
+    - `minSSL < maxSSL2`（确定为下降趋势）
+    - `trend == -1`（SuperTrend趋势为下降）
+    - 最近三根K线 qqe柱子是绿色 and 拐头向下 and 最近三个qqe柱子的最大值 > `qqe_entryThreshold1`（默认5）
+        - 拐头向下：`qqeModBar[2] < qqeModBar[1] > qqeModBar[0]`（先上升后下降）
+    - `close < minSSL`（收盘价在minSSL下方）
+    - `minSSL < minSSL2 and maxSSL < maxSSL2 and math.max(high, high[1]) >= minSSL`（当前或前一根K线的最高价触及或上穿minSSL）
+    - SSL斜率条件：`(maxSSL - maxSSLLookback) / maxSSLLookback < sslRateDown`，补充说明
+        - 即：maxSSL相对于`sslSlopeLookback`（默认21，可配置）根K线前的maxSSL值的下跌幅度 < `sslRateDown`（默认-0.0003，可配置）
+        - 表示SSL通道正在向下倾斜
+
+**section3Down2**：
+- 满足所有条件可以SSL2入场
+    - `minSSL < maxSSL2`（确定为下降趋势）
+    - `trend == -1`（SuperTrend趋势为下降）
+    - 最近三根K线 qqe柱子是绿色 and 拐头向下 and 最近三个qqe柱子的最大值 > `qqe_entryThreshold2`（默认15）
+        - 拐头向下：`qqeModBar[2] < qqeModBar[1] > qqeModBar[0]`（先上升后下降）
+    - `close < minSSL2`（收盘价在minSSL2下方）
+    - `minSSL < minSSL2 and maxSSL < maxSSL2 and math.max(high, high[1]) >= minSSL2`（当前或前一根K线的最高价触及或上穿minSSL2）
+    - SSL2斜率条件：`(maxSSL2 - maxSSL2Lookback) / maxSSL2Lookback < ssl2RateDown`，补充说明
+        - 即：maxSSL2相对于`ssl2SlopeLookback`（默认21，可配置）根K线前的maxSSL2值的下跌幅度 < `ssl2RateDown`（默认-0.0001，可配置）
+        - 表示SSL2通道正在向下倾斜
+
+**section3Down3**：
+- 满足所有条件可以ADX入场
+    - `maxSSL < minSSL2`（确定下降趋势）
+    - `trend == -1`（SuperTrend趋势为下降）
+    - `close < minSSL2`（收盘价在minSSL2下方）
+    - ADX 上穿 DIMinus 形成金叉：`ADX0 > DIMinus0 and ADX1 <= DIMinus1` and `ADX0 > ADX1 > ADX2`（ADX上升趋势）
+    - `DIMinus > adx_threshold_low and DIPlus < adx_threshold_low and adx_threshold_low < ADX < adx_threshold_high`（`adx_threshold_low`默认20，`adx_threshold_high`默认40，可配置）
+    - 最近10根K线不能有 `close < lower_6`（Fibonacci下轨）
+
+**开仓条件**：
+- 当前无持仓（`!hasOrder`）
+- `section3Down = true` 且 `readyTradingDirection === "down"`
+- **额外条件**：`close < open`（当前K线为阴线）
+
+#### 开仓设置
+
+- **开仓价**：当前收盘价（`close`）
+- **订单ID**：`'sell'`
+- **订单类型**：市价单（`type: "MARKET"`）
+- **注释**：根据入场方式自动设置
+    - `'空_SSL1'`（SSL1入场）
+    - `'空_SSL2'`（SSL2入场）
+    - `'空_ADX'`（ADX入场）
+
+#### 止损
+
+1. 使用SuperTrend上轨（`maxSuper`）为动态止损位
+2. 达到任何位置都可以止损：`close > effectiveStopLoss || high > effectiveStopLoss` 立即平仓全部仓位
+    - `effectiveStopLoss`：当前SuperTrend上轨或移动止损位（如果已激活）
+
+#### 移动止损（默认关闭移动止损，多空使用同一个开关 `enableTrailingStop`）
+
+1. 触发条件：QQE柱子值（`qqeModBar`）< `qqeTrailingThresholdShort`（默认-30.0，可配置）
+2. 第一次触发时：移动一次止损位置到 `min(订单的当前限价止损价, preHigh)`
+    - `订单的当前限价止损价`：当前SuperTrend上轨（`maxSuper`）
+    - `preHigh`：前高点（通过`swingLength`周期计算，默认21，可配置）
+3. 移动止损激活后，止损位固定为移动后的值，不再更新
+
+#### 止盈
+
+1. **固定止盈**：1:`riskRewardRatio`（`riskRewardRatio`默认3.0，可配置）作为止盈位，全部平仓
+    - 止盈价 = `entryPrice - (initialShortStopLoss - entryPrice) * riskRewardRatio`
+    - 达到任何位置都可以止盈：`close <= shortTakeProfit || low <= shortTakeProfit` 立即平仓全部仓位
+
+2. **指标止盈**（可配置，默认关闭 `enableSupertrendTakeProfit` / `enableFibonacciTakeProfit`）
+    - 到达一次指标止盈位计数加1，随后5根K线之内如果再次满足该条件不计数，超过5根K线再次到达的需要增加一次计数
+    - 冷却期：5根K线（使用`currentKLineCount`跟踪）
+    - 容差机制：目标价格 * (1 + `priceTolerance`)（`priceTolerance`默认0.0005，可配置）
+    - 触发条件（满足任一即可）：
+        - `close < SuperTrend下轨 * (1 + priceTolerance) || low < SuperTrend下轨 * (1 + priceTolerance)`（需开启`enableSupertrendTakeProfit`）
+        - `close < Fibonacci下轨(lower_7) * (1 + priceTolerance) || low < Fibonacci下轨(lower_7) * (1 + priceTolerance)`（需开启`enableFibonacciTakeProfit`）
+    - 首次达到指标止盈时：移动一次止损位置到 `min(订单的当前限价止损价, preHigh)`（如果移动止损未激活）
+
+3. **指标止盈计数**：计数大于等于`indicatorTPCountThreshold`（默认3，可配置），立即全部平仓
+
+4. **首次指标止盈部分平仓**：首次达到指标止盈位置时，平仓初始仓位的`indicatorTPPartialRatio`比例（默认0.5即50%，可配置），剩余仓位博弈更多的可能
+    - 如果`indicatorTPPartialRatio`配置为0，不执行平仓逻辑，认为是关闭了分批止盈
+    - 部分平仓使用市价单，平仓后不重置`hasOrder`，继续持有剩余仓位
+
+**平仓注释**：
+- 全部平仓时，根据 `close < entryPrice` 判断：
+    - `close < entryPrice`：`'止盈平空'`
+    - `close >= entryPrice`：`'止损平空'`
+
+---
+
+### ====== 补充说明 ======
+
+1. **所有订单类型**：统一使用市价单（`MARKET`），包括开仓、平仓、部分平仓
+
+2. **K线计数**：使用`currentKLineCount`跟踪K线数量，在每根新K线完成时（`isNewLine === true`）递增，用于冷却期计算
+
+3. **容差机制**：
+    - 做多：目标价格向下放宽，`目标价格 * (1 - priceTolerance)`
+    - 做空：目标价格向上放宽，`目标价格 * (1 + priceTolerance)`
+    - 容差范围：`[目标价格*(1-容差配置), 目标价格*(1+容差配置)]`，在容差范围内均可认为达到目标
+
+4. **前高点/前低点**：通过`calculateLatestPreHighLow`函数计算，使用`swingLength`周期（默认21，可配置）寻找pivot high/low
+
+5. **指标计算周期**：
+    - SSL：`sslPeriod`（默认200）
+    - SSL2：`sslPeriod * 3`（默认600）
+    - ADX：`adx_len`（默认12）
+    - QQE MOD：使用Primary和Secondary两组参数
+    - Fibonacci Bollinger Bands：固定参数
+
+6. **仓位管理**：
+    - 开仓时记录`initialLongPositionSize`/`initialShortPositionSize`（在持仓的第一根K线记录实际仓位大小）
+    - 部分平仓时更新`tradingInfo.quantity`，不重置`hasOrder`
+    - 全部平仓时重置所有相关状态变量
+

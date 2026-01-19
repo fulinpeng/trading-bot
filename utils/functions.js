@@ -108,9 +108,56 @@ const getDate = (date, showMillise) => {
         return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
     }
 };
+/**
+ * 将日期字符串转换为时间戳（毫秒）
+ * 不使用 dayjs 库，手动解析日期字符串
+ * @param {String} dateStr - 日期字符串，格式: "YYYY-MM-DD_HH-mm-ss"，例如 "2025-05-12_00-00-00"
+ * @param {String} inputFormat - 输入格式（保留用于兼容，当前仅支持 "YYYY-MM-DD_HH-mm-ss"）
+ * @returns {Number} 时间戳（毫秒），如果解析失败返回 NaN
+ */
 function convertToTimestamp(dateStr, inputFormat = "YYYY-MM-DD_HH-mm-ss") {
-    const date = dayjs(dateStr, inputFormat);
-    const timestamp = date.valueOf();
+    // 参数验证
+    if (!dateStr || typeof dateStr !== 'string') {
+        return NaN;
+    }
+    
+    // 格式: "YYYY-MM-DD_HH-mm-ss"
+    // 例如: "2025-05-12_00-00-00"
+    const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})$/);
+    if (!match) {
+        return NaN;
+    }
+    
+    // 提取各部分
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1; // Date 对象月份从 0 开始
+    const day = parseInt(match[3], 10);
+    const hours = parseInt(match[4], 10);
+    const minutes = parseInt(match[5], 10);
+    const seconds = parseInt(match[6], 10);
+    
+    // 验证数值范围
+    if (
+        isNaN(year) || isNaN(month) || isNaN(day) || 
+        isNaN(hours) || isNaN(minutes) || isNaN(seconds) ||
+        month < 0 || month > 11 ||
+        day < 1 || day > 31 ||
+        hours < 0 || hours > 23 ||
+        minutes < 0 || minutes > 59 ||
+        seconds < 0 || seconds > 59
+    ) {
+        return NaN;
+    }
+    
+    // 创建 Date 对象并返回时间戳
+    const date = new Date(year, month, day, hours, minutes, seconds);
+    const timestamp = date.getTime();
+    
+    // 验证日期是否有效（防止无效日期如 2月30日）
+    if (isNaN(timestamp)) {
+        return NaN;
+    }
+    
     return timestamp;
 }
 
