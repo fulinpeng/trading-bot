@@ -53,9 +53,32 @@ function calculateQQEMOD(klines, params = {}) {
         return null;
     }
 
-    // 计算 smoothed RSI (EMA)
-    const primarySmoothedRsiArray = calculateEmaArr(primaryRSIArray.filter(v => v !== null), rsiSmoothingPrimary);
-    if (!primarySmoothedRsiArray || primarySmoothedRsiArray.length === 0) {
+    // 过滤掉 null 值，但保留索引对应关系
+    const validPrimaryRSIArray = primaryRSIArray.filter(v => v !== null);
+    if (validPrimaryRSIArray.length < rsiSmoothingPrimary) {
+        return null;
+    }
+
+    // 计算 smoothed RSI (EMA) - 与 Pine Script 的 ta.ema 一致
+    // Pine Script: ta.ema(series, length) 使用标准的 EMA 计算，初始值是前 length 个值的 SMA
+    const primarySmoothedRsiArray = [];
+    const multiplierPrimary = 2 / (rsiSmoothingPrimary + 1);
+    
+    // 计算初始 SMA（前 rsiSmoothingPrimary 个值的平均值）
+    let initialSumPrimary = 0;
+    for (let i = 0; i < rsiSmoothingPrimary; i++) {
+        initialSumPrimary += validPrimaryRSIArray[i];
+    }
+    let emaPrimary = initialSumPrimary / rsiSmoothingPrimary;
+    primarySmoothedRsiArray.push(emaPrimary);
+    
+    // 计算后续的 EMA 值
+    for (let i = rsiSmoothingPrimary; i < validPrimaryRSIArray.length; i++) {
+        emaPrimary = (validPrimaryRSIArray[i] - emaPrimary) * multiplierPrimary + emaPrimary;
+        primarySmoothedRsiArray.push(emaPrimary);
+    }
+
+    if (primarySmoothedRsiArray.length === 0) {
         return null;
     }
 
@@ -70,9 +93,29 @@ function calculateQQEMOD(klines, params = {}) {
         return null;
     }
 
-    // 计算 smoothed ATR RSI (EMA)
-    const smoothedAtrRsiArray = calculateEmaArr(atrRsiArray, wildersLengthPrimary);
-    if (!smoothedAtrRsiArray || smoothedAtrRsiArray.length === 0) {
+    // 计算 smoothed ATR RSI (EMA) - 与 Pine Script 的 ta.ema 一致
+    const smoothedAtrRsiArray = [];
+    const multiplierAtr = 2 / (wildersLengthPrimary + 1);
+    
+    // 计算初始 SMA（前 wildersLengthPrimary 个值的平均值）
+    if (atrRsiArray.length < wildersLengthPrimary) {
+        return null;
+    }
+    
+    let initialSumAtr = 0;
+    for (let i = 0; i < wildersLengthPrimary; i++) {
+        initialSumAtr += atrRsiArray[i];
+    }
+    let emaAtr = initialSumAtr / wildersLengthPrimary;
+    smoothedAtrRsiArray.push(emaAtr);
+    
+    // 计算后续的 EMA 值
+    for (let i = wildersLengthPrimary; i < atrRsiArray.length; i++) {
+        emaAtr = (atrRsiArray[i] - emaAtr) * multiplierAtr + emaAtr;
+        smoothedAtrRsiArray.push(emaAtr);
+    }
+
+    if (smoothedAtrRsiArray.length === 0) {
         return null;
     }
 
@@ -142,16 +185,39 @@ function calculateQQEMOD(klines, params = {}) {
         return null;
     }
 
-    // 计算 smoothed RSI (EMA)
-    const secondarySmoothedRsiArray = calculateEmaArr(secondaryRSIArray.filter(v => v !== null), rsiSmoothingSecondary);
-    if (!secondarySmoothedRsiArray || secondarySmoothedRsiArray.length === 0) {
+    // 过滤掉 null 值，但保留索引对应关系
+    const validSecondaryRSIArray = secondaryRSIArray.filter(v => v !== null);
+    if (validSecondaryRSIArray.length < rsiSmoothingSecondary) {
         return null;
     }
 
-    // 获取最新值
+    // 计算 smoothed RSI (EMA) - 与 Pine Script 的 ta.ema 一致
+    // Pine Script: ta.ema(series, length) 使用标准的 EMA 计算，初始值是前 length 个值的 SMA
+    const secondarySmoothedRsiArray = [];
+    const multiplier = 2 / (rsiSmoothingSecondary + 1);
+    
+    // 计算初始 SMA（前 rsiSmoothingSecondary 个值的平均值）
+    let initialSum = 0;
+    for (let i = 0; i < rsiSmoothingSecondary; i++) {
+        initialSum += validSecondaryRSIArray[i];
+    }
+    let ema = initialSum / rsiSmoothingSecondary;
+    secondarySmoothedRsiArray.push(ema);
+    
+    // 计算后续的 EMA 值
+    for (let i = rsiSmoothingSecondary; i < validSecondaryRSIArray.length; i++) {
+        ema = (validSecondaryRSIArray[i] - ema) * multiplier + ema;
+        secondarySmoothedRsiArray.push(ema);
+    }
+
+    if (secondarySmoothedRsiArray.length === 0) {
+        return null;
+    }
+
+    // 获取最新值（对应原始数组的最后一个有效值）
     const secondarySmoothedRsi = secondarySmoothedRsiArray[secondarySmoothedRsiArray.length - 1];
 
-    // QQE MOD 柱子值（secondaryRSI - 50）
+    // QQE MOD 柱子值（secondaryRSI - 50）- 与 Pine Script 一致
     const qqeModBar = secondarySmoothedRsi - 50;
 
     // QQE MOD 颜色判断

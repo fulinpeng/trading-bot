@@ -12,35 +12,69 @@ const { calculateLatestADX } = require("../../utils/adx.js");
 const { calculateLatestPreHighLow } = require("../../utils/swingHighLow.js");
 
 /**
- * 初始化指标计算
+ * 初始化指标计算（异步执行）
  * @param {Array} historyClosePrices - 历史收盘价数组
  * @param {Array} kLineData - K线数据数组
  * @param {Object} state - 策略状态对象
  * @param {Object} config - 配置对象
+ * @returns {Promise<void>} 等待所有指标计算完成
  */
-function initEveryIndex(historyClosePrices, kLineData, state, config) {
+async function initEveryIndex(historyClosePrices, kLineData, state, config) {
     const len = historyClosePrices.length;
+    // 串行执行初始化，确保顺序
     for (let i = len - 10; i < len; i++) {
-        setEveryIndex(historyClosePrices.slice(0, i), kLineData.slice(0, i), state, config);
+        await setEveryIndex(historyClosePrices.slice(0, i), kLineData.slice(0, i), state, config);
     }
 }
 
 /**
- * 设置所有指标
- * @param {Array} historyClosePrices - 历史收盘价数组
+ * 设置所有指标（异步执行，使用 Promise.all 统一管理）
+ * @param {Array} historyClosePrices - 历史收盘价数组（未使用，但保持与源代码一致的参数）
  * @param {Array} curKLine - 当前K线数据数组
  * @param {Object} state - 策略状态对象
  * @param {Object} config - 配置对象
+ * @returns {Promise<void>} 等待所有指标计算完成
  */
-function setEveryIndex(historyClosePrices, curKLine, state, config) {
-    setSperTrendArr(curKLine, state, config);
-    setSwimingFreeArr(curKLine, state, config);
-    setSslArr(curKLine, state, config);
-    setSsl2Arr(curKLine, state, config);
-    setFibArr(curKLine, state, config);
-    setQqeModArr(curKLine, state, config);
-    setAdxArr(curKLine, state, config);
-    setPreHighLowArr(curKLine, state, config);
+async function setEveryIndex(historyClosePrices, curKLine, state, config) {
+    // 将所有指标计算包装成 Promise，使用 setImmediate 让它们在不同的事件循环tick中执行
+    // 这样可以更好地利用事件循环，实现更好的并行性
+    const promises = [
+        new Promise(resolve => setImmediate(() => {
+            setSperTrendArr(curKLine, state, config);
+            resolve();
+        })),
+        new Promise(resolve => setImmediate(() => {
+            setSwimingFreeArr(curKLine, state, config);
+            resolve();
+        })),
+        new Promise(resolve => setImmediate(() => {
+            setSslArr(curKLine, state, config);
+            resolve();
+        })),
+        new Promise(resolve => setImmediate(() => {
+            setSsl2Arr(curKLine, state, config);
+            resolve();
+        })),
+        new Promise(resolve => setImmediate(() => {
+            setFibArr(curKLine, state, config);
+            resolve();
+        })),
+        new Promise(resolve => setImmediate(() => {
+            setQqeModArr(curKLine, state, config);
+            resolve();
+        })),
+        new Promise(resolve => setImmediate(() => {
+            setAdxArr(curKLine, state, config);
+            resolve();
+        })),
+        new Promise(resolve => setImmediate(() => {
+            setPreHighLowArr(curKLine, state, config);
+            resolve();
+        })),
+    ];
+    
+    // 等待所有指标计算完成
+    await Promise.all(promises);
 }
 
 /**
@@ -53,13 +87,15 @@ function setSperTrendArr(klines, state, config) {
     const { superTrendArr } = state;
     const { atrPeriod, multiplier } = config;
     
-    if (superTrendArr.length >= 10) {
-        superTrendArr.shift();
-    }
-    const superTrend = calculateLatestSuperTrend(klines, atrPeriod, multiplier);
-    if (superTrend) {
-        superTrendArr.push(superTrend);
-    }
+    // SuperTrend 需要至少 atrPeriod 根K线来计算 ATR
+    // 但为了确保上下轨计算的准确性，需要更多历史数据来稳定 ATR 和上下轨
+    const minRequired = 800;
+    superTrendArr.length >= 10 && superTrendArr.shift();
+    // 与 Pine Script 保持一致：
+    // - changeATR = true (默认) 使用 RMA (Wilder's smoothing)，对应 useATR = true
+    // - 使用标准 TR 计算，对应 inertiaRatio = 0
+    const superTrend = calculateLatestSuperTrend(klines.slice(-minRequired), atrPeriod, multiplier, true, 0);
+    superTrendArr.push(superTrend);
 }
 
 /**
@@ -72,13 +108,15 @@ function setSwimingFreeArr(klines, state, config) {
     const { swimingFreeArr } = state;
     const { swimingFreePeriod } = config;
     
-    if (swimingFreeArr.length >= 10) {
-        swimingFreeArr.shift();
-    }
-    const swimingFree = cacleSwimingFreeEma(klines.slice(-swimingFreePeriod * 2 - 10), swimingFreePeriod, 2.5);
-    if (swimingFree) {
-        swimingFreeArr.push(swimingFree);
-    }
+    // Range Filter 需要足够的数据：
+    // - rng_per = 60，需要 60 个 absDiff 值来计算第一个 avrng
+    // - wper = (60 * 2) - 1 = 119，需要 119 个 avrng 值来计算第一个 AC
+    // - 所以至少需要 60 + 119 = 179 根K线（因为 absDiff 从第二根K线开始）
+    // - 传入更多数据确保计算准确：如果需要200条就传入500条
+    const minRequired = Math.max(swimingFreePeriod * 3 + 20, 500); // 至少500根K线
+    swimingFreeArr.length >= 10 && swimingFreeArr.shift();
+    const swimingFree = cacleSwimingFreeEma(klines.slice(-minRequired), swimingFreePeriod, 2.5);
+    swimingFreeArr.push(swimingFree);
 }
 
 /**
@@ -91,13 +129,11 @@ function setSslArr(klines, state, config) {
     const { sslArr } = state;
     const { sslPeriod } = config;
     
-    if (sslArr.length >= 10) {
-        sslArr.shift();
-    }
-    const ssl = calculateLatestSSL(klines.slice(-sslPeriod - 10), sslPeriod);
-    if (ssl) {
-        sslArr.push(ssl);
-    }
+    // SSL 需要至少 sslPeriod 根K线，传入更多数据确保计算准确
+    const minRequired = Math.max(sslPeriod * 2.5, 500); // 至少500根K线
+    sslArr.length >= 10 && sslArr.shift();
+    const ssl = calculateLatestSSL(klines.slice(-minRequired), sslPeriod);
+    sslArr.push(ssl);
 }
 
 /**
@@ -110,13 +146,11 @@ function setSsl2Arr(klines, state, config) {
     const { ssl2Arr } = state;
     const { sslPeriod } = config;
     
-    if (ssl2Arr.length >= 10) {
-        ssl2Arr.shift();
-    }
-    const ssl2 = calculateLatestSSL2(klines.slice(-sslPeriod * 3 - 10), sslPeriod);
-    if (ssl2) {
-        ssl2Arr.push(ssl2);
-    }
+    // SSL2 需要至少 sslPeriod * 3 根K线，传入更多数据确保计算准确
+    const minRequired = Math.max(sslPeriod * 3 * 2.5, 500); // 至少500根K线
+    ssl2Arr.length >= 10 && ssl2Arr.shift();
+    const ssl2 = calculateLatestSSL2(klines.slice(-minRequired), sslPeriod);
+    ssl2Arr.push(ssl2);
 }
 
 /**
@@ -128,13 +162,11 @@ function setSsl2Arr(klines, state, config) {
 function setFibArr(klines, state, config) {
     const { fibArr } = state;
     
-    if (fibArr.length >= 10) {
-        fibArr.shift();
-    }
-    const fib = calculateFBB(klines);
-    if (fib) {
-        fibArr.push(fib);
-    }
+    // Fibonacci 需要至少 200 根K线（fbbLength = 200），传入更多数据确保计算准确
+    const minRequired = Math.max(200 * 2.5, 500); // 至少500根K线
+    fibArr.length >= 10 && fibArr.shift();
+    const fib = calculateFBB(klines.slice(-minRequired));
+    fibArr.push(fib);
 }
 
 /**
@@ -156,10 +188,10 @@ function setQqeModArr(klines, state, config) {
         qqe_thresholdSecondary,
     } = config;
     
-    if (qqeModArr.length >= 10) {
-        qqeModArr.shift();
-    }
-    const qqeMod = calculateLatestQQEMOD(klines.slice(-100), {
+    // QQE MOD 需要足够的数据，传入更多数据确保计算准确
+    const minRequired = Math.max(100 * 2.5, 500); // 至少500根K线
+    qqeModArr.length >= 10 && qqeModArr.shift();
+    const qqeMod = calculateLatestQQEMOD(klines.slice(-minRequired), {
         rsiLengthPrimary: qqe_rsiLengthPrimary,
         rsiSmoothingPrimary: qqe_rsiSmoothingPrimary,
         qqeFactorPrimary: qqe_qqeFactorPrimary,
@@ -169,9 +201,7 @@ function setQqeModArr(klines, state, config) {
         qqeFactorSecondary: qqe_qqeFactorSecondary,
         thresholdSecondary: qqe_thresholdSecondary,
     });
-    if (qqeMod) {
-        qqeModArr.push(qqeMod);
-    }
+    qqeModArr.push(qqeMod);
 }
 
 /**
@@ -184,13 +214,14 @@ function setAdxArr(klines, state, config) {
     const { adxArr } = state;
     const { adx_len } = config;
     
-    if (adxArr.length >= 10) {
-        adxArr.shift();
-    }
-    const adx = calculateLatestADX(klines.slice(-adx_len * 2 - 10), adx_len);
-    if (adx) {
-        adxArr.push(adx);
-    }
+    // ADX 需要足够的数据：
+    // - 需要 adx_len 个 DX 值来计算 ADX
+    // - DX 从第二根K线开始计算（需要前一根K线）
+    // - 传入更多数据确保计算准确：如果需要36条就传入500条
+    const minRequired = Math.max(adx_len * 3 * 2.5, 500); // 至少500根K线
+    adxArr.length >= 10 && adxArr.shift();
+    const adx = calculateLatestADX(klines.slice(-minRequired), adx_len);
+    adxArr.push(adx);
 }
 
 /**
@@ -203,13 +234,11 @@ function setPreHighLowArr(klines, state, config) {
     const { preHighLowArr } = state;
     const { swingLength } = config;
     
-    if (preHighLowArr.length >= 10) {
-        preHighLowArr.shift();
-    }
-    const preHighLow = calculateLatestPreHighLow(klines.slice(-swingLength * 2 - 10), swingLength);
-    if (preHighLow) {
-        preHighLowArr.push(preHighLow);
-    }
+    // PreHighLow 需要至少 swingLength * 2 根K线，传入更多数据确保计算准确
+    const minRequired = Math.max(swingLength * 2 * 2.5, 500); // 至少500根K线
+    preHighLowArr.length >= 10 && preHighLowArr.shift();
+    const preHighLow = calculateLatestPreHighLow(klines.slice(-minRequired), swingLength);
+    preHighLowArr.push(preHighLow);
 }
 
 module.exports = {

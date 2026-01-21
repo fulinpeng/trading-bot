@@ -62,10 +62,6 @@ function calculateTradingSignal(state, config) {
     const { riskRewardRatio } = config;
     
     const [kLine3] = getLastFromArr(kLineData, 1);
-    if (!kLine3) {
-        return { trend: "hold" };
-    }
-    
     const { open, close } = kLine3;
     
     let [superTrend3] = getLastFromArr(superTrendArr, 1);

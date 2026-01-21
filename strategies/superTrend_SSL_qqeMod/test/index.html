@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}可视化</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #1e1e1e;
+            color: #fff;
+        }
+        #chart {
+            width: 100%;
+            height: 700px;
+            margin-bottom: 20px;
+        }
+        #profitChart {
+            width: 100%;
+            height: 400px;
+        }
+        .info-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            max-width: 300px;
+            z-index: 1000;
+        }
+        .info-item {
+            margin: 5px 0;
+        }
+        .info-label {
+            color: #888;
+        }
+        .info-value {
+            color: #fff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="info-panel" id="infoPanel">
+        <div class="info-item">
+            <span class="info-label">Symbol:</span>
+            <span class="info-value">{{symbol}}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">TimeLevel:</span>
+            <span class="info-value">{{timeLevel}}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">K线数量:</span>
+            <span class="info-value" id="klineCount">0</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">交易次数:</span>
+            <span class="info-value" id="tradeCount">0</span>
+        </div>
+    </div>
+    
+    <div id="chart"></div>
+    <div id="profitChart"></div>
+
+    <script>
+        const chart = echarts.init(document.getElementById('chart'));
+        const profitChart = echarts.init(document.getElementById('profitChart'));
+
+        const upColor = "#98f0b0";
+        const upBorderColor = "#98f0b0";
+        const downColor = "#f19f9f";
+        const downBorderColor = "#f19f9f";
+
+        const symbol = '{{symbol}}';
+        const timeLevel = '{{timeLevel}}';
+        const kLineData = {{kLineData}};
+        const indicators = {{indicators}};
+        const openHistory = {{openHistory}};
+        const closeHistory = {{closeHistory}};
+        const openPriceHistory = {{openPriceHistory}};
+        const closePriceHistory = {{closePriceHistory}};
+        const trendHistory = {{trendHistory}};
+        const curTestMoneyHistory = {{curTestMoneyHistory}};
+        
+        // 从指标数组中提取数据
+        const superTrendArr = indicators.superTrendArr || [];
+        // console.log('superTrendArr:', superTrendArr);
+        const sslArr = indicators.sslArr || [];
+        // console.log('sslArr:', sslArr);
+        const ssl2Arr = indicators.ssl2Arr || [];
+        // console.log('ssl2Arr:', ssl2Arr);
+        const fibArr = indicators.fibArr || [];
+        // console.log('fibArr:', fibArr);
+        const swimingFreeArr = indicators.swimingFreeArr || [];
+        // console.log('swimingFreeArr:', swimingFreeArr);
+        const qqeModArr = indicators.qqeModArr || [];
+        // console.log('qqeModArr:', qqeModArr);
+        const adxArr = indicators.adxArr || [];
+        // console.log('adxArr:', adxArr);
+        const preHighLowArr = indicators.preHighLowArr || [];
+        // console.log('preHighLowArr:', preHighLowArr);
+
+        // 更新信息面板
+        document.getElementById('klineCount').textContent = kLineData.length;
+        document.getElementById('tradeCount').textContent = openHistory.length;
+
+        // 处理K线数据
+        function splitData(rawData) {
+            const categoryData = [];
+            const values = [];
+            for (let i = 0; i < rawData.length; i++) {
+                categoryData.push(rawData[i].openTime);
+                values.push([
+                    parseFloat(rawData[i].open),
+                    parseFloat(rawData[i].close),
+                    parseFloat(rawData[i].low),
+                    parseFloat(rawData[i].high),
+                ]);
+            }
+            return {
+                categoryData: categoryData,
+                values: values,
+            };
+        }
+
+        const data0 = splitData(kLineData);
+        
+        // K线数据和指标数据已经一一对应（都从日志系统中push），不需要对齐
+        // 直接使用指标数组
+        const alignedSuperTrendArr = superTrendArr;
+        const alignedSslArr = sslArr;
+        const alignedSsl2Arr = ssl2Arr;
+        const alignedFibArr = fibArr;
+        const alignedSwimingFreeArr = swimingFreeArr;
+        const alignedQqeModArr = qqeModArr;
+        const alignedAdxArr = adxArr;
+
+        // 从指标数组中提取数据
+        function extractValue(arr, valuePath) {
+            return arr.map((item) => {
+                if (!item) return null;
+                const val = valuePath.split('.').reduce((obj, key) => obj && obj[key], item);
+                return val !== undefined && val !== null ? val : null;
+            });
+        }
+
+        // SuperTrend
+        const superTrendUp = extractValue(alignedSuperTrendArr, 'up');
+        const superTrendDown = extractValue(alignedSuperTrendArr, 'dn');
+
+        // SSL
+        const sslUp = extractValue(alignedSslArr, 'sslUp');
+        const sslDown = extractValue(alignedSslArr, 'sslDown');
+
+        // SSL2
+        const ssl2Up = extractValue(alignedSsl2Arr, 'sslUp2');
+        const ssl2Down = extractValue(alignedSsl2Arr, 'sslDown2');
+
+        // Fibonacci
+        const fibUpper = extractValue(alignedFibArr, 'upper_7');
+        const fibLower = extractValue(alignedFibArr, 'lower_7');
+
+        // Range Filter (swimingFree)
+        const swimingFilt = extractValue(alignedSwimingFreeArr, 'filt');
+        const swimingHiBand = extractValue(alignedSwimingFreeArr, 'hiBand');
+        const swimingLoBand = extractValue(alignedSwimingFreeArr, 'loBand');
+
+        // QQE MOD
+        const qqeModBar = extractValue(alignedQqeModArr, 'qqeModBar0');
+
+        // ADX
+        const adxValue = extractValue(alignedAdxArr, 'ADX');
+        const diPlus = extractValue(alignedAdxArr, 'DIPlus0');
+        const diMinus = extractValue(alignedAdxArr, 'DIMinus0');
+
+        // 创建开仓/平仓标记
+        const markArea = [];
+        const markPointData = [];
+        const markLineData = [];
+
+        for (let i = 0; i < openHistory.length; i++) {
+            const openTime = openHistory[i];
+            const closeTime = closeHistory[i] || (kLineData.length > 0 ? kLineData[kLineData.length - 1].openTime : null);
+            const openPrice = openPriceHistory[i];
+            const closePrice = closePriceHistory[i] || (kLineData.length > 0 ? parseFloat(kLineData[kLineData.length - 1].close) : null);
+            const trend = trendHistory[i];
+
+            if (openTime && closeTime) {
+                const openIdx = data0.categoryData.indexOf(openTime);
+                const closeIdx = data0.categoryData.indexOf(closeTime);
+
+                if (openIdx >= 0 && closeIdx >= 0) {
+                    // 标记区域
+                    markArea.push([
+                        {
+                            coord: [openIdx, openPrice],
+                            itemStyle: {
+                                color: trend === 'up' ? 'rgba(0, 255, 0, 0.1)' : 'rgba(255, 0, 0, 0.1)',
+                            },
+                        },
+                        {
+                            coord: [closeIdx, closePrice],
+                        },
+                    ]);
+
+                    // 标记点
+                    const profit = trend === 'up' 
+                        ? (closePrice - openPrice) 
+                        : (openPrice - closePrice);
+                    // 多单用蓝色，空单用红色
+                    const markColor = trend === 'up' ? '#00ff00' : '#ff0000';
+                    // 多单用向上箭头，空单用向下箭头
+                    markPointData.push({
+                        name: "开仓",
+                        coord: [openIdx, openPrice],
+                        value: profit.toFixed(2),
+                        itemStyle: {
+                            color: markColor,
+                        },
+                        symbol: 'arrow',  // 使用箭头标记
+                        symbolSize: 15,
+                        symbolRotate: trend === 'up' ? 0 : 180,  // 多单向上，空单向下
+                    });
+
+                    if (closePrice) {
+                        markPointData.push({
+                            name: "平仓",
+                            coord: [closeIdx, closePrice],
+                            value: profit.toFixed(2),
+                            itemStyle: {
+                                color: markColor,
+                            },
+                            symbol: 'pin',
+                            symbolSize: 10,
+                        });
+                    }
+                }
+            }
+        }
+
+        // K线图配置
+        const option = {
+            title: {
+                text: `${symbol} ${timeLevel} - K线图与指标`,
+                left: 0,
+                textStyle: {
+                    color: '#fff',
+                },
+            },
+            tooltip: {
+                trigger: "axis",
+                axisPointer: {
+                    type: "cross",
+                },
+                formatter: function (params) {
+                    let result = `<div style="margin-bottom: 5px;"><strong>${params[0].axisValue}</strong></div>`;
+                    params.forEach(function (item) {
+                        if (item.value !== null && item.value !== undefined) {
+                            result += `<div>${item.seriesName}: <span style="color: ${item.color}">${typeof item.value === 'number' ? item.value.toFixed(4) : item.value}</span></div>`;
+                        }
+                    });
+                    
+                    // 添加指标信息
+                    const idx = params[0].dataIndex;
+                    const superTrend = alignedSuperTrendArr[idx];
+                    const ssl = alignedSslArr[idx];
+                    const swimingFree = alignedSwimingFreeArr[idx];
+                    const qqeMod = alignedQqeModArr[idx];
+                    const adx = alignedAdxArr[idx];
+                    const fib = alignedFibArr[idx];
+                    
+                    if (superTrend || ssl || swimingFree || qqeMod || adx || fib) {
+                        result += '<div style="margin-top: 10px; border-top: 1px solid #333; padding-top: 5px;">';
+                        result += '<strong>指标详情:</strong><br>';
+                        if (superTrend) {
+                            const trendValue = superTrend.trend;
+                            const trendText = trendValue === 1 ? 'UP' : trendValue === -1 ? 'DOWN' : 'N/A';
+                            const trendColor = trendValue === 1 ? '#00ff00' : trendValue === -1 ? '#ff0000' : '#888';
+                            result += `SuperTrend Trend: <span style="color: ${trendColor}">${trendText} (${trendValue})</span><br>`;
+                            if (superTrend.up !== null && superTrend.up !== undefined) {
+                                result += `SuperTrend UP: ${superTrend.up.toFixed(4)}<br>`;
+                            }
+                            if (superTrend.dn !== null && superTrend.dn !== undefined) {
+                                result += `SuperTrend DN: ${superTrend.dn.toFixed(4)}<br>`;
+                            }
+                            if (superTrend.atr !== null && superTrend.atr !== undefined) {
+                                result += `SuperTrend ATR: ${superTrend.atr.toFixed(4)}<br>`;
+                            }
+                            if (superTrend.tr !== null && superTrend.tr !== undefined) {
+                                result += `SuperTrend TR: ${superTrend.tr.toFixed(4)}<br>`;
+                            }
+                        }
+                        if (ssl) {
+                            result += `SSL: ${ssl.hlv === 1 ? 'UP' : 'DOWN'}<br>`;
+                        }
+                        if (swimingFree) {
+                            result += `Range Filter: ${swimingFree.trend || 'N/A'}<br>`;
+                        }
+                        if (qqeMod) {
+                            result += `QQE MOD: ${qqeMod.qqeModBar0?.toFixed(2) || 'N/A'}<br>`;
+                        }
+                        if (adx) {
+                            result += `ADX: ${adx.ADX?.toFixed(2) || 'N/A'}<br>`;
+                            result += `DI+: ${adx.DIPlus0?.toFixed(2) || 'N/A'}, DI-: ${adx.DIMinus0?.toFixed(2) || 'N/A'}<br>`;
+                        }
+                        if (fib) {
+                            result += `Fib Upper: ${fib.upper_7?.toFixed(2) || 'N/A'}, Lower: ${fib.lower_7?.toFixed(2) || 'N/A'}<br>`;
+                        }
+                        result += '</div>';
+                    }
+                    return result;
+                },
+            },
+            legend: {
+                data: [
+                    "K线",
+                    "SuperTrend UP",
+                    "SuperTrend DN",
+                    "SSL Up",
+                    "SSL Down",
+                    "SSL2 Up",
+                    "SSL2 Down",
+                    "Fib Upper",
+                    "Fib Lower",
+                    "Range Filter",
+                ],
+                textStyle: {
+                    color: '#fff',
+                },
+            },
+            grid: {
+                left: "3%",
+                right: "4%",
+                bottom: "15%",
+            },
+            xAxis: {
+                type: "category",
+                data: data0.categoryData,
+                boundaryGap: false,
+                axisLine: { onZero: false },
+                splitLine: { show: false },
+                min: "dataMin",
+                max: "dataMax",
+                axisLabel: {
+                    color: '#999',
+                },
+            },
+            yAxis: {
+                scale: true,
+                splitArea: {
+                    show: false,  // 去掉背景区域
+                },
+                axisLabel: {
+                    color: '#999',
+                },
+                axisLine: {
+                    show: false,  // 隐藏Y轴轴线（白线）
+                },
+            },
+            dataZoom: [
+                {
+                    type: "inside",
+                    start: 50,
+                    end: 100,
+                },
+                {
+                    show: true,
+                    type: "slider",
+                    top: "85%",
+                    start: 50,
+                    end: 100,
+                    textStyle: {
+                        color: '#999',
+                    },
+                },
+            ],
+            series: [
+                {
+                    name: "K线",
+                    type: "candlestick",
+                    data: data0.values,
+                    itemStyle: {
+                        color: upColor,
+                        color0: downColor,
+                        borderColor: upBorderColor,
+                        borderColor0: downBorderColor,
+                    },
+                    // 去掉 markArea（绿色框）
+                    markPoint: {
+                        data: markPointData,
+                    },
+                },
+                {
+                    name: "SuperTrend UP",
+                    type: "line",
+                    data: superTrendUp,
+                    smooth: false,  // 使用折线连接
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#00ff00",
+                        width: 2,
+                        opacity: 0.5,  // 50%透明度
+                    },
+                },
+                {
+                    name: "SuperTrend DN",
+                    type: "line",
+                    data: superTrendDown,
+                    smooth: false,  // 使用折线连接
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#ff0000",
+                        width: 2,
+                        opacity: 0.5,  // 50%透明度
+                    },
+                },
+                {
+                    name: "SSL Up",
+                    type: "line",
+                    data: sslUp,
+                    smooth: false,  // 使用折线连接
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#00ffff",
+                        width: 1,
+                        opacity: 0.7,
+                    },
+                },
+                {
+                    name: "SSL Down",
+                    type: "line",
+                    data: sslDown,
+                    smooth: false,  // 使用折线连接
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#00cccc",  // 青色调颜色
+                        width: 1,
+                        opacity: 0.7,
+                    },
+                },
+                {
+                    name: "SSL2 Up",
+                    type: "line",
+                    data: ssl2Up,
+                    smooth: false,  // 使用折线连接
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#ffff00",
+                        width: 1,
+                        opacity: 0.5,
+                    },
+                },
+                {
+                    name: "SSL2 Down",
+                    type: "line",
+                    data: ssl2Down,
+                    smooth: false,  // 使用折线连接
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#ff8800",
+                        width: 1,
+                        opacity: 0.5,
+                    },
+                },
+                {
+                    name: "Fib Upper",
+                    type: "line",
+                    data: fibUpper,
+                    smooth: false,  // 使用折线连接
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#8888ff",
+                        width: 1,
+                        type: "dashed",
+                    },
+                },
+                {
+                    name: "Fib Lower",
+                    type: "line",
+                    data: fibLower,
+                    smooth: false,  // 使用折线连接
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#ff8888",
+                        width: 1,
+                        type: "dashed",
+                    },
+                },
+                {
+                    name: "Range Filter",
+                    type: "line",
+                    data: swimingFilt,
+                    smooth: false,  // 使用折线连接
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#ffffff",
+                        width: 2,
+                    },
+                },
+            ],
+        };
+
+        chart.setOption(option);
+
+        // 收益曲线图
+        const profitData = [];
+        const profitTimes = [];
+        
+        // 构建收益曲线数据
+        // 收益数据应该与开仓记录对应，每个开仓记录对应一个收益值
+        // 这里我们创建一个映射，将K线时间与最近的收益值对应
+        const profitMap = new Map();
+        for (let i = 0; i < openHistory.length; i++) {
+            const openTime = openHistory[i];
+            const closeTime = closeHistory[i] || (kLineData.length > 0 ? kLineData[kLineData.length - 1].openTime : null);
+            const profit = curTestMoneyHistory[i] || 0;
+            
+            // 找到开仓和平仓在K线数据中的索引
+            const openIdx = data0.categoryData.indexOf(openTime);
+            const closeIdx = closeTime ? data0.categoryData.indexOf(closeTime) : kLineData.length - 1;
+            
+            // 将这个收益值映射到开仓到平仓之间的所有K线
+            if (openIdx >= 0) {
+                const endIdx = closeIdx >= 0 ? closeIdx : kLineData.length - 1;
+                for (let j = openIdx; j <= endIdx && j < kLineData.length; j++) {
+                    profitMap.set(j, profit);
+                }
+            }
+        }
+        
+        // 填充收益数据 - 使用折线连接（确保数据连续，不使用阶梯效果）
+        let lastProfit = 0; // 记录上一个收益值，用于折线连接
+        for (let i = 0; i < kLineData.length; i++) {
+            profitTimes.push(kLineData[i].openTime);
+            // 如果这个K线有对应的收益值，使用它；否则使用上一个值（用于折线连接）
+            if (profitMap.has(i)) {
+                lastProfit = profitMap.get(i);
+            }
+            // 始终使用 lastProfit，确保折线连续
+            profitData.push(lastProfit);
+        }
+
+        const profitOption = {
+            title: {
+                text: "收益曲线",
+                left: 0,
+                textStyle: {
+                    color: '#fff',
+                },
+            },
+            tooltip: {
+                trigger: "axis",
+                axisPointer: {
+                    type: "cross",  // 显示十字线
+                    label: {
+                        backgroundColor: '#6a7985',  // 十字线标签背景色
+                    },
+                },
+                formatter: function (params) {
+                    let result = `<div><strong>${params[0].axisValue}</strong></div>`;
+                    params.forEach(function (item) {
+                        result += `<div>${item.seriesName}: <span style="color: ${item.value >= 0 ? '#00ff00' : '#ff0000'}">${item.value.toFixed(2)}</span></div>`;
+                    });
+                    return result;
+                },
+            },
+            grid: {
+                left: "3%",
+                right: "4%",
+                bottom: "15%",
+            },
+            xAxis: {
+                type: "category",
+                data: profitTimes,
+                boundaryGap: false,
+                axisLabel: {
+                    color: '#999',
+                },
+            },
+            yAxis: {
+                type: "value",
+                splitArea: {
+                    show: false,  // 去掉背景区域
+                },
+                axisLine: {
+                    show: false,  // 隐藏Y轴轴线（白线）
+                },
+                axisLabel: {
+                    color: '#999',
+                    formatter: function (value) {
+                        return value.toFixed(2);
+                    },
+                },
+                splitLine: {
+                    show: true,  // 显示Y轴分割线
+                    lineStyle: {
+                        color: 'rgba(255, 255, 255, 0.8)',  // 白色，透明度80%
+                    },
+                },
+            },
+            dataZoom: [
+                {
+                    type: "inside",
+                    start: 50,
+                    end: 100,
+                },
+                {
+                    show: true,
+                    type: "slider",
+                    top: "85%",
+                    start: 50,
+                    end: 100,
+                    textStyle: {
+                        color: '#999',
+                    },
+                },
+            ],
+            series: [
+                {
+                    name: "收益",
+                    type: "line",
+                    data: profitData,
+                    smooth: false,      // 不使用平滑曲线，使用折线连接
+                    step: false,        // 不使用阶梯线，使用折线连接
+                    connectNulls: false, // 不连接空值
+                    symbol: "none",     // 不显示数据点
+                    lineStyle: {
+                        color: "#00ff00",
+                        width: 2,
+                        type: "solid",  // 实线，不使用虚线
+                    },
+                    // 不使用 areaStyle，确保是纯折线
+                },
+            ],
+        };
+
+        profitChart.setOption(profitOption);
+
+        // 响应式调整
+        window.addEventListener('resize', function () {
+            chart.resize();
+            profitChart.resize();
+        });
+    </script>
+</body>
+</html>
+

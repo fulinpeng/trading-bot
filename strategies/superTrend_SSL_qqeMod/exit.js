@@ -61,51 +61,38 @@ async function updateSellstopLossPrice(_currentPrice, state, config) {
     
     state.isUpdateSellstopLossPrice = true;
     const { trend, orderPrice } = state.tradingInfo;
-    const { kLineData, superTrendArr, fibArr } = state;
+    const { kLineData, superTrendArr, sslArr, swimingFreeArr, fibArr } = state;
     const { firstProtectProfitRate } = config;
     
     const [kLine1, kLine2, kLine3] = getLastFromArr(kLineData, 3);
-    if (!kLine3) {
-        state.isUpdateSellstopLossPrice = false;
-        return;
-    }
-    
     const { open, close, openTime, closeTime, low, high } = kLine3;
+    // let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
     let [superTrend1, superTrend2, superTrend3] = getLastFromArr(superTrendArr, 3);
+    let [ssl1, ssl2, ssl3] = getLastFromArr(sslArr, 3);
+    let [swimingFree1, swimingFree2, swimingFree3] = getLastFromArr(swimingFreeArr, 3);
     let [fib1, fib2, fib3] = getLastFromArr(fibArr, 3);
-    
-    if (!superTrend3) {
-        state.isUpdateSellstopLossPrice = false;
-        return;
-    }
     
     let max = Math.max(superTrend3.up, superTrend3.dn);
     let min = Math.min(superTrend3.up, superTrend3.dn);
 
     if (trend === "up") {
         if (close >= max) {
-            if (state.downArrivedProfit === undefined) {
-                state.downArrivedProfit = 0;
-            }
             state.downArrivedProfit = state.downArrivedProfit + 1;
             if (state.downArrivedProfit == 1) {
                 state.sellstopLossPrice = orderPrice + Math.abs(_currentPrice - orderPrice) * firstProtectProfitRate;
             }
-            if (fib3 && high >= fib3.upper_7 && state.downArrivedProfit >= 1) {
+            if (high >= fib3.upper_7 && state.downArrivedProfit >= 1) {
                 state.sellstopLossPrice = orderPrice + Math.abs(high - orderPrice) * 0.9;
             }
         }
     }
     if (trend === "down") {
         if (close <= min) {
-            if (state.downArrivedProfit === undefined) {
-                state.downArrivedProfit = 0;
-            }
             state.downArrivedProfit = state.downArrivedProfit + 1;
             if (state.downArrivedProfit == 1) {
                 state.sellstopLossPrice = orderPrice - Math.abs(_currentPrice - orderPrice) * firstProtectProfitRate;
             }
-            if (fib3 && low <= fib3.lower_7 && state.downArrivedProfit >= 1) {
+            if (low <= fib3.lower_7 && state.downArrivedProfit >= 1) {
                 state.sellstopLossPrice = orderPrice - Math.abs(low - orderPrice) * 0.9;
             }
         }
@@ -116,11 +103,13 @@ async function updateSellstopLossPrice(_currentPrice, state, config) {
 
 /**
  * 判断固定止盈（做多）
+ * 源代码中直接访问全局变量 entryPrice, initialLongStopLoss, riskRewardRatio
  */
-function judgeFixedTakeProfitLong(kLineData, entryPrice, initialLongStopLoss, riskRewardRatio) {
+function judgeFixedTakeProfitLong(kLineData, state, config) {
+    const { entryPrice, initialLongStopLoss } = state;
+    const { riskRewardRatio } = config;
     if (!entryPrice || !initialLongStopLoss) return false;
     const [kLine3] = getLastFromArr(kLineData, 1);
-    if (!kLine3) return false;
     const { close, high } = kLine3;
     const takeProfit = entryPrice + (entryPrice - initialLongStopLoss) * riskRewardRatio;
     return close >= takeProfit || high >= takeProfit;
@@ -128,11 +117,13 @@ function judgeFixedTakeProfitLong(kLineData, entryPrice, initialLongStopLoss, ri
 
 /**
  * 判断固定止盈（做空）
+ * 源代码中直接访问全局变量 entryPrice, initialShortStopLoss, riskRewardRatio
  */
-function judgeFixedTakeProfitShort(kLineData, entryPrice, initialShortStopLoss, riskRewardRatio) {
+function judgeFixedTakeProfitShort(kLineData, state, config) {
+    const { entryPrice, initialShortStopLoss } = state;
+    const { riskRewardRatio } = config;
     if (!entryPrice || !initialShortStopLoss) return false;
     const [kLine3] = getLastFromArr(kLineData, 1);
-    if (!kLine3) return false;
     const { close, low } = kLine3;
     const takeProfit = entryPrice - (initialShortStopLoss - entryPrice) * riskRewardRatio;
     return close <= takeProfit || low <= takeProfit;
@@ -140,6 +131,7 @@ function judgeFixedTakeProfitShort(kLineData, entryPrice, initialShortStopLoss, 
 
 /**
  * 判断指标止盈（做多）
+ * 源代码中直接访问全局变量 enableSupertrendTakeProfit, enableFibonacciTakeProfit, priceTolerance
  */
 function judgeIndicatorTakeProfitLong(kLineData, superTrendArr, fibArr, config) {
     const [kLine3] = getLastFromArr(kLineData, 1);
@@ -149,6 +141,7 @@ function judgeIndicatorTakeProfitLong(kLineData, superTrendArr, fibArr, config) 
 
     const { close, high } = kLine3;
     let triggered = false;
+    // 源代码中直接访问全局变量，这里通过 config 参数传递
     const { enableSupertrendTakeProfit, enableFibonacciTakeProfit, priceTolerance } = config;
 
     // SuperTrend上轨止盈（带容差）
@@ -173,6 +166,7 @@ function judgeIndicatorTakeProfitLong(kLineData, superTrendArr, fibArr, config) 
 
 /**
  * 判断指标止盈（做空）
+ * 源代码中直接访问全局变量 enableSupertrendTakeProfit, enableFibonacciTakeProfit, priceTolerance
  */
 function judgeIndicatorTakeProfitShort(kLineData, superTrendArr, fibArr, config) {
     const [kLine3] = getLastFromArr(kLineData, 1);
@@ -182,6 +176,7 @@ function judgeIndicatorTakeProfitShort(kLineData, superTrendArr, fibArr, config)
 
     const { close, low } = kLine3;
     let triggered = false;
+    // 源代码中直接访问全局变量，这里通过 config 参数传递
     const { enableSupertrendTakeProfit, enableFibonacciTakeProfit, priceTolerance } = config;
 
     // SuperTrend下轨止盈（带容差）
@@ -226,8 +221,12 @@ function judgeStopLossShort(kLineData, effectiveStopLoss) {
 
 /**
  * 判断移动止损触发（做多）
+ * @param {Array} qqeModArr - QQE指标数组
+ * @param {Object} config - 配置对象（包含 enableTrailingStop 和 qqeTrailingThresholdLong）
  */
 function judgeTrailingStopLong(qqeModArr, config) {
+    // 源代码中直接使用全局变量 enableTrailingStop 和 qqeTrailingThresholdLong
+    // 在模块化代码中，通过 config 参数传递
     const { enableTrailingStop, qqeTrailingThresholdLong } = config;
     if (!enableTrailingStop) return false;
     if (!qqeModArr || qqeModArr.length === 0) return false;
@@ -238,8 +237,12 @@ function judgeTrailingStopLong(qqeModArr, config) {
 
 /**
  * 判断移动止损触发（做空）
+ * @param {Array} qqeModArr - QQE指标数组
+ * @param {Object} config - 配置对象（包含 enableTrailingStop 和 qqeTrailingThresholdShort）
  */
 function judgeTrailingStopShort(qqeModArr, config) {
+    // 源代码中直接使用全局变量 enableTrailingStop 和 qqeTrailingThresholdShort
+    // 在模块化代码中，通过 config 参数传递
     const { enableTrailingStop, qqeTrailingThresholdShort } = config;
     if (!enableTrailingStop) return false;
     if (!qqeModArr || qqeModArr.length === 0) return false;
@@ -283,10 +286,14 @@ function calculateTolerancePrice(targetPrice, priceTolerance, direction) {
 
 /**
  * 判断是否在冷却期内
+ * 源代码中直接访问全局变量 currentKLineCount
+ * @param {Number} lastBarCount - 上次触发指标止盈的K线计数
+ * @param {Object} state - 策略状态对象（用于访问 currentKLineCount）
  */
-function isInCoolingPeriod(lastBarCount, currentKLineCount) {
+function isInCoolingPeriod(lastBarCount, state) {
     if (lastBarCount === null) return false;
-    return (currentKLineCount - lastBarCount) < 5;
+    // 源代码中使用全局变量 currentKLineCount，这里通过 state 访问
+    return (state.currentKLineCount - lastBarCount) < 5;
 }
 
 /**
@@ -332,18 +339,15 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
         }
 
         // 2. 固定止盈判断 - 立即市价平仓
-        if (judgeFixedTakeProfitLong(kLineData, state.entryPrice, state.initialLongStopLoss, riskRewardRatio)) {
+        if (judgeFixedTakeProfitLong(kLineData, state, config)) {
             await closeUp();
             state.isJudgeProfitRunOrProfit = false;
             return;
         }
 
         // 3. 指标止盈判断（带计数和冷却期）- 使用市价单
-        const isInCooling = isInCoolingPeriod(state.lastLongIndicatorTPKLineCount, state.currentKLineCount);
+        const isInCooling = isInCoolingPeriod(state.lastLongIndicatorTPKLineCount, state);
         if (!isInCooling && judgeIndicatorTakeProfitLong(kLineData, superTrendArr, fibArr, config)) {
-            if (state.longIndicatorTPCount === undefined) {
-                state.longIndicatorTPCount = 0;
-            }
             state.longIndicatorTPCount++;
             state.lastLongIndicatorTPKLineCount = state.currentKLineCount;
 
@@ -354,7 +358,7 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
 
             // 首次指标止盈：部分平仓（市价单）
             if (state.longIndicatorTPCount === 1 && indicatorTPPartialRatio > 0) {
-                if (state.initialLongPositionSize === null || state.initialLongPositionSize === undefined) {
+                if (state.initialLongPositionSize === null) {
                     state.initialLongPositionSize = quantity;
                 }
                 const partialQty = state.initialLongPositionSize * indicatorTPPartialRatio;
@@ -391,18 +395,15 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
         }
 
         // 2. 固定止盈判断 - 立即市价平仓
-        if (judgeFixedTakeProfitShort(kLineData, state.entryPrice, state.initialShortStopLoss, riskRewardRatio)) {
+        if (judgeFixedTakeProfitShort(kLineData, state, config)) {
             await closeDown();
             state.isJudgeProfitRunOrProfit = false;
             return;
         }
 
         // 3. 指标止盈判断（带计数和冷却期）- 使用市价单
-        const isInCooling = isInCoolingPeriod(state.lastShortIndicatorTPKLineCount, state.currentKLineCount);
+        const isInCooling = isInCoolingPeriod(state.lastShortIndicatorTPKLineCount, state);
         if (!isInCooling && judgeIndicatorTakeProfitShort(kLineData, superTrendArr, fibArr, config)) {
-            if (state.shortIndicatorTPCount === undefined) {
-                state.shortIndicatorTPCount = 0;
-            }
             state.shortIndicatorTPCount++;
             state.lastShortIndicatorTPKLineCount = state.currentKLineCount;
 
@@ -413,7 +414,7 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
 
             // 首次指标止盈：部分平仓（市价单）
             if (state.shortIndicatorTPCount === 1 && indicatorTPPartialRatio > 0) {
-                if (state.initialShortPositionSize === null || state.initialShortPositionSize === undefined) {
+                if (state.initialShortPositionSize === null) {
                     state.initialShortPositionSize = quantity;
                 }
                 const partialQty = state.initialShortPositionSize * indicatorTPPartialRatio;
@@ -454,6 +455,9 @@ async function gridPointClearTrading(currentPrice, state, config, closeUp, close
 
     // 首次盈利保护（更新移动止损）
     await updateSellstopLossPrice(currentPrice, state, config);
+
+    // 首次亏损保护
+    // await judgeFirstLossProtect(currentPrice);
 
     state.onGridPoint = false;
 }

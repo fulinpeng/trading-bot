@@ -1,68 +1,86 @@
 // 常量配置
 const config = {
     'eth': {
+        // ========== 基础配置 ==========
         strategyType: "superTrend_ssl_qqemod",
-        SYMBOL: "ethUSDT".toLowerCase(), // 交易对
+        SYMBOL: "ethUSDT".toLowerCase(),     // 交易对
         base: "USDT",
-        logsFolder: "logs", // 日志配置
+        klineStage: "5m",                    // K线级别
+        
+        // ========== 资金管理 ==========
+        availableMoney: 100,                 // 可用的USDT数量
+        invariableBalance: true,             // 是否使用固定金额建仓，为true时，availableMoney为必填
+        priorityFee: 0.0007,                 // 手续费率
+        slippage: 0,                         // 滑点
+        double: 0,                           // 是否损失后加倍开仓
+        maxLossCount: 20,                    // 损失后加倍开仓，最大倍数
+        
+        // ========== 日志配置 ==========
+        logsFolder: "logs",
         errorsFolder: "errors",
-        availableMoney: 100, // 可用的USDT数量
-        invariableBalance: true, // 是否使用固定金额建仓，为true时，availableMoney为必填
-        klineStage: "5m", // k线级别
-
-        priorityFee: 0.0007, // 0.0007,
-        slippage: 0.0002, // 滑点
-        atrPeriod: 48,
-        multiplier: 12,
-        firstProtectProfitRate: 0.1, // 在updateSellstopLossPrice中使用
-        swimingFreePeriod: 50,
-        sslPeriod: 200,
-        sslRateUp: -0.0001,
-        sslRateDown: -0.0003,
-        double: 0, // 是否损失后加倍开仓
-        maxLossCount: 20, // 损失后加倍开仓，最大倍数
-
-        // ========== 新增参数 ==========
-        // 固定止盈止损
-        riskRewardRatio: 1.4,                // 固定止盈倍数（1:3）
-        priceTolerance: 0.0005,              // 价格容差
+        enableVisualizationLogs: true,       // 是否启用可视化日志收集
         
-        // 移动止损
-        enableTrailingStop: false,            // 启用移动止损
-        qqeTrailingThresholdLong: 30.0,      // 做多移动止损QQE阈值
-        qqeTrailingThresholdShort: -30.0,    // 做空移动止损QQE阈值
+        // ========== SuperTrend 指标配置 ==========
+        atrPeriod: 48,                       // SuperTrend ATR 周期，与 TradingView 一致
+        multiplier: 12,                      // SuperTrend ATR 乘数，与 TradingView 一致
         
-        // 指标止盈
-        enableSupertrendTakeProfit: true,   // 启用SuperTrend指标止盈
-        enableFibonacciTakeProfit: true,     // 启用Fibonacci指标止盈
-        indicatorTPCountThreshold: 2,         // 指标止盈计数阈值
-        indicatorTPPartialRatio: 0.6,        // 首次指标止盈平仓比例
+        // ========== SSL 指标配置 ==========
+        sslPeriod: 200,                      // SSL 周期
+        sslSlopeLookback: 21,                // SSL 斜率计算周期，与 TradingView 一致
+        sslRateUp: 0.00008,                  // SSL 斜率阈值 - 多头(up)，与 TradingView 一致
+        sslRateDown: -0.00006,               // SSL 斜率阈值 - 空头(down)，与 TradingView 一致
         
-        // SSL2相关
-        ssl2RateUp: 0.0001,                  // SSL2斜率阈值（多头）
-        ssl2RateDown: -0.0001,               // SSL2斜率阈值（空头）
-        ssl2SlopeLookback: 21,                // SSL2斜率计算周期
-        sslSlopeLookback: 21,                 // SSL斜率计算周期
+        // ========== SSL2 指标配置 ==========
+        ssl2SlopeLookback: 21,               // SSL2 斜率计算周期，与 TradingView 一致
+        ssl2RateUp: 0.0001,                  // SSL2 斜率阈值 - 多头(up)，与 TradingView 一致
+        ssl2RateDown: -0.0001,               // SSL2 斜率阈值 - 空头(down)，与 TradingView 一致
         
-        // QQE相关
-        qqe_entryThreshold1: 5.0,            // QQE开单阈值1
-        qqe_entryThreshold2: 15.0,           // QQE开单阈值2
+        // ========== QQE MOD 指标配置 ==========
+        // Primary QQE 参数
         qqe_rsiLengthPrimary: 6,             // Primary RSI周期
-        qqe_rsiSmoothingPrimary: 5,          // Primary RSI平滑周期
+        qqe_rsiSmoothingPrimary: 5,         // Primary RSI平滑周期
         qqe_qqeFactorPrimary: 3.0,           // Primary QQE因子
         qqe_thresholdPrimary: 3.0,           // Primary阈值
+        // Secondary QQE 参数
         qqe_rsiLengthSecondary: 6,           // Secondary RSI周期
         qqe_rsiSmoothingSecondary: 5,       // Secondary RSI平滑周期
         qqe_qqeFactorSecondary: 1.61,       // Secondary QQE因子
         qqe_thresholdSecondary: 3.0,         // Secondary阈值
+        // QQE 入场阈值
+        qqe_entryThreshold1: 5.0,            // QQE开单阈值1，与 TradingView 一致
+        qqe_entryThreshold2: 15.0,           // QQE开单阈值2，与 TradingView 一致
         
-        // ADX相关
-        adx_threshold_low: 20.0,             // ADX入场阈值下限
-        adx_threshold_high: 40.0,            // ADX入场阈值上限
-        adx_len: 12,                         // ADX周期
+        // ========== ADX 指标配置 ==========
+        adx_len: 12,                         // ADX周期，与 TradingView 一致
+        adx_threshold_low: 20.0,             // ADX入场阈值下限，与 TradingView 一致
+        adx_threshold_high: 40.0,            // ADX入场阈值上限，与 TradingView 一致
         
-        // 前高点/前低点
-        swingLength: 21,                     // 摆动长度
+        // ========== Fibonacci Bollinger Bands 配置 ==========
+        // 注意：fbbLength 和 fbb_mult 在 utils/fib.js 中硬编码为 200 和 3.0
+        // 如需修改，需要在 indicators.js 中传递参数
+        
+        // ========== Range Filter (SwimingFree) 配置 ==========
+        swimingFreePeriod: 60,               // Range Filter 周期
+        
+        // ========== Swing High/Low 配置 ==========
+        swingLength: 21,                     // 摆动长度，与 TradingView 一致
+        
+        // ========== 风险管理配置 ==========
+        // 固定止盈止损
+        riskRewardRatio: 1.4,                // 固定止盈倍数，与 TradingView 一致
+        priceTolerance: 0.0006,              // 价格容差，与 TradingView 一致
+        firstProtectProfitRate: 0.1,         // 首次保本止损比例（在updateSellstopLossPrice中使用）
+        
+        // 移动止损
+        enableTrailingStop: false,            // 启用移动止损
+        qqeTrailingThresholdLong: 30.0,      // 做多移动止损QQE阈值，与 TradingView 一致
+        qqeTrailingThresholdShort: -30.0,    // 做空移动止损QQE阈值，与 TradingView 一致
+        
+        // 指标止盈
+        enableSupertrendTakeProfit: true,    // 启用SuperTrend指标止盈，与 TradingView 一致
+        enableFibonacciTakeProfit: true,     // 启用Fibonacci指标止盈，与 TradingView 一致
+        indicatorTPCountThreshold: 2,        // 指标止盈计数阈值，与 TradingView 一致
+        indicatorTPPartialRatio: 0.6,        // 首次指标止盈平仓比例
     },
 };
 // [2, 4, 16, 48, 144]
