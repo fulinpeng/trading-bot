@@ -14,7 +14,6 @@ class LogCollector {
         this.enabled = config?.enableVisualizationLogs || false; // 默认关闭
         this.symbol = config?.SYMBOL || '';
         this.strategyType = config?.strategyType || '';
-        this.isUpOpen = true; // 默认，后续通过setIsUpOpen设置
         
         // 调试信息
         if (this.enabled) {
@@ -40,14 +39,6 @@ class LogCollector {
             adxArr: [],
             preHighLowArr: [],
         };
-    }
-    
-    /**
-     * 设置开多/开空状态
-     * @param {boolean} isUpOpen - 是否开多
-     */
-    setIsUpOpen(isUpOpen) {
-        this.isUpOpen = isUpOpen;
     }
 
     /**

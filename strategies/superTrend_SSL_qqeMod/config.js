@@ -6,6 +6,10 @@ const config = {
         SYMBOL: "ethUSDT".toLowerCase(),     // 交易对
         base: "USDT",
         klineStage: "5m",                    // K线级别
+        isUpOpen: true,                       // 是否允许开多
+        isDownOpen: true,                     // 是否允许开空
+        isTest: true,                         // 是否为测试环境
+        isTestLocal: true,                    // 是否为本地测试环境
         
         // ========== 资金管理 ==========
         availableMoney: 100,                 // 可用的USDT数量

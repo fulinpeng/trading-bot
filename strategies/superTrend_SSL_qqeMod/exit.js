@@ -17,8 +17,8 @@ async function judgeStopLoss(_currentPrice, state, config, closeUp, closeDown) {
     if (!state.hasOrder) return;
     
     state.isJudgeStopLoss = true;
-    const { trend, orderPrice } = state.tradingInfo;
-    const { superTrendArr, sellstopLossPrice } = state;
+    const { trend } = state.tradingInfo;
+    const { superTrendArr } = state;
     
     let [superTrend1, superTrend2, superTrend3] = getLastFromArr(superTrendArr, 3);
     if (!superTrend3) {
@@ -29,19 +29,14 @@ async function judgeStopLoss(_currentPrice, state, config, closeUp, closeDown) {
     let max = Math.max(superTrend3.up, superTrend3.dn);
     let min = Math.min(superTrend3.up, superTrend3.dn);
 
-    if (trend === "up" && (
-        _currentPrice <= min ||
-        (sellstopLossPrice && _currentPrice < sellstopLossPrice)
-    )) {
+    // 与Pine Script保持一致：只使用SuperTrend上下轨作为止损，不使用sellstopLossPrice
+    if (trend === "up" && _currentPrice <= min) {
         await closeUp();
         state.isJudgeStopLoss = false;
         return;
     }
 
-    if (trend === "down" && (
-        _currentPrice >= max ||
-        (sellstopLossPrice && _currentPrice > sellstopLossPrice)
-    )) {
+    if (trend === "down" && _currentPrice >= max) {
         await closeDown();
         state.isJudgeStopLoss = false;
         return;
@@ -321,14 +316,39 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
         return;
     }
 
+    // 记录初始仓位大小（如果还没有记录，在持仓的第一根K线记录）- 与Pine Script保持一致
+    if (trend === "up" && state.initialLongPositionSize === null) {
+        state.initialLongPositionSize = quantity;
+    }
+    if (trend === "down" && state.initialShortPositionSize === null) {
+        state.initialShortPositionSize = quantity;
+    }
+
     if (trend === "up") {
         // 计算当前止损位
         const currentStopLoss = Math.min(superTrend3.up, superTrend3.dn);
         let effectiveStopLoss = currentStopLoss;
 
-        // 移动止损逻辑
-        if (judgeTrailingStopLong(qqeModArr, config) || state.longTrailActive) {
-            effectiveStopLoss = updateTrailingStopLong(state, currentStopLoss, preHighLow3?.preLow);
+        // 移动止损逻辑（与Pine Script保持一致）
+        const { enableTrailingStop, qqeTrailingThresholdLong } = config;
+        if (enableTrailingStop && state.entryPrice !== null) {
+            // 触发条件：QQE柱子值 > 阈值时启动移动止损
+            const [qqeMod3] = getLastFromArr(qqeModArr, 1);
+            const trigger = qqeMod3 && qqeMod3.current && qqeMod3.current.qqeModBar > qqeTrailingThresholdLong;
+            
+            // 第一次触发：满足条件时移动一次止损位置到 max(原止损价, preLow)
+            if (!state.longTrailActive && trigger) {
+                state.longTrailActive = true;
+                state.longTrailStop = Math.max(currentStopLoss, preHighLow3?.preLow || currentStopLoss);
+                effectiveStopLoss = state.longTrailStop;
+            }
+            // 已经启动后，使用移动后的止损价
+            else if (state.longTrailActive) {
+                effectiveStopLoss = state.longTrailStop;
+            }
+            else {
+                effectiveStopLoss = currentStopLoss;
+            }
         }
 
         // 1. 止损判断 - 立即市价平仓
@@ -358,18 +378,16 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
 
             // 首次指标止盈：部分平仓（市价单）
             if (state.longIndicatorTPCount === 1 && indicatorTPPartialRatio > 0) {
-                if (state.initialLongPositionSize === null) {
-                    state.initialLongPositionSize = quantity;
-                }
-                const partialQty = state.initialLongPositionSize * indicatorTPPartialRatio;
+                // initialLongPositionSize 已在函数开始时记录（与Pine Script一致）
+                // Pine Script使用 math.abs(initialLongPositionSize)，这里也使用绝对值保持一致
+                const partialQty = Math.abs(state.initialLongPositionSize) * indicatorTPPartialRatio;
                 await closeOrder("SELL", partialQty, () => {
                     state.tradingInfo.quantity -= partialQty;
                 });
                 // 部分平仓后不重置hasOrder，继续持有剩余仓位
             }
-
-            // 计数达到阈值：全部平仓（市价单）
-            if (state.longIndicatorTPCount >= indicatorTPCountThreshold) {
+            // 指标止盈计数大于等于阈值（且不是第一次），立即全部平仓 - 与Pine Script保持一致
+            else if (state.longIndicatorTPCount >= indicatorTPCountThreshold) {
                 await closeUp();
                 state.isJudgeProfitRunOrProfit = false;
                 return;
@@ -382,9 +400,26 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
         const currentStopLoss = Math.max(superTrend3.up, superTrend3.dn);
         let effectiveStopLoss = currentStopLoss;
 
-        // 移动止损逻辑
-        if (judgeTrailingStopShort(qqeModArr, config) || state.shortTrailActive) {
-            effectiveStopLoss = updateTrailingStopShort(state, currentStopLoss, preHighLow3?.preHigh);
+        // 移动止损逻辑（与Pine Script保持一致）
+        const { enableTrailingStop, qqeTrailingThresholdShort } = config;
+        if (enableTrailingStop && state.entryPrice !== null) {
+            // 触发条件：QQE柱子值 < 阈值时启动移动止损
+            const [qqeMod3] = getLastFromArr(qqeModArr, 1);
+            const trigger = qqeMod3 && qqeMod3.current && qqeMod3.current.qqeModBar < qqeTrailingThresholdShort;
+            
+            // 第一次触发：满足条件时移动一次止损位置到 min(原止损价, preHigh)
+            if (!state.shortTrailActive && trigger) {
+                state.shortTrailActive = true;
+                state.shortTrailStop = Math.min(currentStopLoss, preHighLow3?.preHigh || currentStopLoss);
+                effectiveStopLoss = state.shortTrailStop;
+            }
+            // 已经启动后，使用移动后的止损价
+            else if (state.shortTrailActive) {
+                effectiveStopLoss = state.shortTrailStop;
+            }
+            else {
+                effectiveStopLoss = currentStopLoss;
+            }
         }
 
         // 1. 止损判断 - 立即市价平仓
@@ -414,18 +449,15 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
 
             // 首次指标止盈：部分平仓（市价单）
             if (state.shortIndicatorTPCount === 1 && indicatorTPPartialRatio > 0) {
-                if (state.initialShortPositionSize === null) {
-                    state.initialShortPositionSize = quantity;
-                }
+                // initialShortPositionSize 已在函数开始时记录（与Pine Script一致）
                 const partialQty = state.initialShortPositionSize * indicatorTPPartialRatio;
                 await closeOrder("BUY", partialQty, () => {
                     state.tradingInfo.quantity -= partialQty;
                 });
                 // 部分平仓后不重置hasOrder，继续持有剩余仓位
             }
-
-            // 计数达到阈值：全部平仓（市价单）
-            if (state.shortIndicatorTPCount >= indicatorTPCountThreshold) {
+            // 指标止盈计数大于等于阈值（且不是第一次），立即全部平仓 - 与Pine Script保持一致
+            else if (state.shortIndicatorTPCount >= indicatorTPCountThreshold) {
                 await closeDown();
                 state.isJudgeProfitRunOrProfit = false;
                 return;
@@ -454,7 +486,8 @@ async function gridPointClearTrading(currentPrice, state, config, closeUp, close
     await judgeProfitRunOrProfit(currentPrice, state, config, closeUp, closeDown, closeOrder);
 
     // 首次盈利保护（更新移动止损）
-    await updateSellstopLossPrice(currentPrice, state, config);
+    // 注释：Pine Script中没有此逻辑，保持与Pine Script一致
+    // await updateSellstopLossPrice(currentPrice, state, config);
 
     // 首次亏损保护
     // await judgeFirstLossProtect(currentPrice);

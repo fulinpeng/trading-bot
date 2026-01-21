@@ -3,7 +3,7 @@
  * 负责判断交易方向和计算交易信号
  */
 
-const { getLastFromArr } = require("../../utils/functions.js");
+const { getLastFromArr, getDate } = require("../../utils/functions.js");
 
 /**
  * 通过指标判断交易方向
@@ -12,7 +12,7 @@ const { getLastFromArr } = require("../../utils/functions.js");
  * @param {Object} config - 配置对象
  */
 function judgeTradingDirection(state, config) {
-    const { kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, adxArr, fibArr, isUpOpen, isDownOpen } = state;
+    const { kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, adxArr, fibArr } = state;
     const {
         qqe_entryThreshold1,
         qqe_entryThreshold2,
@@ -24,27 +24,96 @@ function judgeTradingDirection(state, config) {
         ssl2SlopeLookback,
         adx_threshold_low,
         adx_threshold_high,
+        isUpOpen,
+        isDownOpen,
+        isTestLocal,
     } = config;
 
     // 判断做多条件
     const section3Up1 = judgeSSL1LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Up2 = judgeSSL2LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Up3 = judgeADXLongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, config);
-    const section3Up = section3Up1 || section3Up2 || section3Up3;
+    const section3Up = section3Up1 || section3Up2 // || section3Up3;
 
     // 判断做空条件
     const section3Down1 = judgeSSL1ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Down2 = judgeSSL2ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Down3 = judgeADXShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, config);
-    const section3Down = section3Down1 || section3Down2 || section3Down3;
+    const section3Down = section3Down1 || section3Down2 // || section3Down3;
+
+        
+    // 打印所有指标值
+    const [superTrend3] = getLastFromArr(state.superTrendArr, 1);
+    const [ssl3] = getLastFromArr(state.sslArr, 1);
+    const [ssl23] = getLastFromArr(state.ssl2Arr, 1);
+    const [qqeMod3] = getLastFromArr(state.qqeModArr, 1);
+    const [adx3] = getLastFromArr(state.adxArr, 1);
+    const [fib3] = getLastFromArr(state.fibArr, 1);
+    const [preHighLow3] = getLastFromArr(state.preHighLowArr, 1);
+    const [swimingFree3] = getLastFromArr(state.swimingFreeArr, 1);
+    const [kLine3] = getLastFromArr(state.kLineData, 1);
+    const kLineDate = kLine3 ? (isTestLocal ? kLine3.openTime : getDate(kLine3.openTime)) : 'N/A';
 
     if (isUpOpen && section3Up) {
         state.readyTradingDirection = "up";
+        if (!state.hasOrder) {
+            console.log(`@@@[${kLineDate}]多完成 - 所有指标值:`,{
+                section3Up1,
+                section3Up2,
+                section3Up3
+            },{
+                currentPrice: state.currentPrice,
+                kLine: kLine3 ? {
+                    open: kLine3.open,
+                    close: kLine3.close,
+                    high: kLine3.high,
+                    low: kLine3.low,
+                } : null,
+                superTrend: superTrend3,
+                ssl: ssl3,
+                ssl2: ssl23,
+                qqeMod: qqeMod3,
+                adx: adx3,
+                fib: [fib3.lower_7, fib3.upper_7],
+                preHighLow: preHighLow3,
+                swimingFree: swimingFree3,
+                entryType: state.entryType,
+                stopLoss: state.initialShortStopLoss,
+                takeProfit: state.shortTakeProfit,
+            });
+        }
         return;
     }
 
     if (isDownOpen && section3Down) {
         state.readyTradingDirection = "down";
+
+        if (!state.hasOrder) {
+            console.log(`@@@[${kLineDate}]开空完成 - 所有指标值:`, {
+                section3Down1,
+                section3Down2,
+                section3Down3
+            }, {
+                currentPrice: state.currentPrice,
+                kLine: kLine3 ? {
+                    open: kLine3.open,
+                    close: kLine3.close,
+                    high: kLine3.high,
+                    low: kLine3.low,
+                } : null,
+                superTrend: superTrend3,
+                ssl: ssl3,
+                ssl2: ssl23,
+                qqeMod: qqeMod3,
+                adx: adx3,
+                fib: [fib3.lower_7, fib3.upper_7],
+                preHighLow: preHighLow3,
+                swimingFree: swimingFree3,
+                entryType: state.entryType,
+                stopLoss: state.initialShortStopLoss,
+                takeProfit: state.shortTakeProfit,
+            });
+        }
         return;
     }
 
@@ -80,30 +149,29 @@ function calculateTradingSignal(state, config) {
     const section3Down2 = judgeSSL2ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Down3 = judgeADXShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, config);
 
-    const signalUpTerm0 = readyTradingDirection === "up" && close > open;
-    if (signalUpTerm0) {
+    // 与Pine Script保持一致：只要满足section3Up/section3Down就开仓，不需要close > open或close < open的条件
+    if (readyTradingDirection === "up") {
         let _entryType = 'SSL1';
         if (section3Up3) _entryType = 'ADX';
         else if (section3Up2) _entryType = 'SSL2';
         
         return {
             trend: "up",
-            stopLoss: min, // 止损（SuperTrend下轨）
-            stopProfit: close + (close - min) * riskRewardRatio, // 固定止盈
+            stopLoss: min, // 止损（SuperTrend下轨），开仓时保存为initialLongStopLoss
+            stopProfit: close + (close - min) * riskRewardRatio, // 固定止盈，使用当前close（即entryPrice）和min（即initialLongStopLoss）
             entryType: _entryType,
         };
     }
 
-    const signalDownTerm0 = readyTradingDirection === "down" && close < open;
-    if (signalDownTerm0) {
+    if (readyTradingDirection === "down") {
         let _entryType = 'SSL1';
         if (section3Down3) _entryType = 'ADX';
         else if (section3Down2) _entryType = 'SSL2';
         
         return {
             trend: "down",
-            stopLoss: max, // 止损（SuperTrend上轨）
-            stopProfit: close - (max - close) * riskRewardRatio, // 固定止盈
+            stopLoss: max, // 止损（SuperTrend上轨），开仓时保存为initialShortStopLoss
+            stopProfit: close - (max - close) * riskRewardRatio, // 固定止盈，使用当前close（即entryPrice）和max（即initialShortStopLoss）
             entryType: _entryType,
         };
     }
@@ -160,37 +228,91 @@ function judgeQQEShortCondition(qqeModArr, threshold) {
 }
 
 /**
- * 计算SSL斜率
+ * 计算SSL斜率（做多）
+ * 与Pine Script保持一致：使用sslUp和sslDown计算斜率（等价于smaHigh和smaLow）
+ * 做多条件：slopeValue > sslRateUp
  */
-function calculateSSLSlope(sslArr, lookback, sslRate) {
+function calculateSSLSlopeUp(sslArr, lookback, sslRateUp) {
     if (!sslArr || sslArr.length < lookback + 1) return false;
     const [sslCurrent] = getLastFromArr(sslArr, 1);
     const sslLookback = sslArr[sslArr.length - 1 - lookback];
     if (!sslCurrent || !sslLookback) return false;
 
-    const maxSSL = Math.max(sslCurrent.sslUp, sslCurrent.sslDown);
-    const maxSSLLookback = Math.max(sslLookback.sslUp, sslLookback.sslDown);
+    // Pine Script: math.max(smaHigh[sslSlopeLookback], smaLow[sslSlopeLookback])
+    // 注意：sslUp和sslDown是smaHigh和smaLow的排列组合，所以math.max(sslUp, sslDown)等价于math.max(smaHigh, smaLow)
+    if (!sslLookback.sslUp || !sslLookback.sslDown) return false;
+    const wma2 = Math.max(sslLookback.sslUp, sslLookback.sslDown);
     
-    if (maxSSLLookback === 0) return false;
-    const slopeValue = (maxSSL - maxSSLLookback) / maxSSLLookback;
-    return slopeValue > sslRate;
+    // Pine Script: (maxSSL - section3Up1_wma2) / section3Up1_wma2
+    const maxSSL = Math.max(sslCurrent.sslUp, sslCurrent.sslDown);
+    const slopeValue = (maxSSL - wma2) / wma2;
+    return slopeValue > sslRateUp;
 }
 
 /**
- * 计算SSL2斜率
+ * 计算SSL斜率（做空）
+ * 与Pine Script保持一致：使用sslUp和sslDown计算斜率（等价于smaHigh和smaLow）
+ * 做空条件：slopeValue < sslRateDown
  */
-function calculateSSL2Slope(ssl2Arr, lookback, ssl2Rate) {
+function calculateSSLSlopeDown(sslArr, lookback, sslRateDown) {
+    if (!sslArr || sslArr.length < lookback + 1) return false;
+    const [sslCurrent] = getLastFromArr(sslArr, 1);
+    const sslLookback = sslArr[sslArr.length - 1 - lookback];
+    if (!sslCurrent || !sslLookback) return false;
+
+    // Pine Script: math.max(smaHigh[sslSlopeLookback], smaLow[sslSlopeLookback])
+    // 注意：sslUp和sslDown是smaHigh和smaLow的排列组合，所以math.max(sslUp, sslDown)等价于math.max(smaHigh, smaLow)
+    if (!sslLookback.sslUp || !sslLookback.sslDown) return false;
+    const wma2 = Math.max(sslLookback.sslUp, sslLookback.sslDown);
+    
+    // Pine Script: (maxSSL - section3Down1_wma2) / section3Down1_wma2
+    const maxSSL = Math.max(sslCurrent.sslUp, sslCurrent.sslDown);
+    const slopeValue = (maxSSL - wma2) / wma2;
+    return slopeValue < sslRateDown;
+}
+
+/**
+ * 计算SSL2斜率（做多）
+ * 与Pine Script保持一致：使用sslUp2和sslDown2计算斜率（等价于smaHigh2和smaLow2）
+ * 做多条件：slopeValue > ssl2RateUp
+ */
+function calculateSSL2SlopeUp(ssl2Arr, lookback, ssl2RateUp) {
     if (!ssl2Arr || ssl2Arr.length < lookback + 1) return false;
     const [ssl2Current] = getLastFromArr(ssl2Arr, 1);
     const ssl2Lookback = ssl2Arr[ssl2Arr.length - 1 - lookback];
     if (!ssl2Current || !ssl2Lookback) return false;
 
-    const maxSSL2 = Math.max(ssl2Current.sslUp2, ssl2Current.sslDown2);
-    const maxSSL2Lookback = Math.max(ssl2Lookback.sslUp2, ssl2Lookback.sslDown2);
+    // Pine Script: math.max(smaHigh2[ssl2SlopeLookback], smaLow2[ssl2SlopeLookback])
+    // 注意：sslUp2和sslDown2是smaHigh2和smaLow2的排列组合，所以math.max(sslUp2, sslDown2)等价于math.max(smaHigh2, smaLow2)
+    if (!ssl2Lookback.sslUp2 || !ssl2Lookback.sslDown2) return false;
+    const wma2 = Math.max(ssl2Lookback.sslUp2, ssl2Lookback.sslDown2);
     
-    if (maxSSL2Lookback === 0) return false;
-    const slopeValue = (maxSSL2 - maxSSL2Lookback) / maxSSL2Lookback;
-    return slopeValue > ssl2Rate;
+    // Pine Script: (maxSSL2 - section3Up2_wma2) / section3Up2_wma2
+    const maxSSL2 = Math.max(ssl2Current.sslUp2, ssl2Current.sslDown2);
+    const slopeValue = (maxSSL2 - wma2) / wma2;
+    return slopeValue > ssl2RateUp;
+}
+
+/**
+ * 计算SSL2斜率（做空）
+ * 与Pine Script保持一致：使用sslUp2和sslDown2计算斜率（等价于smaHigh2和smaLow2）
+ * 做空条件：slopeValue < ssl2RateDown
+ */
+function calculateSSL2SlopeDown(ssl2Arr, lookback, ssl2RateDown) {
+    if (!ssl2Arr || ssl2Arr.length < lookback + 1) return false;
+    const [ssl2Current] = getLastFromArr(ssl2Arr, 1);
+    const ssl2Lookback = ssl2Arr[ssl2Arr.length - 1 - lookback];
+    if (!ssl2Current || !ssl2Lookback) return false;
+
+    // Pine Script: math.max(smaHigh2[ssl2SlopeLookback], smaLow2[ssl2SlopeLookback])
+    // 注意：sslUp2和sslDown2是smaHigh2和smaLow2的排列组合，所以math.max(sslUp2, sslDown2)等价于math.max(smaHigh2, smaLow2)
+    if (!ssl2Lookback.sslUp2 || !ssl2Lookback.sslDown2) return false;
+    const wma2 = Math.max(ssl2Lookback.sslUp2, ssl2Lookback.sslDown2);
+    
+    // Pine Script: (maxSSL2 - section3Down2_wma2) / section3Down2_wma2
+    const maxSSL2 = Math.max(ssl2Current.sslUp2, ssl2Current.sslDown2);
+    const slopeValue = (maxSSL2 - wma2) / wma2;
+    return slopeValue < ssl2RateDown;
 }
 
 /**
@@ -217,7 +339,7 @@ function judgeSSL1LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr
     const condition3 = judgeQQELongCondition(qqeModArr, config.qqe_entryThreshold1);
     const condition4 = close > maxSSL;
     const condition5 = minSSL > minSSL2 && maxSSL > maxSSL2 && Math.min(low, low1) <= maxSSL;
-    const condition6 = calculateSSLSlope(sslArr, config.sslSlopeLookback, config.sslRateUp);
+    const condition6 = calculateSSLSlopeUp(sslArr, config.sslSlopeLookback, config.sslRateUp);
 
     return condition1 && condition2 && condition3 && condition4 && condition5 && condition6;
 }
@@ -246,7 +368,7 @@ function judgeSSL2LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr
     const condition3 = judgeQQELongCondition(qqeModArr, config.qqe_entryThreshold2);
     const condition4 = close > maxSSL2;
     const condition5 = minSSL > minSSL2 && maxSSL > maxSSL2 && Math.min(low, low1) <= maxSSL2;
-    const condition6 = calculateSSL2Slope(ssl2Arr, config.ssl2SlopeLookback, config.ssl2RateUp);
+    const condition6 = calculateSSL2SlopeUp(ssl2Arr, config.ssl2SlopeLookback, config.ssl2RateUp);
 
     return condition1 && condition2 && condition3 && condition4 && condition5 && condition6;
 }
@@ -321,7 +443,7 @@ function judgeSSL1ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModAr
     const condition3 = judgeQQEShortCondition(qqeModArr, config.qqe_entryThreshold1);
     const condition4 = close < minSSL;
     const condition5 = minSSL < minSSL2 && maxSSL < maxSSL2 && Math.max(high, high1) >= minSSL;
-    const condition6 = calculateSSLSlope(sslArr, config.sslSlopeLookback, config.sslRateDown);
+    const condition6 = calculateSSLSlopeDown(sslArr, config.sslSlopeLookback, config.sslRateDown);
 
     return condition1 && condition2 && condition3 && condition4 && condition5 && condition6;
 }
@@ -350,7 +472,7 @@ function judgeSSL2ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModAr
     const condition3 = judgeQQEShortCondition(qqeModArr, config.qqe_entryThreshold2);
     const condition4 = close < minSSL2;
     const condition5 = minSSL < minSSL2 && maxSSL < maxSSL2 && Math.max(high, high1) >= minSSL2;
-    const condition6 = calculateSSL2Slope(ssl2Arr, config.ssl2SlopeLookback, config.ssl2RateDown);
+    const condition6 = calculateSSL2SlopeDown(ssl2Arr, config.ssl2SlopeLookback, config.ssl2RateDown);
 
     return condition1 && condition2 && condition3 && condition4 && condition5 && condition6;
 }

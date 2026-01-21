@@ -111,7 +111,7 @@ function calculateLatestSSL(data, length = 200) {
     return {
         hlv: hlv || 0,  // 如果 hlv 仍为 null，返回 0
         sslUp,         // 上轨
-        sslDown        // 下轨
+        sslDown,       // 下轨
     };
 }
 
