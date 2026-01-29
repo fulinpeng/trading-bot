@@ -12,7 +12,7 @@ const { getLastFromArr, getDate } = require("../../utils/functions.js");
  * @param {Object} config - 配置对象
  */
 function judgeTradingDirection(state, config) {
-    const { kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, adxArr, fibArr } = state;
+    const { kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, adxArr, fibArr, ssl55Arr, squeezeBoxArr } = state;
     const {
         qqe_entryThreshold1,
         qqe_entryThreshold2,
@@ -27,19 +27,22 @@ function judgeTradingDirection(state, config) {
         isUpOpen,
         isDownOpen,
         isTestLocal,
+        enableSSL55Squeeze,
     } = config;
 
     // 判断做多条件
     const section3Up1 = judgeSSL1LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Up2 = judgeSSL2LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Up3 = judgeADXLongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, config);
-    const section3Up = section3Up1 || section3Up2 || section3Up3;
+    const section3Up4 = enableSSL55Squeeze ? judgeSSL55SqueezeLongEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) : false;
+    const section3Up = section3Up4 // section3Up1 || section3Up2 || section3Up3 || section3Up4;
 
     // 判断做空条件
     const section3Down1 = judgeSSL1ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Down2 = judgeSSL2ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Down3 = judgeADXShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, config);
-    const section3Down = section3Down1 || section3Down2 || section3Down3;
+    const section3Down4 = enableSSL55Squeeze ? judgeSSL55SqueezeShortEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) : false;
+    const section3Down = section3Down4 // section3Down1 || section3Down2 || section3Down3 || section3Down4;
 
         
     // 打印所有指标值
@@ -74,8 +77,8 @@ function judgeTradingDirection(state, config) {
  * @returns {Object} 交易信号 { trend, stopLoss, stopProfit, entryType }
  */
 function calculateTradingSignal(state, config) {
-    const { kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, adxArr, fibArr, readyTradingDirection } = state;
-    const { riskRewardRatio } = config;
+    const { kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, adxArr, fibArr, readyTradingDirection, ssl55Arr, squeezeBoxArr } = state;
+    const { riskRewardRatio, enableSSL55Squeeze } = config;
     
     const [kLine3] = getLastFromArr(kLineData, 1);
     const { open, close } = kLine3;
@@ -92,14 +95,17 @@ function calculateTradingSignal(state, config) {
     const section3Up1 = judgeSSL1LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Up2 = judgeSSL2LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Up3 = judgeADXLongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, config);
+    const section3Up4 = enableSSL55Squeeze ? judgeSSL55SqueezeLongEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) : false;
     const section3Down1 = judgeSSL1ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Down2 = judgeSSL2ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Down3 = judgeADXShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, config);
+    const section3Down4 = enableSSL55Squeeze ? judgeSSL55SqueezeShortEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) : false;
 
     // 与Pine Script保持一致：只要满足section3Up/section3Down就开仓，不需要close > open或close < open的条件
     if (readyTradingDirection === "up") {
         let _entryType = 'SSL1';
-        if (section3Up3) _entryType = 'ADX';
+        if (section3Up4) _entryType = 'SSL55_SQUEEZE';
+        else if (section3Up3) _entryType = 'ADX';
         else if (section3Up2) _entryType = 'SSL2';
         
         return {
@@ -112,7 +118,8 @@ function calculateTradingSignal(state, config) {
 
     if (readyTradingDirection === "down") {
         let _entryType = 'SSL1';
-        if (section3Down3) _entryType = 'ADX';
+        if (section3Down4) _entryType = 'SSL55_SQUEEZE';
+        else if (section3Down3) _entryType = 'ADX';
         else if (section3Down2) _entryType = 'SSL2';
         
         return {
@@ -468,6 +475,84 @@ function judgeADXShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, f
     }
 
     return condition1 && condition2 && condition3 && condition4 && condition5 && condition6 && condition7;
+}
+
+/**
+ * 判断SSL55+Squeeze入场条件（做多）
+ * Pine Script: section3Up4 = enableSSL55Squeeze and ssl55_squeeze_long_signal and trend == 1 and close > minSSL2
+ * 条件：close > SSL55 and ta.crossover(close, BOX_bl) and trend == 1 and close > minSSL2
+ */
+function judgeSSL55SqueezeLongEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) {
+    const [kLine3] = getLastFromArr(kLineData, 1);
+    const [superTrend3] = getLastFromArr(superTrendArr, 1);
+    const [ssl23] = getLastFromArr(ssl2Arr, 1);
+    const [ssl553] = getLastFromArr(ssl55Arr, 1);
+    const [squeezeBox3] = getLastFromArr(squeezeBoxArr, 1);
+    const [squeezeBox2] = getLastFromArr(squeezeBoxArr, 2);
+    
+    if (!superTrend3 || !ssl23 || !ssl553 || !squeezeBox3 || !kLine3) return false;
+    
+    const { close } = kLine3;
+    const { ssl55 } = ssl553;
+    const { bl: boxBl } = squeezeBox3;
+    const { bl: boxBlPrev } = squeezeBox2 || { bl: null };
+    
+    const minSSL2 = Math.min(ssl23.sslUp2, ssl23.sslDown2);
+    
+    // 条件1: trend == 1
+    const condition1 = superTrend3.trend == 1;
+    
+    // 条件2: close > minSSL2
+    const condition2 = close > minSSL2;
+    
+    // 条件3: close > SSL55
+    const condition3 = close > ssl55;
+    
+    // 条件4: ta.crossover(close, BOX_bl) - 当前close上穿BOX_bl，且上一根close <= BOX_bl
+    const condition4 = boxBlPrev !== null && boxBl !== null 
+        ? (close > boxBl && kLineData.length >= 2 && kLineData[kLineData.length - 2].close <= boxBlPrev)
+        : (close > boxBl);
+    
+    return condition1 && condition2 && condition3 && condition4;
+}
+
+/**
+ * 判断SSL55+Squeeze入场条件（做空）
+ * Pine Script: section3Down4 = enableSSL55Squeeze and ssl55_squeeze_short_signal and trend == -1 and close < maxSSL2
+ * 条件：close < SSL55 and ta.crossunder(close, BOX_bh) and trend == -1 and close < maxSSL2
+ */
+function judgeSSL55SqueezeShortEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) {
+    const [kLine3] = getLastFromArr(kLineData, 1);
+    const [superTrend3] = getLastFromArr(superTrendArr, 1);
+    const [ssl23] = getLastFromArr(ssl2Arr, 1);
+    const [ssl553] = getLastFromArr(ssl55Arr, 1);
+    const [squeezeBox3] = getLastFromArr(squeezeBoxArr, 1);
+    const [squeezeBox2] = getLastFromArr(squeezeBoxArr, 2);
+    
+    if (!superTrend3 || !ssl23 || !ssl553 || !squeezeBox3 || !kLine3) return false;
+    
+    const { close } = kLine3;
+    const { ssl55 } = ssl553;
+    const { bh: boxBh } = squeezeBox3;
+    const { bh: boxBhPrev } = squeezeBox2 || { bh: null };
+    
+    const maxSSL2 = Math.max(ssl23.sslUp2, ssl23.sslDown2);
+    
+    // 条件1: trend == -1
+    const condition1 = superTrend3.trend == -1;
+    
+    // 条件2: close < maxSSL2
+    const condition2 = close < maxSSL2;
+    
+    // 条件3: close < SSL55
+    const condition3 = close < ssl55;
+    
+    // 条件4: ta.crossunder(close, BOX_bh) - 当前close下穿BOX_bh，且上一根close >= BOX_bh
+    const condition4 = boxBhPrev !== null && boxBh !== null
+        ? (close < boxBh && kLineData.length >= 2 && kLineData[kLineData.length - 2].close >= boxBhPrev)
+        : (close < boxBh);
+    
+    return condition1 && condition2 && condition3 && condition4;
 }
 
 module.exports = {

@@ -83,6 +83,8 @@ function reloadData() {
                 qqeModArr: logData.qqeModArr || [],
                 adxArr: logData.adxArr || [],
                 preHighLowArr: logData.preHighLowArr || [],
+                ssl55Arr: logData.ssl55Arr || [],
+                squeezeBoxArr: logData.squeezeBoxArr || [],
             };
             console.log(`可视化日志数据加载成功: K线数据 ${kLineData.length} 根, 开仓 ${openHistory.length} 次, 指标数组长度 ${indicators.superTrendArr.length}`);
         } else {
@@ -104,6 +106,8 @@ function reloadData() {
                 qqeModArr: [],
                 adxArr: [],
                 preHighLowArr: [],
+                ssl55Arr: [],
+                squeezeBoxArr: [],
             };
         }
     } catch (error) {

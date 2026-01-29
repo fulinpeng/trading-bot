@@ -39,6 +39,8 @@ class LogCollector {
             qqeModArr: [],
             adxArr: [],
             preHighLowArr: [],
+            ssl55Arr: [],
+            squeezeBoxArr: [],
         };
     }
 
@@ -70,6 +72,10 @@ class LogCollector {
             ? state.adxArr[state.adxArr.length - 1] : null;
         const lastPreHighLow = state.preHighLowArr && state.preHighLowArr.length > 0 
             ? state.preHighLowArr[state.preHighLowArr.length - 1] : null;
+        const lastSsl55 = state.ssl55Arr && state.ssl55Arr.length > 0 
+            ? state.ssl55Arr[state.ssl55Arr.length - 1] : null;
+        const lastSqueezeBox = state.squeezeBoxArr && state.squeezeBoxArr.length > 0 
+            ? state.squeezeBoxArr[state.squeezeBoxArr.length - 1] : null;
         
         // 追加到数组（保持历史记录，确保K线数据和指标数据一一对应）
         this.data.kLineData.push(lastKLine);
@@ -81,6 +87,8 @@ class LogCollector {
         this.data.qqeModArr.push(lastQqeMod);
         this.data.adxArr.push(lastAdx);
         this.data.preHighLowArr.push(lastPreHighLow);
+        this.data.ssl55Arr.push(lastSsl55);
+        this.data.squeezeBoxArr.push(lastSqueezeBox);
     }
 
     /**
@@ -166,6 +174,8 @@ class LogCollector {
         var qqeModArr = ${JSON.stringify(this.data.qqeModArr, null, 8)}
         var adxArr = ${JSON.stringify(this.data.adxArr, null, 8)}
         var preHighLowArr = ${JSON.stringify(this.data.preHighLowArr, null, 8)}
+        var ssl55Arr = ${JSON.stringify(this.data.ssl55Arr, null, 8)}
+        var squeezeBoxArr = ${JSON.stringify(this.data.squeezeBoxArr, null, 8)}
         
         module.exports={
             kLineData,
@@ -184,6 +194,8 @@ class LogCollector {
             qqeModArr,
             adxArr,
             preHighLowArr,
+            ssl55Arr,
+            squeezeBoxArr,
         }
     `;
             
@@ -224,6 +236,8 @@ class LogCollector {
             qqeModArr: [],
             adxArr: [],
             preHighLowArr: [],
+            ssl55Arr: [],
+            squeezeBoxArr: [],
         };
     }
 }

@@ -10,6 +10,8 @@ const { calculateFBB } = require("../../utils/fib.js");
 const { calculateLatestQQEMOD } = require("../../utils/qqeMod.js");
 const { calculateLatestADX } = require("../../utils/adx.js");
 const { calculateLatestPreHighLow } = require("../../utils/swingHighLow.js");
+const { calculateLatestSSL55 } = require("../../utils/ssl55.js");
+const { calculateLatestSqueezeBox } = require("../../utils/squeezeBox.js");
 
 /**
  * 初始化指标计算（异步执行）
@@ -69,6 +71,14 @@ async function setEveryIndex(historyClosePrices, curKLine, state, config) {
         })),
         new Promise(resolve => setImmediate(() => {
             setPreHighLowArr(curKLine, state, config);
+            resolve();
+        })),
+        new Promise(resolve => setImmediate(() => {
+            setSSL55Arr(curKLine, state, config);
+            resolve();
+        })),
+        new Promise(resolve => setImmediate(() => {
+            setSqueezeBoxArr(curKLine, state, config);
             resolve();
         })),
     ];
@@ -241,6 +251,71 @@ function setPreHighLowArr(klines, state, config) {
     preHighLowArr.push(preHighLow);
 }
 
+/**
+ * 计算SSL55指标
+ * @param {Array} klines - K线数据数组
+ * @param {Object} state - 策略状态对象
+ * @param {Object} config - 配置对象
+ */
+function setSSL55Arr(klines, state, config) {
+    const { ssl55Arr } = state;
+    const { enableSSL55Squeeze, ssl55_Length } = config;
+    
+    if (!enableSSL55Squeeze) {
+        // 如果未启用，保持数组为空或填充 null
+        ssl55Arr.length >= 10 && ssl55Arr.shift();
+        ssl55Arr.push(null);
+        return;
+    }
+    
+    // SSL55 需要至少 ssl55_Length 根K线，传入更多数据确保计算准确
+    // HMA 计算需要：WMA(28) + WMA(55) + WMA(7)，至少需要 length + sqrt(length) - 1 根数据
+    // 为了计算准确，建议至少传入 length * 3 根数据
+    const minRequired = Math.max(ssl55_Length * 3, 200); // 至少200根K线
+    ssl55Arr.length >= 10 && ssl55Arr.shift();
+    const ssl55 = calculateLatestSSL55(klines.slice(-minRequired), ssl55_Length);
+    ssl55Arr.push(ssl55);
+}
+
+/**
+ * 计算Squeeze Box指标
+ * @param {Array} klines - K线数据数组
+ * @param {Object} state - 策略状态对象
+ * @param {Object} config - 配置对象
+ */
+function setSqueezeBoxArr(klines, state, config) {
+    const { squeezeBoxArr } = state;
+    const {
+        enableSSL55Squeeze,
+        squeeze_box_Period,
+        squeeze_box_Deviation,
+        squeeze_box_Threshold,
+        squeeze_box_Source,
+        squeeze_box_MA_Type,
+    } = config;
+    
+    if (!enableSSL55Squeeze) {
+        // 如果未启用，保持数组为空或填充 null
+        squeezeBoxArr.length >= 10 && squeezeBoxArr.shift();
+        squeezeBoxArr.push(null);
+        return;
+    }
+    
+    // Squeeze Box 需要至少 squeeze_box_Period 根K线，传入更多数据确保计算准确
+    // 计算历史最高/最低需要足够的历史数据，建议至少传入 period * 3 根数据
+    const minRequired = Math.max(squeeze_box_Period * 3, 200); // 至少200根K线
+    
+    squeezeBoxArr.length >= 10 && squeezeBoxArr.shift();
+    const squeezeBox = calculateLatestSqueezeBox(klines.slice(-minRequired), {
+        period: squeeze_box_Period,
+        deviation: squeeze_box_Deviation,
+        threshold: squeeze_box_Threshold,
+        source: squeeze_box_Source,
+        maType: squeeze_box_MA_Type,
+    });
+    squeezeBoxArr.push(squeezeBox);
+}
+
 module.exports = {
     initEveryIndex,
     setEveryIndex,
@@ -252,4 +327,6 @@ module.exports = {
     setQqeModArr,
     setAdxArr,
     setPreHighLowArr,
+    setSSL55Arr,
+    setSqueezeBoxArr,
 };

@@ -146,6 +146,8 @@
         // console.log('adxArr:', adxArr);
         const preHighLowArr = indicators.preHighLowArr || [];
         // console.log('preHighLowArr:', preHighLowArr);
+        const ssl55Arr = indicators.ssl55Arr || [];
+        const squeezeBoxArr = indicators.squeezeBoxArr || [];
 
         // 计算统计信息
         function calculateStatistics() {
@@ -294,6 +296,8 @@
         const alignedSwimingFreeArr = swimingFreeArr;
         const alignedQqeModArr = qqeModArr;
         const alignedAdxArr = adxArr;
+        const alignedSsl55Arr = ssl55Arr;
+        const alignedSqueezeBoxArr = squeezeBoxArr;
 
         // 从指标数组中提取数据
         function extractValue(arr, valuePath) {
@@ -428,8 +432,10 @@
                     const qqeMod = alignedQqeModArr[idx];
                     const adx = alignedAdxArr[idx];
                     const fib = alignedFibArr[idx];
+                    const ssl55 = alignedSsl55Arr[idx];
+                    const squeezeBox = alignedSqueezeBoxArr[idx];
                     
-                    if (superTrend || ssl || swimingFree || qqeMod || adx || fib) {
+                    if (superTrend || ssl || swimingFree || qqeMod || adx || fib || ssl55 || squeezeBox) {
                         result += '<div style="margin-top: 10px; border-top: 1px solid #333; padding-top: 5px;">';
                         result += '<strong>指标详情:</strong><br>';
                         if (superTrend) {
@@ -465,6 +471,13 @@
                         }
                         if (fib) {
                             result += `Fib Upper: ${fib.upper_7?.toFixed(2) || 'N/A'}, Lower: ${fib.lower_7?.toFixed(2) || 'N/A'}<br>`;
+                        }
+                        if (ssl55) {
+                            result += `SSL55: ${ssl55.ssl55 !== null && ssl55.ssl55 !== undefined ? ssl55.ssl55.toFixed(4) : 'N/A'}<br>`;
+                        }
+                        if (squeezeBox) {
+                            result += `Squeeze Box 上轨: ${squeezeBox.bh !== null && squeezeBox.bh !== undefined ? squeezeBox.bh.toFixed(4) : 'N/A'}<br>`;
+                            result += `Squeeze Box 下轨: ${squeezeBox.bl !== null && squeezeBox.bl !== undefined ? squeezeBox.bl.toFixed(4) : 'N/A'}<br>`;
                         }
                         result += '</div>';
                     }
@@ -788,6 +801,9 @@
             // 如果是Infinity，设置为null或一个很大的值
             profitLossRatioData.push(ratio === Infinity ? null : ratio);
         }
+        
+        // 使用与统计面板一致的平均盈亏比计算方式：总平均盈利 / 总平均亏损
+        const avgProfitLossRatio = stats.profitLossRatio === Infinity ? 0 : stats.profitLossRatio;
 
         const profitLossRatioOption = {
             title: {
@@ -889,7 +905,16 @@
                     },
                     markLine: {
                         data: [
-                            { yAxis: 0, lineStyle: { color: '#888', type: 'dashed' } }
+                            { yAxis: 0, lineStyle: { color: '#888', type: 'dashed' } },
+                            { 
+                                yAxis: avgProfitLossRatio, 
+                                lineStyle: { color: '#ffff00', type: 'dashed', width: 2 },
+                                label: {
+                                    formatter: `平均盈亏比: ${avgProfitLossRatio.toFixed(2)}`,
+                                    position: 'middle',
+                                    color: '#ffff00'
+                                }
+                            }
                         ]
                     },
                 },
@@ -992,6 +1017,12 @@
             orderAmountTimes.push(i); // 横轴为索引（与盈利曲线图一致）
             orderAmountData.push(orderAmountHistory[i] || 0);
         }
+        
+        // 计算平均订单金额（排除 0 和 null）
+        const validOrderAmounts = orderAmountHistory.filter(a => a !== null && a !== undefined && a > 0);
+        const avgOrderAmount = validOrderAmounts.length > 0 
+            ? validOrderAmounts.reduce((a, b) => a + b, 0) / validOrderAmounts.length 
+            : 0;
 
         const orderAmountOption = {
             title: {
@@ -1091,6 +1122,19 @@
                         color: "#ffff00",
                         width: 2,
                         type: "solid",
+                    },
+                    markLine: {
+                        data: [
+                            { 
+                                yAxis: avgOrderAmount, 
+                                lineStyle: { color: '#00ff00', type: 'dashed', width: 2 },
+                                label: {
+                                    formatter: `平均订单金额: ${avgOrderAmount.toFixed(2)}`,
+                                    position: 'middle',
+                                    color: '#00ff00'
+                                }
+                            }
+                        ]
                     },
                 },
             ],

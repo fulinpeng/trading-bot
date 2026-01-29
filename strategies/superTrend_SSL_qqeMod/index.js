@@ -85,6 +85,8 @@ const state = {
     adxArr: [],
     preHighLowArr: [],
     rsiArr: [],
+    ssl55Arr: [],
+    squeezeBoxArr: [],
 
     // 策略状态
     availableMoney: DefaultAvailableMoney,

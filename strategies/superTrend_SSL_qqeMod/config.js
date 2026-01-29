@@ -17,7 +17,7 @@ const config = {
         invariableBalance: true,             // 是否使用固定金额建仓，为true时，availableMoney为必填
         priorityFee: 0.0007,                 // 手续费率
         slippage: 0,                         // 滑点
-        sizingMode: 'RiskBased',           // 仓位管理: Fixed, Martingale, RiskBased （'Fixed' / 'RiskBased' 时可以启用滚仓）
+        sizingMode: 'Fixed',           // 仓位管理: Fixed, Martingale, RiskBased （'Fixed' / 'RiskBased' 时可以启用滚仓）
         rolling: false,                // 滚仓: availableMoney = max(availableMoney + 盈利, availableMoney)
 
         // 马丁格尔模式配置
@@ -77,6 +77,15 @@ const config = {
         
         // ========== Swing High/Low 配置 ==========
         swingLength: 21,                     // 摆动长度，与 TradingView 一致
+        
+        // ========== SSL55 + Squeeze Box 入场配置 ==========
+        enableSSL55Squeeze: true,           // 启用 SSL55 + Squeeze Box 入场，默认关闭
+        ssl55_Length: 55,                    // SSL55 计算周期，默认55
+        squeeze_box_Period: 24,              // Squeeze Box 采样周期，默认24
+        squeeze_box_Deviation: 2,             // Squeeze Box 标准差倍数，默认2
+        squeeze_box_Threshold: 50,           // Squeeze Box 挤压阈值百分比，默认50
+        squeeze_box_Source: 'hl2',          // Squeeze Box 数据源，默认 'hl2' (可选: 'close', 'open', 'high', 'low', 'hlc3', 'hl2')
+        squeeze_box_MA_Type: 'EMA',         // Squeeze Box MA类型，默认 'EMA' (可选: 'EMA', 'SMA')
         
         // ========== 风险管理配置 ==========
         // 固定止盈止损

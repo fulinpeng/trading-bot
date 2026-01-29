@@ -9,7 +9,7 @@ const wss = new WebSocket.Server({ server });
 
 /////////////////////////////////截取测试数据////////////////////////////////////////
 const maxKLinelen = 1000;
-const startTime = '2025-01-01_00-00-00'; // 开始时间，例如: "2025-01-01_00-00-00" 或时间戳
+const startTime = '2025-12-27_00-00-00'; // 开始时间，例如: "2025-01-01_00-00-00" 或时间戳
 const endTime = '';    // 结束时间，例如: "2025-01-31_23-59-59" 或时间戳
 const testSymbol = 'ethusdt'; // 测试交易对
 const testKlineStage = '5m';  // 测试K线级别
