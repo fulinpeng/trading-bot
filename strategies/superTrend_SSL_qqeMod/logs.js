@@ -27,6 +27,7 @@ class LogCollector {
             trendHistory: [],       // 交易方向（'up'/'down'）
             openPriceHistory: [],   // 开仓价格
             closePriceHistory: [],  // 平仓价格
+            orderAmountHistory: [], // 订单金额
             curTestMoneyHistory: [], // 当前测试资金历史
             kLineData: [],          // K线数据（与指标数据一一对应）
             // 指标数组
@@ -88,14 +89,18 @@ class LogCollector {
      * @param {number} price - 开仓价格
      * @param {string} trend - 交易方向（'up'/'down'）
      * @param {number} testMoney - 当前测试资金
+     * @param {number} quantity - 订单数量（可选）
      */
-    recordOpen(time, price, trend, testMoney) {
+    recordOpen(time, price, trend, testMoney, quantity) {
         if (!this.enabled) return;
+        
+        // 计算订单金额 = 开仓价格 × 订单数量
+        const orderAmount = (price || 0) * (quantity || 0);
         
         this.data.openHistory.push(time);
         this.data.openPriceHistory.push(price);
         this.data.trendHistory.push(trend);
-        this.data.curTestMoneyHistory.push(testMoney);
+        this.data.orderAmountHistory.push(orderAmount);
     }
 
     /**
@@ -109,24 +114,7 @@ class LogCollector {
         
         this.data.closeHistory.push(time);
         this.data.closePriceHistory.push(price);
-        // 更新最后一次的测试资金
-        if (this.data.curTestMoneyHistory.length > 0) {
-            this.data.curTestMoneyHistory[this.data.curTestMoneyHistory.length - 1] = testMoney;
-        }
-    }
-
-    /**
-     * 更新当前测试资金（每根K线更新）
-     * @param {number} testMoney - 当前测试资金
-     */
-    updateTestMoney(testMoney) {
-        if (!this.enabled) return;
-        
-        // 如果有开仓记录，更新最后一个值；否则不做任何操作
-        // 因为 curTestMoneyHistory 只在开仓时 push，每根K线更新最后一个值
-        if (this.data.curTestMoneyHistory.length > 0) {
-            this.data.curTestMoneyHistory[this.data.curTestMoneyHistory.length - 1] = testMoney;
-        }
+        this.data.curTestMoneyHistory.push(testMoney);
     }
 
     /**
@@ -168,6 +156,7 @@ class LogCollector {
         var trendHistory = ${JSON.stringify(this.data.trendHistory, null, 8)}
         var openPriceHistory = ${JSON.stringify(this.data.openPriceHistory, null, 8)}
         var closePriceHistory = ${JSON.stringify(this.data.closePriceHistory, null, 8)}
+        var orderAmountHistory = ${JSON.stringify(this.data.orderAmountHistory, null, 8)}
         var curTestMoneyHistory = ${JSON.stringify(this.data.curTestMoneyHistory, null, 8)}
         var superTrendArr = ${JSON.stringify(this.data.superTrendArr, null, 8)}
         var sslArr = ${JSON.stringify(this.data.sslArr, null, 8)}
@@ -185,6 +174,7 @@ class LogCollector {
             trendHistory,
             openPriceHistory,
             closePriceHistory,
+            orderAmountHistory,
             curTestMoneyHistory,
             superTrendArr,
             sslArr,
@@ -223,6 +213,7 @@ class LogCollector {
             trendHistory: [],
             openPriceHistory: [],
             closePriceHistory: [],
+            orderAmountHistory: [],
             curTestMoneyHistory: [],
             kLineData: [],
             superTrendArr: [],

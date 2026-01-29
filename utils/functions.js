@@ -292,6 +292,47 @@ function getSmaRatioArr(diff, num) {
     return arr;
 }
 
+/**
+ * 计算等差马丁仓位大小
+ * @param {number} baseAmount - 基础金额（DefaultAvailableMoney）
+ * @param {number} lossCount - 当前损失次数
+ * @param {number} initialPercent - 初始百分比（默认100，即100%）
+ * @param {number} incrementPercent - 每次增加的百分比（默认1，即1%）
+ * @param {number} maxPercent - 最大百分比（默认1000，即1000%）
+ * @returns {number} 计算后的仓位大小
+ */
+function calcMartingaleSize(baseAmount, lossCount, initialPercent = 100, incrementPercent = 1, maxPercent = 1000) {
+    // 计算当前百分比：初始百分比 + 损失次数 * 每次增加的百分比
+    const currentPercent = initialPercent + lossCount * incrementPercent;
+    // 限制在最大百分比内
+    const finalPercent = Math.min(currentPercent, maxPercent);
+    // 返回计算后的仓位大小
+    return baseAmount * (finalPercent / 100);
+}
+
+/**
+ * 计算以损定仓的仓位数量
+ * @param {number} entryPrice - 开单价格
+ * @param {number} stopLossPrice - 止损价格
+ * @param {number} baseAmount - 基础金额（DefaultAvailableMoney），用于计算单笔风险
+ * @param {number} riskPercent - 单笔风险百分比（默认0.01，即1%）
+ * @returns {number} 计算后的仓位数量
+ */
+function calcRiskBasedQty(entryPrice, stopLossPrice, baseAmount, riskPercent = 0.01) {
+    // 单笔风险 = 基础金额 * 风险百分比
+    const riskAmount = baseAmount * riskPercent;
+    
+    // 解方程式：(math.abs(开单价格 - 止损价格) / 止损价格) * (开单仓位的数量 * 开单价格) = 单笔风险
+    // 得出：开单仓位的数量 = 单笔风险 * 止损价格 / (开单价格 * math.abs(开单价格 - 止损价格))
+    const priceDiff = Math.abs(entryPrice - stopLossPrice);
+    if (priceDiff === 0) {
+        // 如果开单价格和止损价格相同，无法计算，返回0
+        return 0;
+    }
+    const quantity = (riskAmount * stopLossPrice) / (entryPrice * priceDiff);
+    return quantity;
+}
+
 module.exports = {
     debounce,
     throttle,
@@ -309,4 +350,6 @@ module.exports = {
     getSequenceArr,
     getSmaRatioArr,
     convertToTimestamp,
+    calcMartingaleSize,
+    calcRiskBasedQty,
 };

@@ -12,7 +12,7 @@ const fs = require("fs");
 const path = require("path");
 
 // 工具函数
-const { getDate, hasUpDownVal, getLastFromArr, getSequenceArr } = require("../../utils/functions.js");
+const { getDate, hasUpDownVal, getLastFromArr, calcMartingaleSize, calcRiskBasedQty } = require("../../utils/functions.js");
 
 // 策略配置
 const config = require("./config.js");
@@ -40,8 +40,14 @@ const {
     isTest,
     isTestLocal,
     slippage,
-    double,
+    sizingMode,
+    rolling,
+    martingaleInitialPercent,
+    martingaleIncrementPercent,
+    martingaleMaxPercent,
+    RiskBasedRiskPercent,
     maxLossCount,
+    maxKLinelen,
     enableVisualizationLogs,
 } = configEth;
 
@@ -139,9 +145,6 @@ const fapi = "https://fapi.binance.com/fapi";
 const localApi = 'http://localhost:3000';
 const apiKey = process.env.BINANCE_API_KEY;
 const secretKey = process.env.BINANCE_API_SECRET;
-const maxKLinelen = 1000;
-const diff = 2;
-const times = getSequenceArr(diff, 100);
 
 // 全局变量
 let serverTimeOffset = 0;
@@ -284,7 +287,7 @@ const setKLinesTemp = (curKLine) => {
 
 const refreshKLineAndIndex = async (curKLine) => {
     setKLinesTemp(curKLine);
-    await setEveryIndex([...state.historyClosePrices], state.kLineData, state, configEth);
+    await setEveryIndex(state.historyClosePrices, state.kLineData, state, configEth);
 
     // 收集日志数据（如果启用）
     if (enableVisualizationLogs) {
@@ -322,7 +325,7 @@ const judgeAndTrading = async () => {
 
     switch (trend) {
         case "up":
-            await teadeBuy();
+            await teadeBuy(stopLoss);
             // 记录开仓信息
             state.entryPrice = state.currentPrice;
             state.entryKLineCount = state.currentKLineCount;
@@ -338,7 +341,7 @@ const judgeAndTrading = async () => {
             state.hasOrder = true;
             break;
         case "down":
-            await teadeSell();
+            await teadeSell(stopLoss);
             // 记录开仓信息
             state.entryPrice = state.currentPrice;
             state.entryKLineCount = state.currentKLineCount;
@@ -363,10 +366,55 @@ const judgeAndTrading = async () => {
 
 // ==================== 订单管理 ====================
 
-const getQuantity = () => {
-    state.availableMoney = DefaultAvailableMoney * times[state.lossCount];
-    let q = Math.round((state.availableMoney / state.currentPrice) * 10000) / 10000;
-    return q;
+/**
+ * 计算开仓数量
+ * @param {number} entryPrice - 开单价格（可选，默认使用 state.currentPrice）
+ * @param {number} stopLossPrice - 止损价格（可选，RiskBased 模式需要）
+ * @returns {number} 计算后的仓位数量
+ */
+const getQuantity = (entryPrice, stopLossPrice) => {
+    const _entryPrice = entryPrice || state.currentPrice;
+    let _DefaultAvailableMoney = rolling ? Math.max(DefaultAvailableMoney + state.testMoney, DefaultAvailableMoney) : DefaultAvailableMoney;
+    
+    // 马丁仓位模式
+    if (sizingMode === 'Martingale') {
+        // 计算等差马丁仓位大小
+        const martingaleSize = calcMartingaleSize(
+            _DefaultAvailableMoney,
+            state.lossCount,
+            martingaleInitialPercent,
+            martingaleIncrementPercent,
+            martingaleMaxPercent
+        );
+        state.availableMoney = martingaleSize;
+        let q = Math.round((state.availableMoney / _entryPrice) * 10000) / 10000;
+        return q;
+    }
+    // 以损定仓模式
+    else if (sizingMode === 'RiskBased') {
+        if (!stopLossPrice) {
+            console.error('RiskBased 模式需要提供 stopLossPrice，使用固定仓位模式');
+            process.exit(1);
+        }
+        // 计算以损定仓的仓位数量
+        const riskBasedQty = calcRiskBasedQty(
+            _entryPrice,
+            stopLossPrice,
+            _DefaultAvailableMoney,
+            RiskBasedRiskPercent
+        );
+        // 限制最大仓位不超过可用资金
+        const maxQty = _DefaultAvailableMoney / _entryPrice;
+        const q = Math.min(riskBasedQty, maxQty);
+        state.availableMoney = q * _entryPrice;
+        return Math.round(q * 10000) / 10000;
+    }
+    // 固定仓位模式（默认）
+    else {
+        state.availableMoney = _DefaultAvailableMoney;
+        let q = Math.round((state.availableMoney / _entryPrice) * 10000) / 10000;
+        return q;
+    }
 };
 
 const placeOrder = async (side, quantity) => {
@@ -503,9 +551,10 @@ const closeOrder = async (side, quantity, cb) => {
     }
 };
 
-const teadeBuy = async () => {
+const teadeBuy = async (stopLoss) => {
     try {
-        await placeOrder("BUY", getQuantity());
+        const quantity = getQuantity(state.currentPrice, stopLoss);
+        await placeOrder("BUY", quantity);
 
         // 记录开仓日志（如果启用）
         if (enableVisualizationLogs) {
@@ -513,8 +562,8 @@ const teadeBuy = async () => {
             if (collector) {
                 const [kLine3] = getLastFromArr(state.kLineData, 1);
                 const kLineDate = kLine3 ? (isTestLocal ? kLine3.openTime : getDate(kLine3.openTime)) : 'N/A';
-                collector.recordOpen(kLineDate, state.currentPrice, 'up', state.testMoney);
-                saveVisualizationLogs();
+                // 使用计算出的quantity，而不是state.tradingInfo.quantity（因为placeOrder是异步的）
+                collector.recordOpen(kLineDate, state.currentPrice, 'up', state.testMoney, quantity);
             }
         }
     } catch (error) {
@@ -523,9 +572,10 @@ const teadeBuy = async () => {
     }
 };
 
-const teadeSell = async () => {
+const teadeSell = async (stopLoss) => {
     try {
-        await placeOrder("SELL", getQuantity());
+        const quantity = getQuantity(state.currentPrice, stopLoss);
+        await placeOrder("SELL", quantity);
 
         // 记录开仓日志（如果启用）
         if (enableVisualizationLogs) {
@@ -533,8 +583,8 @@ const teadeSell = async () => {
             if (collector) {
                 const [kLine3] = getLastFromArr(state.kLineData, 1);
                 const kLineDate = kLine3 ? (isTestLocal ? kLine3.openTime : getDate(kLine3.openTime)) : 'N/A';
-                collector.recordOpen(kLineDate, state.currentPrice, 'down', state.testMoney);
-                saveVisualizationLogs();
+                // 使用计算出的quantity，而不是state.tradingInfo.quantity（因为placeOrder是异步的）
+                collector.recordOpen(kLineDate, state.currentPrice, 'down', state.testMoney, quantity);
             }
         }
     } catch (error) {
@@ -549,7 +599,7 @@ const recordRradingInfo = async (info) => {
 };
 
 const setLossCount = (curTestMoney) => {
-    if (double) {
+    if (sizingMode === 'Martingale') {
         if (curTestMoney <= 0) {
             state.lossCount = state.lossCount + 1 > maxLossCount ? maxLossCount : state.lossCount + 1;
         } else {
@@ -558,69 +608,65 @@ const setLossCount = (curTestMoney) => {
     }
 };
 
-const closeUp = async (testCurrentPrice) => {
-    let _currentPrice = testCurrentPrice || state.currentPrice;
+const closeUp = async (quantity) => {
+    const _currentPrice = state.currentPrice;
+    // 如果没有指定数量，则全部平仓
+    const closeQuantity = quantity || state.tradingInfo.quantity;
+    // 保存平仓前的数量，用于判断部分平仓和计算剩余数量
+    const quantityBeforeClose = state.tradingInfo.quantity;
+    const isPartialClose = closeQuantity < quantityBeforeClose;
+    
     // 注意：initialLongPositionSize 应该在 judgeProfitRunOrProfit 函数开始时记录（与Pine Script一致）
-    await closeOrder("SELL", state.tradingInfo.quantity, () => {
+    await closeOrder("SELL", closeQuantity, () => {
         const curTestMoney =
-            state.tradingInfo.quantity * (_currentPrice - state.tradingInfo.orderPrice) -
-            state.tradingInfo.quantity * (_currentPrice + state.tradingInfo.orderPrice) * priorityFee;
+            closeQuantity * (_currentPrice - state.tradingInfo.orderPrice) -
+            closeQuantity * (_currentPrice + state.tradingInfo.orderPrice) * priorityFee;
 
         state.testMoney += curTestMoney;
         setLossCount(curTestMoney);
-        // console.log("@@closeUp:", state.tradingInfo.orderTime, state.kLineData[state.kLineData.length - 1].openTime, {
-        //     orderP: state.tradingInfo.orderPrice,
-        //     orderQ: state.tradingInfo.quantity,
-        //     curTtM: curTestMoney,
-        //     tM: state.testMoney,
-        //     lossCount: state.lossCount
-        // });
-        console.log("平多完成");
+        
+        const [kLine3] = getLastFromArr(state.kLineData, 1);
+        const kLineDate = kLine3 ? (isTestLocal ? kLine3.openTime : getDate(kLine3.openTime)) : 'N/A';
+        
+        console.log(isPartialClose ? "部分平多完成" : "平多完成");
 
         // 记录平仓日志（如果启用）
         if (enableVisualizationLogs) {
             const collector = getLogCollector();
             if (collector) {
-                const [kLine3] = getLastFromArr(state.kLineData, 1);
-                const kLineDate = kLine3 ? (isTestLocal ? kLine3.openTime : getDate(kLine3.openTime)) : 'N/A';
                 collector.recordClose(kLineDate, _currentPrice, state.testMoney);
-                // 平仓时更新测试资金
-                collector.updateTestMoney(state.testMoney);
-                saveVisualizationLogs();
             }
         }
     });
 };
 
-const closeDown = async (testCurrentPrice) => {
-    let _currentPrice = testCurrentPrice || state.currentPrice;
+const closeDown = async (quantity) => {
+    const _currentPrice = state.currentPrice;
+    // 如果没有指定数量，则全部平仓
+    const closeQuantity = quantity || state.tradingInfo.quantity;
+    // 保存平仓前的数量，用于判断部分平仓和计算剩余数量
+    const quantityBeforeClose = state.tradingInfo.quantity;
+    const isPartialClose = closeQuantity < quantityBeforeClose;
+    
     // 注意：initialShortPositionSize 应该在 judgeProfitRunOrProfit 函数开始时记录（与Pine Script一致）
-    await closeOrder("BUY", state.tradingInfo.quantity, () => {
+    await closeOrder("BUY", closeQuantity, () => {
         const curTestMoney =
-            state.tradingInfo.quantity * (state.tradingInfo.orderPrice - _currentPrice) -
-            state.tradingInfo.quantity * (_currentPrice + state.tradingInfo.orderPrice) * priorityFee;
+            closeQuantity * (state.tradingInfo.orderPrice - _currentPrice) -
+            closeQuantity * (_currentPrice + state.tradingInfo.orderPrice) * priorityFee;
 
         state.testMoney += curTestMoney;
         setLossCount(curTestMoney);
-        // console.log("@@closeDown:", state.tradingInfo.orderTime, state.kLineData[state.kLineData.length - 1].openTime, {
-        //     orderP: state.tradingInfo.orderPrice,
-        //     orderQ: state.tradingInfo.quantity,
-        //     curTtM: curTestMoney,
-        //     tM: state.testMoney,
-        //     lossCount: state.lossCount
-        // });
-        console.log("平空完成");
+        
+        const [kLine3] = getLastFromArr(state.kLineData, 1);
+        const kLineDate = kLine3 ? (isTestLocal ? kLine3.openTime : getDate(kLine3.openTime)) : 'N/A';
+        
+        console.log(isPartialClose ? "部分平空完成" : "平空完成");
 
         // 记录平仓日志（如果启用）
         if (enableVisualizationLogs) {
             const collector = getLogCollector();
             if (collector) {
-                const [kLine3] = getLastFromArr(state.kLineData, 1);
-                const kLineDate = kLine3 ? (isTestLocal ? kLine3.openTime : getDate(kLine3.openTime)) : 'N/A';
                 collector.recordClose(kLineDate, _currentPrice, state.testMoney);
-                // 平仓时更新测试资金
-                collector.updateTestMoney(state.testMoney);
-                saveVisualizationLogs();
             }
         }
     });
@@ -927,7 +973,20 @@ const startWebSocket = async () => {
 
         if (isTestLocal && (realData.error || !openTime)) {
             console.log('end data');
+            // 程序结束前保存可视化日志
+            if (enableVisualizationLogs) {
+                const collector = getLogCollector();
+                if (collector && collector.enabled) {
+                    collector.saveToFile();
+                }
+            }
             process.exit(0);
+        }
+
+        // 在本地测试环境下，收到消息后立即请求下一条数据，提高执行速度
+        // 这样可以让服务器提前准备下一条数据，而不是等处理完再请求
+        if (isTestLocal) {
+            ws.send('hello');
         }
 
         state.prePrice = state.currentPrice;
@@ -951,23 +1010,18 @@ const startWebSocket = async () => {
             // 更新k线和指标数据（异步执行，等待所有指标计算完成）
             await refreshKLineAndIndex(curKLine);
 
-            // 定期保存可视化日志（每10根K线保存一次，避免频繁IO）
-            if (enableVisualizationLogs && state.currentKLineCount % 10 === 0) {
-                saveVisualizationLogs();
-            }
+            // 可视化日志数据收集（不保存，只在程序退出时保存）
 
             if (!state.hasOrder) {
                 await kaiDanDaJi();
-                isTestLocal && ws.send('hello');
                 return;
             }
 
             if (isLoading() || state.prePrice === state.currentPrice) {
             } else {
-                await gridPointClearTrading(state.currentPrice, state, configEth, closeUp, closeDown, closeOrder);
+                await gridPointClearTrading(state.currentPrice, state, configEth, closeUp, closeDown);
             }
         }
-        isTestLocal && ws.send('hello');
     });
 
     ws.on("close", (code) => {
@@ -1107,24 +1161,22 @@ function saveGlobalVariables() {
     }, 0);
 }
 
-// 保存可视化日志数据（独立函数，定期调用）
+// 保存可视化日志数据（仅在程序退出时调用）
 function saveVisualizationLogs() {
     if (!enableVisualizationLogs) {
         return;
     }
 
-    setTimeout(() => {
-        try {
-            const collector = getLogCollector();
-            if (collector && collector.enabled) {
-                collector.saveToFile();
-            } else {
-                console.warn("日志收集器未初始化或未启用");
-            }
-        } catch (error) {
-            console.error("保存可视化日志失败:", error);
+    try {
+        const collector = getLogCollector();
+        if (collector && collector.enabled) {
+            collector.saveToFile();
+        } else {
+            console.error("日志收集器未初始化或未启用");
         }
-    }, 0);
+    } catch (error) {
+        console.error("保存可视化日志失败:", error);
+    }
 }
 
 // ==================== 启动交易 ====================

@@ -210,8 +210,14 @@
     - QQE MOD：使用Primary和Secondary两组参数
     - Fibonacci Bollinger Bands：固定参数
 
-6. **仓位管理**：
-    - 开仓时记录`initialLongPositionSize`/`initialShortPositionSize`（在持仓的第一根K线记录实际仓位大小）
-    - 部分平仓时更新`tradingInfo.quantity`，不重置`hasOrder`
-    - 全部平仓时重置所有相关状态变量
-
+6. **多种仓位管理模式**：
+    - 注意：sizingMode为 'Fixed' 、 'RiskBased' 时可以启用滚仓模式，可用资金为: max(DefaultAvailableMoney + 当前全部盈利, DefaultAvailableMoney)
+    1. 仓位管理模式（Fixed, 默认），固定仓位为defaultavailablemoney
+    2. 等差马丁仓位模式（Martingale），默认单笔仓位大小为defaultavailablemoney的100%，每失败一次按照等差马丁仓位模式计算单笔仓位大小，直到盈利一次后按照默认仓位管理模式计算单笔仓位大小，如：初始为defaultavailablemoney*100%，失败一次后为defaultavailablemoney*101%，失败两次为defaultavailablemoney*102%，直到盈利一次后恢复为defaultavailablemoney*100%，以此类推，但是不超超过最大值defaultavailablemoney的1000%（计算方式帮我写成函数，100%和每次增加的百分比可配置为其他值，最大值可配置为其他值）
+    3. 以损定仓模式（RiskBased），单笔持仓为defaultavailablemoney
+    ```
+    calcRiskBasedQty(entryPrice, stopLossPrice) =>
+        // 解方程式：(math.abs(开单价格 - 止损价格) / 止损价格) * (开单仓位的数量 * 开单价格) = 单笔风险
+        开单仓位的数量 = 单笔风险 * 止损价格 / (开单价格 * math.abs(开单价格 - 止损价格))
+        return 开单仓位的数量
+    ```

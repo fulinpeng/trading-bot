@@ -33,13 +33,13 @@ function judgeTradingDirection(state, config) {
     const section3Up1 = judgeSSL1LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Up2 = judgeSSL2LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Up3 = judgeADXLongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, config);
-    const section3Up = section3Up1 || section3Up2 // || section3Up3;
+    const section3Up = section3Up1 || section3Up2 || section3Up3;
 
     // 判断做空条件
     const section3Down1 = judgeSSL1ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Down2 = judgeSSL2ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Down3 = judgeADXShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, config);
-    const section3Down = section3Down1 || section3Down2 // || section3Down3;
+    const section3Down = section3Down1 || section3Down2 || section3Down3;
 
         
     // 打印所有指标值
@@ -56,64 +56,11 @@ function judgeTradingDirection(state, config) {
 
     if (isUpOpen && section3Up) {
         state.readyTradingDirection = "up";
-        if (!state.hasOrder) {
-            console.log(`@@@[${kLineDate}]多完成 - 所有指标值:`,{
-                section3Up1,
-                section3Up2,
-                section3Up3
-            },{
-                currentPrice: state.currentPrice,
-                kLine: kLine3 ? {
-                    open: kLine3.open,
-                    close: kLine3.close,
-                    high: kLine3.high,
-                    low: kLine3.low,
-                } : null,
-                superTrend: superTrend3,
-                ssl: ssl3,
-                ssl2: ssl23,
-                qqeMod: qqeMod3,
-                adx: adx3,
-                fib: [fib3.lower_7, fib3.upper_7],
-                preHighLow: preHighLow3,
-                swimingFree: swimingFree3,
-                entryType: state.entryType,
-                stopLoss: state.initialShortStopLoss,
-                takeProfit: state.shortTakeProfit,
-            });
-        }
         return;
     }
 
     if (isDownOpen && section3Down) {
         state.readyTradingDirection = "down";
-
-        if (!state.hasOrder) {
-            console.log(`@@@[${kLineDate}]开空完成 - 所有指标值:`, {
-                section3Down1,
-                section3Down2,
-                section3Down3
-            }, {
-                currentPrice: state.currentPrice,
-                kLine: kLine3 ? {
-                    open: kLine3.open,
-                    close: kLine3.close,
-                    high: kLine3.high,
-                    low: kLine3.low,
-                } : null,
-                superTrend: superTrend3,
-                ssl: ssl3,
-                ssl2: ssl23,
-                qqeMod: qqeMod3,
-                adx: adx3,
-                fib: [fib3.lower_7, fib3.upper_7],
-                preHighLow: preHighLow3,
-                swimingFree: swimingFree3,
-                entryType: state.entryType,
-                stopLoss: state.initialShortStopLoss,
-                takeProfit: state.shortTakeProfit,
-            });
-        }
         return;
     }
 

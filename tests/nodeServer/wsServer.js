@@ -8,90 +8,101 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 /////////////////////////////////截取测试数据////////////////////////////////////////
-const targetTime = '' // "2025-02-01_00-00-00"
+const maxKLinelen = 1000;
+const startTime = '2025-01-01_00-00-00'; // 开始时间，例如: "2025-01-01_00-00-00" 或时间戳
+const endTime = '';    // 结束时间，例如: "2025-01-31_23-59-59" 或时间戳
+const testSymbol = 'ethusdt'; // 测试交易对
+const testKlineStage = '5m';  // 测试K线级别
 /////////////////////////////////////////////////////////////////////////
 
+// 全局变量：加载后的K线数据
+let originLineData = null;
+
+/**
+ * 加载 K 线数据文件
+ * @param {string} symbol - 交易对符号
+ * @param {string} klineStage - K线级别
+ * @returns {Array} K线数据数组
+ */
+const loadKLineData = (symbol, klineStage) => {
+  // const filePath = path.resolve(__dirname, `../../tests/${symbol}2.js`);
+  // const filePath = path.resolve(__dirname, `../../tests/source/renko-${symbol}-${klineStage}.js`);
+  const filePath = path.resolve(__dirname, `../../tests/source/${symbol}-${klineStage}.js`);
+  // const filePath = path.resolve(__dirname, `../../tests/source/${symbol}-${klineStage}-part.js`);
+  
+  // 确保读取最新数据
+  delete require.cache[require.resolve(filePath)];
+  const fileData = require(filePath);
+  const kLineData = fileData.kLineData || [];
+  
+  // 计算开始和结束索引
+  let startIndex = 0;
+  let endIndex = kLineData.length - 1;
+  
+  // 如果提供了 startTime，找到对应的索引（直接使用字符串比较）
+  if (startTime) {
+    const foundIndex = kLineData.findIndex(item => {
+      return item.openTime === startTime;
+    });
+    
+    if (foundIndex !== -1) {
+      startIndex = foundIndex;
+    }
+  }
+  
+  // 如果提供了 endTime，找到对应的索引（直接使用字符串比较）
+  if (endTime) {
+    const foundIndex = kLineData.findIndex(item => {
+      return item.openTime === endTime;
+    });
+    
+    if (foundIndex !== -1) {
+      endIndex = foundIndex - 1;
+    }
+  }
+  
+  // 使用 slice 直接取数据
+  console.log({
+    startIndex,
+    endIndex,
+    startTime,
+    endTime,
+    startTimeDate: kLineData[startIndex].openTime,
+    endTimeDate: kLineData[endIndex].openTime
+})
+  return kLineData.slice(startIndex, endIndex + 1);
+};
+
+/**
+ * 初始化全局K线数据
+ */
+const initOriginLineData = () => {
+  if (!originLineData) {
+    originLineData = loadKLineData(testSymbol, testKlineStage);
+  }
+  return originLineData;
+};
 
 /**
  * HTTP 接口：返回指定 symbol 和 klineStage 的前 limit 条 K 线数据
  * 示例请求：GET /v1/klines?symbol=BTCUSDT&klineStage=1m&limit=1000
  */
 app.get('/v1/klines', (req, res) => {
-  const { symbol, klineStage, limit = limit } = req.query;
+  const { symbol, klineStage, limit } = req.query;
   console.log("🚀 ~ wss.on ~ klineStage:", symbol, klineStage)
   if (!symbol || !klineStage) {
     return res.status(400).json({ error: '缺少必要参数 symbol 或 klineStage' });
   }
 
-    // const filePath = path.resolve(__dirname, `../../tests/${symbol}2.js`);
-    // const filePath = path.resolve(__dirname, `../../tests/source/renko-${symbol}-${klineStage}.js`);
-    const filePath = path.resolve(__dirname, `../../tests/source/${symbol}-${klineStage}.js`);
-    console.log("🚀 ~ app.get ~ filePath:", filePath)
-    // const filePath = path.resolve(__dirname, `../../tests/source/${symbol}-${klineStage}-part.js`);
   try {
-    // 确保读取最新数据
-    delete require.cache[require.resolve(filePath)];
-    const { kLineData: originLineData } = require(filePath);
-    let _originLineData = [...originLineData];
-    if (targetTime) {
-        _originLineData = _originLineData.slice(originLineData.findIndex(item => item.openTime === targetTime) - limit)
-    }
-    const result = _originLineData.slice(0, Number(limit));
+    const data = initOriginLineData();
+    const result = data.slice(0, Number(limit));
     res.json(result);
   } catch (err) {
     console.error('读取文件失败:', err);
     res.status(500).json({ error: '读取文件失败' });
   }
 });
-
-/**
- * WebSocket 服务器：
- * 连接示例：ws://localhost:3000/ws/BTCUSDT@kline_2023-03-24
- * 每 10 毫秒推送一条 K 线数据，从文件中读取，默认从第 100 条开始
- */
-// wss.on('connection', (ws, req) => {
-//   const match = req.url.match(/^\/ws\/(.+)@kline_(.+)$/);
-//   if (!match) {
-//     ws.send(JSON.stringify({ error: '无效的 WebSocket 连接地址格式' }));
-//     ws.close();
-//     return;
-//   }
-
-//   const symbol = match[1];
-//   const klineStage = match[2];
-
-//   let interval;
-//   try {
-//     const filePath = path.resolve(__dirname, `../../tests/source/renko-${symbol}-${klineStage}.js`);
-//     let originLineData;
-//     delete require.cache[require.resolve(filePath)];
-//     const fileData = require(filePath);
-//     originLineData = fileData.kLineData;
-//     let _originLineData = [...originLineData];
-//     if (targetTime) {
-//         _originLineData = _originLineData.slice(originLineData.findIndex(item => item.openTime === targetTime) - limit)
-//     }
-//     // 默认从第 limit 条数据开始推送（数组下标 index）
-//     let index = limit;
-//     interval = setInterval(() => {
-//       if (index < _originLineData.length) {
-//         const dataToSend = _originLineData[index];
-//         ws.send(JSON.stringify(dataToSend));
-//         index++;
-//       } else {
-//         clearInterval(interval);
-//       }
-//     }, 1000);
-//   } catch (err) {
-//     ws.send(JSON.stringify({ error: '读取文件失败：' + err.message }));
-//     ws.close();
-//     return;
-//   }
-
-//   ws.on('close', () => {
-//     clearInterval(interval);
-//   });
-// });
 
 wss.on('connection', (ws, req) => {
       const match = req.url.match(/^\/ws\/(.+)@kline_(.+)$/);
@@ -105,20 +116,14 @@ wss.on('connection', (ws, req) => {
       const klineStage = match[2];
   
     try {
-        // const filePath = path.resolve(__dirname, `../../tests/${symbol}2.js`);
-    //   const filePath = path.resolve(__dirname, `../../tests/source/renko-${symbol}-${klineStage}.js`);
-      const filePath = path.resolve(__dirname, `../../tests/source/${symbol}-${klineStage}.js`);
-    //   const filePath = path.resolve(__dirname, `../../tests/source/${symbol}-${klineStage}-part.js`);
-      delete require.cache[require.resolve(filePath)];
-      const fileData = require(filePath);
-      const originLineData = fileData.kLineData;
-      let index = 30; // 默认从第100条数据开始推送
+      const data = initOriginLineData();
+      let index = maxKLinelen; // 默认从第maxKLinelen条数据开始推送
   
-      ws.on('message', (data) => {
-        const message = Buffer.isBuffer(data) ? data.toString('utf8') : data;
+      ws.on('message', (messageData) => {
+        const message = Buffer.isBuffer(messageData) ? messageData.toString('utf8') : messageData;
         if (message === 'hello') {
-          if (index < originLineData.length) {
-            const dataToSend = originLineData[index];
+          if (index < data.length) {
+            const dataToSend = data[index];
             ws.send(JSON.stringify(dataToSend));
             index++;
           } else {
@@ -138,7 +143,9 @@ wss.on('connection', (ws, req) => {
   });
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
+  // 初始化全局K线数据
+  initOriginLineData();
   console.log(`服务器运行中：`);
-  console.log(`- HTTP接口: http://localhost:${PORT}/v1/klines?symbol=BTCUSDT&klineStage=1m&size=100`);
-  console.log(`- WebSocket地址: ws://localhost:${PORT}/ws/BTCUSDT@kline_1m`);
+  console.log(`- HTTP接口: http://localhost:${PORT}/v1/klines?symbol=${testSymbol}&klineStage=${testKlineStage}&limit=100`);
+  console.log(`- WebSocket地址: ws://localhost:${PORT}/ws/${testSymbol}@kline_${testKlineStage}`);
 });

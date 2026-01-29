@@ -38,6 +38,7 @@ let openHistory = [];
 let closeHistory = [];
 let openPriceHistory = [];
 let closePriceHistory = [];
+let orderAmountHistory = [];
 let trendHistory = [];
 let curTestMoneyHistory = [];
 
@@ -70,6 +71,7 @@ function reloadData() {
             closeHistory = logData.closeHistory || [];
             openPriceHistory = logData.openPriceHistory || [];
             closePriceHistory = logData.closePriceHistory || [];
+            orderAmountHistory = logData.orderAmountHistory || [];
             trendHistory = logData.trendHistory || [];
             curTestMoneyHistory = logData.curTestMoneyHistory || [];
             indicators = {
@@ -90,6 +92,7 @@ function reloadData() {
             closeHistory = [];
             openPriceHistory = [];
             closePriceHistory = [];
+            orderAmountHistory = [];
             trendHistory = [];
             curTestMoneyHistory = [];
             indicators = {
@@ -143,6 +146,7 @@ app.get("/", (req, res) => {
         .replace("{{closeHistory}}", jsonString(closeHistory))
         .replace("{{openPriceHistory}}", jsonString(openPriceHistory))
         .replace("{{closePriceHistory}}", jsonString(closePriceHistory))
+        .replace("{{orderAmountHistory}}", jsonString(orderAmountHistory))
         .replace("{{trendHistory}}", jsonString(trendHistory))
         .replace("{{curTestMoneyHistory}}", jsonString(curTestMoneyHistory))
         .replace("{{title}}", `${symbol}-${strategy}`)

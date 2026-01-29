@@ -21,6 +21,21 @@
         #profitChart {
             width: 100%;
             height: 400px;
+            margin-bottom: 20px;
+        }
+        #profitLossRatioChart {
+            width: 100%;
+            height: 400px;
+            margin-bottom: 20px;
+        }
+        #consecutiveLossChart {
+            width: 100%;
+            height: 400px;
+            margin-bottom: 20px;
+        }
+        #orderAmountChart {
+            width: 100%;
+            height: 400px;
         }
         .info-panel {
             position: fixed;
@@ -59,18 +74,43 @@
             <span class="info-label">K线数量:</span>
             <span class="info-value" id="klineCount">0</span>
         </div>
+        <div class="info-item" style="margin-top: 15px; border-top: 1px solid #444; padding-top: 10px;">
+            <span class="info-label" style="font-weight: bold; color: #fff;">统计信息</span>
+        </div>
         <div class="info-item">
-            <span class="info-label">交易次数:</span>
-            <span class="info-value" id="tradeCount">0</span>
+            <span class="info-label">总开单数:</span>
+            <span class="info-value" id="totalTrades">0</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">盈利数量:</span>
+            <span class="info-value" id="winCount" style="color: #00ff00;">0</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">失败数量:</span>
+            <span class="info-value" id="lossCount" style="color: #ff0000;">0</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">胜率:</span>
+            <span class="info-value" id="winRate">0%</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">平均盈亏比:</span>
+            <span class="info-value" id="profitLossRatio">0.00</span>
         </div>
     </div>
     
     <div id="chart"></div>
     <div id="profitChart"></div>
+    <div id="profitLossRatioChart"></div>
+    <div id="consecutiveLossChart"></div>
+    <div id="orderAmountChart"></div>
 
     <script>
         const chart = echarts.init(document.getElementById('chart'));
         const profitChart = echarts.init(document.getElementById('profitChart'));
+        const profitLossRatioChart = echarts.init(document.getElementById('profitLossRatioChart'));
+        const consecutiveLossChart = echarts.init(document.getElementById('consecutiveLossChart'));
+        const orderAmountChart = echarts.init(document.getElementById('orderAmountChart'));
 
         const upColor = "#98f0b0";
         const upBorderColor = "#98f0b0";
@@ -85,6 +125,7 @@
         const closeHistory = {{closeHistory}};
         const openPriceHistory = {{openPriceHistory}};
         const closePriceHistory = {{closePriceHistory}};
+        const orderAmountHistory = {{orderAmountHistory}};
         const trendHistory = {{trendHistory}};
         const curTestMoneyHistory = {{curTestMoneyHistory}};
         
@@ -106,9 +147,122 @@
         const preHighLowArr = indicators.preHighLowArr || [];
         // console.log('preHighLowArr:', preHighLowArr);
 
+        // 计算统计信息
+        function calculateStatistics() {
+            const totalTrades = openHistory.length;
+            if (totalTrades === 0) {
+                return {
+                    totalTrades: 0,
+                    winCount: 0,
+                    lossCount: 0,
+                    winRate: 0,
+                    profitLossRatio: 0,
+                    tradeProfitLossRatios: [],
+                    consecutiveLossStats: {}
+                };
+            }
+
+            // 计算每笔交易的盈亏
+            const profits = [];
+            const losses = [];
+            const tradeProfits = []; // 每笔交易的盈亏金额（正数表示盈利，负数表示亏损）
+            
+            for (let i = 0; i < totalTrades; i++) {
+                const openPrice = openPriceHistory[i];
+                const closePrice = closePriceHistory[i];
+                const trend = trendHistory[i];
+                
+                if (openPrice && closePrice && trend) {
+                    let profit = 0;
+                    if (trend === 'up') {
+                        // 做多：盈亏 = 平仓价 - 开仓价
+                        profit = closePrice - openPrice;
+                    } else if (trend === 'down') {
+                        // 做空：盈亏 = 开仓价 - 平仓价
+                        profit = openPrice - closePrice;
+                    }
+                    
+                    tradeProfits.push(profit);
+                    
+                    if (profit > 0) {
+                        profits.push(profit);
+                    } else if (profit < 0) {
+                        losses.push(Math.abs(profit)); // 亏损转为正数
+                    }
+                }
+            }
+
+            const winCount = profits.length;
+            const lossCount = losses.length;
+            const winRate = totalTrades > 0 ? (winCount / totalTrades * 100) : 0;
+            
+            // 计算平均盈亏比：平均盈利 / 平均亏损
+            const avgProfit = profits.length > 0 ? profits.reduce((a, b) => a + b, 0) / profits.length : 0;
+            const avgLoss = losses.length > 0 ? losses.reduce((a, b) => a + b, 0) / losses.length : 0;
+            const profitLossRatio = avgLoss > 0 ? (avgProfit / avgLoss) : (avgProfit > 0 ? Infinity : 0);
+
+            // 计算每笔交易的盈亏比
+            // 盈亏比 = 盈利金额 / 平均亏损（如果盈利），或 -亏损金额 / 平均盈利（如果亏损）
+            const tradeProfitLossRatios = [];
+            for (let i = 0; i < tradeProfits.length; i++) {
+                const profit = tradeProfits[i];
+                let ratio = 0;
+                if (profit > 0 && avgLoss > 0) {
+                    // 盈利：盈亏比 = 盈利金额 / 平均亏损
+                    ratio = profit / avgLoss;
+                } else if (profit < 0 && avgProfit > 0) {
+                    // 亏损：盈亏比 = -亏损金额 / 平均盈利（负数表示亏损）
+                    ratio = profit / avgProfit;
+                } else if (profit > 0 && avgLoss === 0) {
+                    // 只有盈利，没有亏损
+                    ratio = Infinity;
+                }
+                tradeProfitLossRatios.push(ratio);
+            }
+
+            // 计算连续亏损次数统计
+            const consecutiveLossStats = {};
+            let currentConsecutiveLoss = 0;
+            
+            for (let i = 0; i < tradeProfits.length; i++) {
+                if (tradeProfits[i] < 0) {
+                    // 亏损
+                    currentConsecutiveLoss++;
+                } else {
+                    // 盈利，记录之前的连续亏损次数
+                    if (currentConsecutiveLoss > 0) {
+                        const key = currentConsecutiveLoss.toString();
+                        consecutiveLossStats[key] = (consecutiveLossStats[key] || 0) + 1;
+                        currentConsecutiveLoss = 0;
+                    }
+                }
+            }
+            // 处理最后一段连续亏损
+            if (currentConsecutiveLoss > 0) {
+                const key = currentConsecutiveLoss.toString();
+                consecutiveLossStats[key] = (consecutiveLossStats[key] || 0) + 1;
+            }
+
+            return {
+                totalTrades,
+                winCount,
+                lossCount,
+                winRate,
+                profitLossRatio,
+                tradeProfitLossRatios,
+                consecutiveLossStats
+            };
+        }
+
+        const stats = calculateStatistics();
+
         // 更新信息面板
         document.getElementById('klineCount').textContent = kLineData.length;
-        document.getElementById('tradeCount').textContent = openHistory.length;
+        document.getElementById('totalTrades').textContent = stats.totalTrades;
+        document.getElementById('winCount').textContent = stats.winCount;
+        document.getElementById('lossCount').textContent = stats.lossCount;
+        document.getElementById('winRate').textContent = stats.winRate.toFixed(2) + '%';
+        document.getElementById('profitLossRatio').textContent = stats.profitLossRatio === Infinity ? '∞' : stats.profitLossRatio.toFixed(2);
 
         // 处理K线数据
         function splitData(rawData) {
@@ -509,41 +663,15 @@
         chart.setOption(option);
 
         // 收益曲线图
+        // 横轴为 curTestMoneyHistory 的索引（0, 1, 2, 3...）
+        // y轴为收益值 curTestMoneyHistory[i]
         const profitData = [];
         const profitTimes = [];
         
-        // 构建收益曲线数据
-        // 收益数据应该与开仓记录对应，每个开仓记录对应一个收益值
-        // 这里我们创建一个映射，将K线时间与最近的收益值对应
-        const profitMap = new Map();
-        for (let i = 0; i < openHistory.length; i++) {
-            const openTime = openHistory[i];
-            const closeTime = closeHistory[i] || (kLineData.length > 0 ? kLineData[kLineData.length - 1].openTime : null);
-            const profit = curTestMoneyHistory[i] || 0;
-            
-            // 找到开仓和平仓在K线数据中的索引
-            const openIdx = data0.categoryData.indexOf(openTime);
-            const closeIdx = closeTime ? data0.categoryData.indexOf(closeTime) : kLineData.length - 1;
-            
-            // 将这个收益值映射到开仓到平仓之间的所有K线
-            if (openIdx >= 0) {
-                const endIdx = closeIdx >= 0 ? closeIdx : kLineData.length - 1;
-                for (let j = openIdx; j <= endIdx && j < kLineData.length; j++) {
-                    profitMap.set(j, profit);
-                }
-            }
-        }
-        
-        // 填充收益数据 - 使用折线连接（确保数据连续，不使用阶梯效果）
-        let lastProfit = 0; // 记录上一个收益值，用于折线连接
-        for (let i = 0; i < kLineData.length; i++) {
-            profitTimes.push(kLineData[i].openTime);
-            // 如果这个K线有对应的收益值，使用它；否则使用上一个值（用于折线连接）
-            if (profitMap.has(i)) {
-                lastProfit = profitMap.get(i);
-            }
-            // 始终使用 lastProfit，确保折线连续
-            profitData.push(lastProfit);
+        // 构建收益曲线数据：每个平仓对应一个数据点
+        for (let i = 0; i < curTestMoneyHistory.length; i++) {
+            profitTimes.push(i); // 横轴为索引
+            profitData.push(curTestMoneyHistory[i] || 0); // y轴为收益值
         }
 
         const profitOption = {
@@ -563,7 +691,14 @@
                     },
                 },
                 formatter: function (params) {
-                    let result = `<div><strong>${params[0].axisValue}</strong></div>`;
+                    const index = params[0].dataIndex;
+                    const closeTime = closeHistory[index] || 'N/A';
+                    const closePrice = closePriceHistory[index] !== null && closePriceHistory[index] !== undefined 
+                        ? closePriceHistory[index].toFixed(4) 
+                        : 'N/A';
+                    let result = `<div><strong>平仓 #${index}</strong></div>`;
+                    result += `<div>时间: ${closeTime}</div>`;
+                    result += `<div>平仓价格: ${closePrice}</div>`;
                     params.forEach(function (item) {
                         result += `<div>${item.seriesName}: <span style="color: ${item.value >= 0 ? '#00ff00' : '#ff0000'}">${item.value.toFixed(2)}</span></div>`;
                     });
@@ -642,10 +777,334 @@
 
         profitChart.setOption(profitOption);
 
+        // 盈亏比变化曲线图
+        const profitLossRatioData = [];
+        const profitLossRatioTimes = [];
+        
+        // 构建盈亏比曲线数据：每个平仓对应一个数据点
+        for (let i = 0; i < stats.tradeProfitLossRatios.length; i++) {
+            profitLossRatioTimes.push(i); // 横轴为索引
+            const ratio = stats.tradeProfitLossRatios[i];
+            // 如果是Infinity，设置为null或一个很大的值
+            profitLossRatioData.push(ratio === Infinity ? null : ratio);
+        }
+
+        const profitLossRatioOption = {
+            title: {
+                text: "盈亏比变化曲线",
+                left: 0,
+                textStyle: {
+                    color: '#fff',
+                },
+            },
+            tooltip: {
+                trigger: "axis",
+                axisPointer: {
+                    type: "cross",
+                    label: {
+                        backgroundColor: '#6a7985',
+                    },
+                },
+                formatter: function (params) {
+                    const index = params[0].dataIndex;
+                    const closeTime = closeHistory[index] || 'N/A';
+                    const closePrice = closePriceHistory[index] !== null && closePriceHistory[index] !== undefined 
+                        ? closePriceHistory[index].toFixed(4) 
+                        : 'N/A';
+                    const ratio = stats.tradeProfitLossRatios[index];
+                    let result = `<div><strong>平仓 #${index}</strong></div>`;
+                    result += `<div>时间: ${closeTime}</div>`;
+                    result += `<div>平仓价格: ${closePrice}</div>`;
+                    params.forEach(function (item) {
+                        const value = ratio === Infinity ? '∞' : item.value.toFixed(2);
+                        result += `<div>${item.seriesName}: <span style="color: ${item.value >= 0 ? '#00ff00' : '#ff0000'}">${value}</span></div>`;
+                    });
+                    return result;
+                },
+            },
+            grid: {
+                left: "3%",
+                right: "4%",
+                bottom: "15%",
+            },
+            xAxis: {
+                type: "category",
+                data: profitLossRatioTimes,
+                boundaryGap: false,
+                axisLabel: {
+                    color: '#999',
+                },
+            },
+            yAxis: {
+                type: "value",
+                splitArea: {
+                    show: false,
+                },
+                axisLine: {
+                    show: false,
+                },
+                axisLabel: {
+                    color: '#999',
+                    formatter: function (value) {
+                        return value.toFixed(2);
+                    },
+                },
+                splitLine: {
+                    show: true,
+                    lineStyle: {
+                        color: 'rgba(255, 255, 255, 0.8)',
+                    },
+                },
+            },
+            dataZoom: [
+                {
+                    type: "inside",
+                    start: 50,
+                    end: 100,
+                },
+                {
+                    show: true,
+                    type: "slider",
+                    top: "85%",
+                    start: 50,
+                    end: 100,
+                    textStyle: {
+                        color: '#999',
+                    },
+                },
+            ],
+            series: [
+                {
+                    name: "盈亏比",
+                    type: "line",
+                    data: profitLossRatioData,
+                    smooth: false,
+                    step: false,
+                    connectNulls: false,
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#00ffff",
+                        width: 2,
+                        type: "solid",
+                    },
+                    markLine: {
+                        data: [
+                            { yAxis: 0, lineStyle: { color: '#888', type: 'dashed' } }
+                        ]
+                    },
+                },
+            ],
+        };
+
+        profitLossRatioChart.setOption(profitLossRatioOption);
+
+        // 连续亏损次数统计图
+        const consecutiveLossData = [];
+        const consecutiveLossLabels = [];
+        
+        // 获取所有连续亏损次数，按次数排序
+        const lossCounts = Object.keys(stats.consecutiveLossStats).map(Number).sort((a, b) => a - b);
+        
+        for (let i = 0; i < lossCounts.length; i++) {
+            const count = lossCounts[i];
+            consecutiveLossLabels.push(`连续亏损${count}次`);
+            consecutiveLossData.push(stats.consecutiveLossStats[count.toString()]);
+        }
+
+        const consecutiveLossOption = {
+            title: {
+                text: "连续亏损次数统计",
+                left: 0,
+                textStyle: {
+                    color: '#fff',
+                },
+            },
+            tooltip: {
+                trigger: "axis",
+                axisPointer: {
+                    type: "shadow",
+                },
+                formatter: function (params) {
+                    let result = `<div><strong>${params[0].axisValue}</strong></div>`;
+                    params.forEach(function (item) {
+                        result += `<div>${item.seriesName}: <span style="color: #ff0000">${item.value}</span></div>`;
+                    });
+                    return result;
+                },
+            },
+            grid: {
+                left: "3%",
+                right: "4%",
+                bottom: "15%",
+            },
+            xAxis: {
+                type: "category",
+                data: consecutiveLossLabels,
+                axisLabel: {
+                    color: '#999',
+                    rotate: 45, // 旋转标签以避免重叠
+                },
+            },
+            yAxis: {
+                type: "value",
+                splitArea: {
+                    show: false,
+                },
+                axisLine: {
+                    show: false,
+                },
+                axisLabel: {
+                    color: '#999',
+                },
+                splitLine: {
+                    show: true,
+                    lineStyle: {
+                        color: 'rgba(255, 255, 255, 0.8)',
+                    },
+                },
+            },
+            series: [
+                {
+                    name: "出现次数",
+                    type: "bar",
+                    data: consecutiveLossData,
+                    itemStyle: {
+                        color: "#ff0000",
+                    },
+                    label: {
+                        show: true,
+                        position: "top",
+                        color: "#fff",
+                    },
+                },
+            ],
+        };
+
+        consecutiveLossChart.setOption(consecutiveLossOption);
+
+        // 订单金额曲线图
+        const orderAmountData = [];
+        const orderAmountTimes = [];
+        
+        // 构建订单金额曲线数据：每个开仓对应一个数据点
+        // 直接使用已计算的订单金额
+        for (let i = 0; i < orderAmountHistory.length; i++) {
+            orderAmountTimes.push(i); // 横轴为索引（与盈利曲线图一致）
+            orderAmountData.push(orderAmountHistory[i] || 0);
+        }
+
+        const orderAmountOption = {
+            title: {
+                text: "订单金额曲线",
+                left: 0,
+                textStyle: {
+                    color: '#fff',
+                },
+            },
+            tooltip: {
+                trigger: "axis",
+                axisPointer: {
+                    type: "cross",
+                    label: {
+                        backgroundColor: '#6a7985',
+                    },
+                },
+                formatter: function (params) {
+                    const index = params[0].dataIndex;
+                    const openTime = openHistory[index] || 'N/A';
+                    const openPrice = openPriceHistory[index] !== null && openPriceHistory[index] !== undefined 
+                        ? openPriceHistory[index].toFixed(4) 
+                        : 'N/A';
+                    const orderAmount = orderAmountHistory[index] !== null && orderAmountHistory[index] !== undefined 
+                        ? orderAmountHistory[index].toFixed(2) 
+                        : 'N/A';
+                    let result = `<div><strong>开仓 #${index}</strong></div>`;
+                    result += `<div>时间: ${openTime}</div>`;
+                    result += `<div>开仓价格: ${openPrice}</div>`;
+                    params.forEach(function (item) {
+                        result += `<div>${item.seriesName}: <span style="color: #ffff00">${item.value.toFixed(2)}</span></div>`;
+                    });
+                    return result;
+                },
+            },
+            grid: {
+                left: "3%",
+                right: "4%",
+                bottom: "15%",
+            },
+            xAxis: {
+                type: "category",
+                data: orderAmountTimes,
+                boundaryGap: false,
+                axisLabel: {
+                    color: '#999',
+                },
+            },
+            yAxis: {
+                type: "value",
+                splitArea: {
+                    show: false,
+                },
+                axisLine: {
+                    show: false,
+                },
+                axisLabel: {
+                    color: '#999',
+                    formatter: function (value) {
+                        return value.toFixed(2);
+                    },
+                },
+                splitLine: {
+                    show: true,
+                    lineStyle: {
+                        color: 'rgba(255, 255, 255, 0.8)',
+                    },
+                },
+            },
+            dataZoom: [
+                {
+                    type: "inside",
+                    start: 50,
+                    end: 100,
+                },
+                {
+                    show: true,
+                    type: "slider",
+                    top: "85%",
+                    start: 50,
+                    end: 100,
+                    textStyle: {
+                        color: '#999',
+                    },
+                },
+            ],
+            series: [
+                {
+                    name: "订单金额",
+                    type: "line",
+                    data: orderAmountData,
+                    smooth: false,
+                    step: false,
+                    connectNulls: false,
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#ffff00",
+                        width: 2,
+                        type: "solid",
+                    },
+                },
+            ],
+        };
+
+        orderAmountChart.setOption(orderAmountOption);
+
         // 响应式调整
         window.addEventListener('resize', function () {
             chart.resize();
             profitChart.resize();
+            profitLossRatioChart.resize();
+            consecutiveLossChart.resize();
+            orderAmountChart.resize();
         });
     </script>
 </body>

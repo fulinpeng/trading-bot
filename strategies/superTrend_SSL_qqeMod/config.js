@@ -10,14 +10,23 @@ const config = {
         isDownOpen: true,                     // 是否允许开空
         isTest: true,                         // 是否为测试环境
         isTestLocal: true,                    // 是否为本地测试环境
+        maxKLinelen: 1000,
         
         // ========== 资金管理 ==========
         availableMoney: 100,                 // 可用的USDT数量
         invariableBalance: true,             // 是否使用固定金额建仓，为true时，availableMoney为必填
         priorityFee: 0.0007,                 // 手续费率
         slippage: 0,                         // 滑点
-        double: 0,                           // 是否损失后加倍开仓
-        maxLossCount: 20,                    // 损失后加倍开仓，最大倍数
+        sizingMode: 'RiskBased',           // 仓位管理: Fixed, Martingale, RiskBased （'Fixed' / 'RiskBased' 时可以启用滚仓）
+        rolling: false,                // 滚仓: availableMoney = max(availableMoney + 盈利, availableMoney)
+
+        // 马丁格尔模式配置
+        martingaleInitialPercent: 100,  // 初始百分比（默认100，即100%）
+        martingaleIncrementPercent: 5,  // 每次增加的百分比（默认1，即1%）
+        martingaleMaxPercent: 1000,     // 最大百分比（默认1000，即1000%）
+
+        // 以损定仓模式配置
+        RiskBasedRiskPercent: 0.02,     // 单笔风险百分比（默认0.01，即1%）
         
         // ========== 日志配置 ==========
         logsFolder: "logs",
@@ -84,7 +93,7 @@ const config = {
         enableSupertrendTakeProfit: true,    // 启用SuperTrend指标止盈，与 TradingView 一致
         enableFibonacciTakeProfit: true,     // 启用Fibonacci指标止盈，与 TradingView 一致
         indicatorTPCountThreshold: 2,        // 指标止盈计数阈值，与 TradingView 一致
-        indicatorTPPartialRatio: 0.6,        // 首次指标止盈平仓比例
+        indicatorTPPartialRatio: 1,        // 首次指标止盈平仓比例，默认60%
     },
 };
 // [2, 4, 16, 48, 144]

@@ -296,11 +296,10 @@ function isInCoolingPeriod(lastBarCount, state) {
  * @param {Number} currentPrice - 当前价格
  * @param {Object} state - 策略状态对象
  * @param {Object} config - 配置对象
- * @param {Function} closeUp - 平多函数
- * @param {Function} closeDown - 平空函数
- * @param {Function} closeOrder - 平仓函数（支持部分平仓）
+ * @param {Function} closeUp - 平多函数（支持部分平仓，quantity参数可选）
+ * @param {Function} closeDown - 平空函数（支持部分平仓，quantity参数可选）
  */
-async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, closeDown, closeOrder) {
+async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, closeDown) {
     if (!state.hasOrder) return;
     
     state.isJudgeProfitRunOrProfit = true;
@@ -317,11 +316,13 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
     }
 
     // 记录初始仓位大小（如果还没有记录，在持仓的第一根K线记录）- 与Pine Script保持一致
+    // 注意：Pine Script使用 strategy.position_size（实时持仓），这里使用 state.tradingInfo.quantity（实时持仓）
+    // 部分平仓后，quantity 会被更新，所以需要使用实时值
     if (trend === "up" && state.initialLongPositionSize === null) {
-        state.initialLongPositionSize = quantity;
+        state.initialLongPositionSize = state.tradingInfo.quantity;
     }
     if (trend === "down" && state.initialShortPositionSize === null) {
-        state.initialShortPositionSize = quantity;
+        state.initialShortPositionSize = state.tradingInfo.quantity;
     }
 
     if (trend === "up") {
@@ -352,22 +353,34 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
         }
 
         // 1. 止损判断 - 立即市价平仓
-        if (judgeStopLossLong(kLineData, effectiveStopLoss)) {
+        const stopLossHit = judgeStopLossLong(kLineData, effectiveStopLoss);
+        if (stopLossHit) {
+            const kLineDate = kLine3.closeTime || kLine3.openTime || 'N/A';
+            console.log(`@@@[做多止损] ${kLineDate}, currentPrice=${state.currentPrice}, effectiveStopLoss=${effectiveStopLoss}`);
             await closeUp();
             state.isJudgeProfitRunOrProfit = false;
             return;
         }
 
         // 2. 固定止盈判断 - 立即市价平仓
-        if (judgeFixedTakeProfitLong(kLineData, state, config)) {
+        const fixedTPHit = judgeFixedTakeProfitLong(kLineData, state, config);
+        if (fixedTPHit) {
+            const takeProfit = state.entryPrice + (state.entryPrice - state.initialLongStopLoss) * config.riskRewardRatio;
+            const kLineDate = kLine3.closeTime || kLine3.openTime || 'N/A';
+            console.log(`@@@[做多固定止盈] ${kLineDate}, currentPrice=${state.currentPrice}, takeProfit=${takeProfit}, entryPrice=${state.entryPrice}, initialStopLoss=${state.initialLongStopLoss}`);
             await closeUp();
             state.isJudgeProfitRunOrProfit = false;
             return;
         }
 
         // 3. 指标止盈判断（带计数和冷却期）- 使用市价单
+        // 与Pine Script保持一致：需要同时检查价格条件和持仓状态
+        // Pine Script: bool longIndicatorTPTriggered = (longTakeProfit2 or longTakeProfit3) and strategy.position_size > 0
         const isInCooling = isInCoolingPeriod(state.lastLongIndicatorTPKLineCount, state);
-        if (!isInCooling && judgeIndicatorTakeProfitLong(kLineData, superTrendArr, fibArr, config)) {
+        const indicatorTPTriggered = judgeIndicatorTakeProfitLong(kLineData, superTrendArr, fibArr, config) && 
+                                     state.hasOrder && 
+                                     state.tradingInfo.quantity > 0; // 确保还有持仓
+        if (!isInCooling && indicatorTPTriggered) {
             state.longIndicatorTPCount++;
             state.lastLongIndicatorTPKLineCount = state.currentKLineCount;
 
@@ -377,20 +390,27 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
             }
 
             // 首次指标止盈：部分平仓（市价单）
+            // 注意：Pine Script中，部分平仓后如果条件继续满足，计数会继续增加
+            const kLineDate = kLine3.closeTime || kLine3.openTime || 'N/A';
             if (state.longIndicatorTPCount === 1 && indicatorTPPartialRatio > 0) {
                 // initialLongPositionSize 已在函数开始时记录（与Pine Script一致）
                 // Pine Script使用 math.abs(initialLongPositionSize)，这里也使用绝对值保持一致
                 const partialQty = Math.abs(state.initialLongPositionSize) * indicatorTPPartialRatio;
-                await closeOrder("SELL", partialQty, () => {
-                    state.tradingInfo.quantity -= partialQty;
-                });
+                console.log(`@@@[做多指标止盈-部分平仓] ${kLineDate}, count=${state.longIndicatorTPCount}, partialQty=${partialQty}, initialSize=${state.initialLongPositionSize}, remainingQty=${state.tradingInfo.quantity - partialQty}`);
+                // 使用 closeUp 进行部分平仓，testMoney 和可视化日志会在 closeUp 中处理
+                await closeUp(partialQty);
                 // 部分平仓后不重置hasOrder，继续持有剩余仓位
+                // 注意：部分平仓后，如果指标止盈条件继续满足（且不在冷却期），计数会继续增加
             }
             // 指标止盈计数大于等于阈值（且不是第一次），立即全部平仓 - 与Pine Script保持一致
             else if (state.longIndicatorTPCount >= indicatorTPCountThreshold) {
+                console.log(`@@@[做多指标止盈-全部平仓] ${kLineDate}, count=${state.longIndicatorTPCount}, threshold=${indicatorTPCountThreshold}`);
                 await closeUp();
                 state.isJudgeProfitRunOrProfit = false;
                 return;
+            } else {
+                // 计数增加但未达到阈值（可能是count=1但indicatorTPPartialRatio=0，或者count=2但threshold>2）
+                console.log(`@@@[做多指标止盈-计数增加但未达到阈值] ${kLineDate}, count=${state.longIndicatorTPCount}, threshold=${indicatorTPCountThreshold}, partialRatio=${indicatorTPPartialRatio}`);
             }
         }
     }
@@ -423,22 +443,34 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
         }
 
         // 1. 止损判断 - 立即市价平仓
-        if (judgeStopLossShort(kLineData, effectiveStopLoss)) {
+        const stopLossHit = judgeStopLossShort(kLineData, effectiveStopLoss);
+        if (stopLossHit) {
+            const kLineDate = kLine3.closeTime || kLine3.openTime || 'N/A';
+            console.log(`@@@[做空止损] ${kLineDate}, currentPrice=${state.currentPrice}, effectiveStopLoss=${effectiveStopLoss}`);
             await closeDown();
             state.isJudgeProfitRunOrProfit = false;
             return;
         }
 
         // 2. 固定止盈判断 - 立即市价平仓
-        if (judgeFixedTakeProfitShort(kLineData, state, config)) {
+        const fixedTPHit = judgeFixedTakeProfitShort(kLineData, state, config);
+        if (fixedTPHit) {
+            const takeProfit = state.entryPrice - (state.initialShortStopLoss - state.entryPrice) * config.riskRewardRatio;
+            const kLineDate = kLine3.closeTime || kLine3.openTime || 'N/A';
+            console.log(`@@@[做空固定止盈] ${kLineDate}, currentPrice=${state.currentPrice}, takeProfit=${takeProfit}, entryPrice=${state.entryPrice}, initialStopLoss=${state.initialShortStopLoss}`);
             await closeDown();
             state.isJudgeProfitRunOrProfit = false;
             return;
         }
 
         // 3. 指标止盈判断（带计数和冷却期）- 使用市价单
+        // 与Pine Script保持一致：需要同时检查价格条件和持仓状态
+        // Pine Script: bool shortIndicatorTPTriggered = (shortTakeProfit2 or shortTakeProfit3) and strategy.position_size < 0
         const isInCooling = isInCoolingPeriod(state.lastShortIndicatorTPKLineCount, state);
-        if (!isInCooling && judgeIndicatorTakeProfitShort(kLineData, superTrendArr, fibArr, config)) {
+        const indicatorTPTriggered = judgeIndicatorTakeProfitShort(kLineData, superTrendArr, fibArr, config) && 
+                                     state.hasOrder && 
+                                     state.tradingInfo.quantity > 0; // 确保还有持仓
+        if (!isInCooling && indicatorTPTriggered) {
             state.shortIndicatorTPCount++;
             state.lastShortIndicatorTPKLineCount = state.currentKLineCount;
 
@@ -448,19 +480,26 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
             }
 
             // 首次指标止盈：部分平仓（市价单）
+            // 注意：Pine Script中，部分平仓后如果条件继续满足，计数会继续增加
+            const kLineDate = kLine3.closeTime || kLine3.openTime || 'N/A';
             if (state.shortIndicatorTPCount === 1 && indicatorTPPartialRatio > 0) {
                 // initialShortPositionSize 已在函数开始时记录（与Pine Script一致）
                 const partialQty = state.initialShortPositionSize * indicatorTPPartialRatio;
-                await closeOrder("BUY", partialQty, () => {
-                    state.tradingInfo.quantity -= partialQty;
-                });
+                console.log(`@@@${kLineDate}[做空指标止盈-部分平仓] , count=${state.shortIndicatorTPCount}, partialQty=${partialQty}, initialSize=${state.initialShortPositionSize}, remainingQty=${state.tradingInfo.quantity - partialQty}`);
+                // 使用 closeDown 进行部分平仓，testMoney 和可视化日志会在 closeDown 中处理
+                await closeDown(partialQty);
                 // 部分平仓后不重置hasOrder，继续持有剩余仓位
+                // 注意：部分平仓后，如果指标止盈条件继续满足（且不在冷却期），计数会继续增加
             }
             // 指标止盈计数大于等于阈值（且不是第一次），立即全部平仓 - 与Pine Script保持一致
             else if (state.shortIndicatorTPCount >= indicatorTPCountThreshold) {
+                console.log(`@@@ ${kLineDate}[做空指标止盈-全部平仓], count=${state.shortIndicatorTPCount}, threshold=${indicatorTPCountThreshold}`);
                 await closeDown();
                 state.isJudgeProfitRunOrProfit = false;
                 return;
+            } else {
+                // 计数增加但未达到阈值（可能是count=1但indicatorTPPartialRatio=0，或者count=2但threshold>2）
+                console.log(`@@@[做空指标止盈-计数增加但未达到阈值] ${kLineDate}, count=${state.shortIndicatorTPCount}, threshold=${indicatorTPCountThreshold}, partialRatio=${indicatorTPPartialRatio}`);
             }
         }
     }
@@ -473,17 +512,16 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
  * @param {Number} currentPrice - 当前价格
  * @param {Object} state - 策略状态对象
  * @param {Object} config - 配置对象
- * @param {Function} closeUp - 平多函数
- * @param {Function} closeDown - 平空函数
- * @param {Function} closeOrder - 平仓函数（支持部分平仓）
+ * @param {Function} closeUp - 平多函数（支持部分平仓，quantity参数可选）
+ * @param {Function} closeDown - 平空函数（支持部分平仓，quantity参数可选）
  */
-async function gridPointClearTrading(currentPrice, state, config, closeUp, closeDown, closeOrder) {
+async function gridPointClearTrading(currentPrice, state, config, closeUp, closeDown) {
     if (!state.hasOrder) return;
 
     state.onGridPoint = true;
 
     // 止盈 | 移动止盈
-    await judgeProfitRunOrProfit(currentPrice, state, config, closeUp, closeDown, closeOrder);
+    await judgeProfitRunOrProfit(currentPrice, state, config, closeUp, closeDown);
 
     // 首次盈利保护（更新移动止损）
     // 注释：Pine Script中没有此逻辑，保持与Pine Script一致
