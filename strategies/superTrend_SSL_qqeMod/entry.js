@@ -35,14 +35,14 @@ function judgeTradingDirection(state, config) {
     const section3Up2 = judgeSSL2LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Up3 = judgeADXLongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, config);
     const section3Up4 = enableSSL55Squeeze ? judgeSSL55SqueezeLongEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) : false;
-    const section3Up = section3Up4 // section3Up1 || section3Up2 || section3Up3 || section3Up4;
+    const section3Up = section3Up1 || section3Up2 || section3Up3 || section3Up4;
 
     // 判断做空条件
     const section3Down1 = judgeSSL1ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Down2 = judgeSSL2ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Down3 = judgeADXShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, config);
     const section3Down4 = enableSSL55Squeeze ? judgeSSL55SqueezeShortEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) : false;
-    const section3Down = section3Down4 // section3Down1 || section3Down2 || section3Down3 || section3Down4;
+    const section3Down = section3Down1 || section3Down2 || section3Down3 || section3Down4;
 
         
     // 打印所有指标值
@@ -507,10 +507,12 @@ function judgeSSL55SqueezeLongEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr,
     
     // 条件3: close > SSL55
     const condition3 = close > ssl55;
+
+    const prevKLine = kLineData[kLineData.length - 2];
     
     // 条件4: ta.crossover(close, BOX_bl) - 当前close上穿BOX_bl，且上一根close <= BOX_bl
     const condition4 = boxBlPrev !== null && boxBl !== null 
-        ? (close > boxBl && kLineData.length >= 2 && kLineData[kLineData.length - 2].close <= boxBlPrev)
+        ? (close > boxBl && kLineData.length >= 2 && Math.min(prevKLine.close, prevKLine.open) <= boxBlPrev)
         : (close > boxBl);
     
     return condition1 && condition2 && condition3 && condition4;
@@ -546,10 +548,12 @@ function judgeSSL55SqueezeShortEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr
     
     // 条件3: close < SSL55
     const condition3 = close < ssl55;
+
+    const prevKLine = kLineData[kLineData.length - 2];
     
     // 条件4: ta.crossunder(close, BOX_bh) - 当前close下穿BOX_bh，且上一根close >= BOX_bh
     const condition4 = boxBhPrev !== null && boxBh !== null
-        ? (close < boxBh && kLineData.length >= 2 && kLineData[kLineData.length - 2].close >= boxBhPrev)
+        ? (close < boxBh && kLineData.length >= 2 && Math.max(prevKLine.close, prevKLine.open) >= boxBhPrev)
         : (close < boxBh);
     
     return condition1 && condition2 && condition3 && condition4;

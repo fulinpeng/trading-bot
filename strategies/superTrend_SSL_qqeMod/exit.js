@@ -46,57 +46,6 @@ async function judgeStopLoss(_currentPrice, state, config, closeUp, closeDown) {
 }
 
 /**
- * 更新移动止损价格（保本止损）
- * @param {Number} _currentPrice - 当前价格
- * @param {Object} state - 策略状态对象
- * @param {Object} config - 配置对象
- */
-async function updateSellstopLossPrice(_currentPrice, state, config) {
-    if (!state.hasOrder) return;
-    
-    state.isUpdateSellstopLossPrice = true;
-    const { trend, orderPrice } = state.tradingInfo;
-    const { kLineData, superTrendArr, sslArr, swimingFreeArr, fibArr } = state;
-    const { firstProtectProfitRate } = config;
-    
-    const [kLine1, kLine2, kLine3] = getLastFromArr(kLineData, 3);
-    const { open, close, openTime, closeTime, low, high } = kLine3;
-    // let [boll1, boll2, boll3, boll4, boll5] = getLastFromArr(bollArr, 5);
-    let [superTrend1, superTrend2, superTrend3] = getLastFromArr(superTrendArr, 3);
-    let [ssl1, ssl2, ssl3] = getLastFromArr(sslArr, 3);
-    let [swimingFree1, swimingFree2, swimingFree3] = getLastFromArr(swimingFreeArr, 3);
-    let [fib1, fib2, fib3] = getLastFromArr(fibArr, 3);
-    
-    let max = Math.max(superTrend3.up, superTrend3.dn);
-    let min = Math.min(superTrend3.up, superTrend3.dn);
-
-    if (trend === "up") {
-        if (close >= max) {
-            state.downArrivedProfit = state.downArrivedProfit + 1;
-            if (state.downArrivedProfit == 1) {
-                state.sellstopLossPrice = orderPrice + Math.abs(_currentPrice - orderPrice) * firstProtectProfitRate;
-            }
-            if (high >= fib3.upper_7 && state.downArrivedProfit >= 1) {
-                state.sellstopLossPrice = orderPrice + Math.abs(high - orderPrice) * 0.9;
-            }
-        }
-    }
-    if (trend === "down") {
-        if (close <= min) {
-            state.downArrivedProfit = state.downArrivedProfit + 1;
-            if (state.downArrivedProfit == 1) {
-                state.sellstopLossPrice = orderPrice - Math.abs(_currentPrice - orderPrice) * firstProtectProfitRate;
-            }
-            if (low <= fib3.lower_7 && state.downArrivedProfit >= 1) {
-                state.sellstopLossPrice = orderPrice - Math.abs(low - orderPrice) * 0.9;
-            }
-        }
-    }
-    
-    state.isUpdateSellstopLossPrice = false;
-}
-
-/**
  * 判断固定止盈（做多）
  * 源代码中直接访问全局变量 entryPrice, initialLongStopLoss, riskRewardRatio
  */
@@ -122,6 +71,54 @@ function judgeFixedTakeProfitShort(kLineData, state, config) {
     const { close, low } = kLine3;
     const takeProfit = entryPrice - (initialShortStopLoss - entryPrice) * riskRewardRatio;
     return close <= takeProfit || low <= takeProfit;
+}
+
+/**
+ * 判断盈利百分比止盈（做多）
+ * @param {Array} kLineData - K线数据数组
+ * @param {Object} state - 策略状态对象
+ * @param {Object} config - 配置对象
+ * @returns {Boolean} 是否触发盈利百分比止盈
+ */
+function judgeProfitPercentTakeProfitLong(kLineData, state, config) {
+    const { enableProfitPercentTakeProfit, profitPercentTakeProfit } = config;
+    if (!enableProfitPercentTakeProfit) return false;
+    
+    const { entryPrice } = state;
+    if (!entryPrice) return false;
+    
+    const [kLine3] = getLastFromArr(kLineData, 1);
+    const { close, high } = kLine3;
+    
+    // 计算盈利百分比止盈价格：开仓价格 * (1 + 盈利百分比)
+    const takeProfitPrice = entryPrice * (1 + profitPercentTakeProfit);
+    
+    // 如果收盘价或最高价达到止盈价格，触发止盈
+    return close >= takeProfitPrice || high >= takeProfitPrice;
+}
+
+/**
+ * 判断盈利百分比止盈（做空）
+ * @param {Array} kLineData - K线数据数组
+ * @param {Object} state - 策略状态对象
+ * @param {Object} config - 配置对象
+ * @returns {Boolean} 是否触发盈利百分比止盈
+ */
+function judgeProfitPercentTakeProfitShort(kLineData, state, config) {
+    const { enableProfitPercentTakeProfit, profitPercentTakeProfit } = config;
+    if (!enableProfitPercentTakeProfit) return false;
+    
+    const { entryPrice } = state;
+    if (!entryPrice) return false;
+    
+    const [kLine3] = getLastFromArr(kLineData, 1);
+    const { close, low } = kLine3;
+    
+    // 计算盈利百分比止盈价格：开仓价格 * (1 - 盈利百分比)
+    const takeProfitPrice = entryPrice * (1 - profitPercentTakeProfit);
+    
+    // 如果收盘价或最低价达到止盈价格，触发止盈
+    return close <= takeProfitPrice || low <= takeProfitPrice;
 }
 
 /**
@@ -340,7 +337,8 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
             // 第一次触发：满足条件时移动一次止损位置到 max(原止损价, preLow)
             if (!state.longTrailActive && trigger) {
                 state.longTrailActive = true;
-                state.longTrailStop = Math.max(currentStopLoss, preHighLow3?.preLow || currentStopLoss);
+                // state.longTrailStop = Math.max(currentStopLoss, preHighLow3?.preLow || currentStopLoss);
+                state.longTrailStop = Math.max(currentStopLoss, state.squeezeBoxArr[state.squeezeBoxArr.length - 1].bl);
                 effectiveStopLoss = state.longTrailStop;
             }
             // 已经启动后，使用移动后的止损价
@@ -362,7 +360,19 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
             return;
         }
 
-        // 2. 固定止盈判断 - 立即市价平仓
+        // 2. 盈利百分比止盈判断 - 立即市价平仓（优先级高于固定止盈）
+        const profitPercentTPHit = judgeProfitPercentTakeProfitLong(kLineData, state, config);
+        if (profitPercentTPHit) {
+            const takeProfitPrice = state.entryPrice * (1 + config.profitPercentTakeProfit);
+            const kLineDate = kLine3.closeTime || kLine3.openTime || 'N/A';
+            const profitPercent = (config.profitPercentTakeProfit * 100).toFixed(2);
+            console.log(`@@@[做多盈利百分比止盈] ${kLineDate}, currentPrice=${state.currentPrice}, takeProfitPrice=${takeProfitPrice.toFixed(4)}, entryPrice=${state.entryPrice}, profitPercent=${profitPercent}%`);
+            await closeUp();
+            state.isJudgeProfitRunOrProfit = false;
+            return;
+        }
+
+        // 3. 固定止盈判断 - 立即市价平仓
         const fixedTPHit = judgeFixedTakeProfitLong(kLineData, state, config);
         if (fixedTPHit) {
             const takeProfit = state.entryPrice + (state.entryPrice - state.initialLongStopLoss) * config.riskRewardRatio;
@@ -373,7 +383,7 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
             return;
         }
 
-        // 3. 指标止盈判断（带计数和冷却期）- 使用市价单
+        // 4. 指标止盈判断（带计数和冷却期）- 使用市价单
         // 与Pine Script保持一致：需要同时检查价格条件和持仓状态
         // Pine Script: bool longIndicatorTPTriggered = (longTakeProfit2 or longTakeProfit3) and strategy.position_size > 0
         const isInCooling = isInCoolingPeriod(state.lastLongIndicatorTPKLineCount, state);
@@ -430,7 +440,8 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
             // 第一次触发：满足条件时移动一次止损位置到 min(原止损价, preHigh)
             if (!state.shortTrailActive && trigger) {
                 state.shortTrailActive = true;
-                state.shortTrailStop = Math.min(currentStopLoss, preHighLow3?.preHigh || currentStopLoss);
+                // state.shortTrailStop = Math.min(currentStopLoss, preHighLow3?.preHigh || currentStopLoss);
+                state.shortTrailStop = Math.min(currentStopLoss, state.squeezeBoxArr[state.squeezeBoxArr.length - 1].bh);
                 effectiveStopLoss = state.shortTrailStop;
             }
             // 已经启动后，使用移动后的止损价
@@ -452,7 +463,19 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
             return;
         }
 
-        // 2. 固定止盈判断 - 立即市价平仓
+        // 2. 盈利百分比止盈判断 - 立即市价平仓（优先级高于固定止盈）
+        const profitPercentTPHit = judgeProfitPercentTakeProfitShort(kLineData, state, config);
+        if (profitPercentTPHit) {
+            const takeProfitPrice = state.entryPrice * (1 - config.profitPercentTakeProfit);
+            const kLineDate = kLine3.closeTime || kLine3.openTime || 'N/A';
+            const profitPercent = (config.profitPercentTakeProfit * 100).toFixed(2);
+            console.log(`@@@[做空盈利百分比止盈] ${kLineDate}, currentPrice=${state.currentPrice}, takeProfitPrice=${takeProfitPrice.toFixed(4)}, entryPrice=${state.entryPrice}, profitPercent=${profitPercent}%`);
+            await closeDown();
+            state.isJudgeProfitRunOrProfit = false;
+            return;
+        }
+
+        // 3. 固定止盈判断 - 立即市价平仓
         const fixedTPHit = judgeFixedTakeProfitShort(kLineData, state, config);
         if (fixedTPHit) {
             const takeProfit = state.entryPrice - (state.initialShortStopLoss - state.entryPrice) * config.riskRewardRatio;
@@ -463,7 +486,7 @@ async function judgeProfitRunOrProfit(currentPrice, state, config, closeUp, clos
             return;
         }
 
-        // 3. 指标止盈判断（带计数和冷却期）- 使用市价单
+        // 4. 指标止盈判断（带计数和冷却期）- 使用市价单
         // 与Pine Script保持一致：需要同时检查价格条件和持仓状态
         // Pine Script: bool shortIndicatorTPTriggered = (shortTakeProfit2 or shortTakeProfit3) and strategy.position_size < 0
         const isInCooling = isInCoolingPeriod(state.lastShortIndicatorTPKLineCount, state);
@@ -523,10 +546,6 @@ async function gridPointClearTrading(currentPrice, state, config, closeUp, close
     // 止盈 | 移动止盈
     await judgeProfitRunOrProfit(currentPrice, state, config, closeUp, closeDown);
 
-    // 首次盈利保护（更新移动止损）
-    // 注释：Pine Script中没有此逻辑，保持与Pine Script一致
-    // await updateSellstopLossPrice(currentPrice, state, config);
-
     // 首次亏损保护
     // await judgeFirstLossProtect(currentPrice);
 
@@ -535,7 +554,6 @@ async function gridPointClearTrading(currentPrice, state, config, closeUp, close
 
 module.exports = {
     judgeStopLoss,
-    updateSellstopLossPrice,
     judgeProfitRunOrProfit,
     gridPointClearTrading,
 };

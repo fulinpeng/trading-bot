@@ -23,7 +23,12 @@
             height: 400px;
             margin-bottom: 20px;
         }
-        #profitLossRatioChart {
+        #profitPercentChart {
+            width: 100%;
+            height: 400px;
+            margin-bottom: 20px;
+        }
+        #lossPercentChart {
             width: 100%;
             height: 400px;
             margin-bottom: 20px;
@@ -101,14 +106,16 @@
     
     <div id="chart"></div>
     <div id="profitChart"></div>
-    <div id="profitLossRatioChart"></div>
+    <div id="profitPercentChart"></div>
+    <div id="lossPercentChart"></div>
     <div id="consecutiveLossChart"></div>
     <div id="orderAmountChart"></div>
 
     <script>
         const chart = echarts.init(document.getElementById('chart'));
         const profitChart = echarts.init(document.getElementById('profitChart'));
-        const profitLossRatioChart = echarts.init(document.getElementById('profitLossRatioChart'));
+        const profitPercentChart = echarts.init(document.getElementById('profitPercentChart'));
+        const lossPercentChart = echarts.init(document.getElementById('lossPercentChart'));
         const consecutiveLossChart = echarts.init(document.getElementById('consecutiveLossChart'));
         const orderAmountChart = echarts.init(document.getElementById('orderAmountChart'));
 
@@ -337,6 +344,14 @@
         const diPlus = extractValue(alignedAdxArr, 'DIPlus0');
         const diMinus = extractValue(alignedAdxArr, 'DIMinus0');
 
+        // Squeeze Box
+        const squeezeBoxBasis = extractValue(alignedSqueezeBoxArr, 'basis');
+        const squeezeBoxBh = extractValue(alignedSqueezeBoxArr, 'bh');
+        const squeezeBoxBl = extractValue(alignedSqueezeBoxArr, 'bl');
+
+        // SSL55
+        const ssl55Value = extractValue(alignedSsl55Arr, 'ssl55');
+
         // 创建开仓/平仓标记
         const markArea = [];
         const markPointData = [];
@@ -405,7 +420,7 @@
         // K线图配置
         const option = {
             title: {
-                text: `${symbol} ${timeLevel} - K线图与指标`,
+                text: `K线图与指标`,
                 left: 0,
                 textStyle: {
                     color: '#fff',
@@ -474,10 +489,19 @@
                         }
                         if (ssl55) {
                             result += `SSL55: ${ssl55.ssl55 !== null && ssl55.ssl55 !== undefined ? ssl55.ssl55.toFixed(4) : 'N/A'}<br>`;
+                            if (ssl55.hh !== null && ssl55.hh !== undefined) {
+                                result += `SSL55 HH: ${ssl55.hh.toFixed(4)}<br>`;
+                            }
+                            if (ssl55.ll !== null && ssl55.ll !== undefined) {
+                                result += `SSL55 LL: ${ssl55.ll.toFixed(4)}<br>`;
+                            }
                         }
                         if (squeezeBox) {
                             result += `Squeeze Box 上轨: ${squeezeBox.bh !== null && squeezeBox.bh !== undefined ? squeezeBox.bh.toFixed(4) : 'N/A'}<br>`;
                             result += `Squeeze Box 下轨: ${squeezeBox.bl !== null && squeezeBox.bl !== undefined ? squeezeBox.bl.toFixed(4) : 'N/A'}<br>`;
+                            if (squeezeBox.basis !== null && squeezeBox.basis !== undefined) {
+                                result += `Squeeze Box 中线: ${squeezeBox.basis.toFixed(4)}<br>`;
+                            }
                         }
                         result += '</div>';
                     }
@@ -496,6 +520,10 @@
                     "Fib Upper",
                     "Fib Lower",
                     "Range Filter",
+                    "SSL55",
+                    "Squeeze Box 中线",
+                    "Squeeze Box 上轨",
+                    "Squeeze Box 下轨",
                 ],
                 textStyle: {
                     color: '#fff',
@@ -529,6 +557,12 @@
                 axisLine: {
                     show: false,  // 隐藏Y轴轴线（白线）
                 },
+                splitLine: {
+                    show: true,  // 显示Y轴分割线
+                    lineStyle: {
+                        color: '#34384980',  // 白色，透明度80%
+                    },
+                },
             },
             dataZoom: [
                 {
@@ -561,6 +595,9 @@
                     // 去掉 markArea（绿色框）
                     markPoint: {
                         data: markPointData,
+                        label: {
+                            show: false,  // 隐藏标记点的标签（去掉横线）
+                        },
                     },
                 },
                 {
@@ -582,92 +619,140 @@
                     smooth: false,  // 使用折线连接
                     symbol: "none",
                     lineStyle: {
-                        color: "#ff0000",
+                        color: "#00ff00",
                         width: 2,
                         opacity: 0.5,  // 50%透明度
                     },
                 },
+                // {
+                //     name: "SSL Up",
+                //     type: "line",
+                //     data: sslUp,
+                //     smooth: false,  // 使用折线连接
+                //     symbol: "none",
+                //     lineStyle: {
+                //         color: "#00ffff",
+                //         width: 1,
+                //         opacity: 0.7,
+                //     },
+                // },
+                // {
+                //     name: "SSL Down",
+                //     type: "line",
+                //     data: sslDown,
+                //     smooth: false,  // 使用折线连接
+                //     symbol: "none",
+                //     lineStyle: {
+                //         color: "#00cccc",  // 青色调颜色
+                //         width: 1,
+                //         opacity: 0.7,
+                //     },
+                // },
+                // {
+                //     name: "SSL2 Up",
+                //     type: "line",
+                //     data: ssl2Up,
+                //     smooth: false,  // 使用折线连接
+                //     symbol: "none",
+                //     lineStyle: {
+                //         color: "#ffff00",
+                //         width: 1,
+                //         opacity: 0.5,
+                //     },
+                // },
+                // {
+                //     name: "SSL2 Down",
+                //     type: "line",
+                //     data: ssl2Down,
+                //     smooth: false,  // 使用折线连接
+                //     symbol: "none",
+                //     lineStyle: {
+                //         color: "#ff8800",
+                //         width: 1,
+                //         opacity: 0.5,
+                //     },
+                // },
+                // {
+                //     name: "Fib Upper",
+                //     type: "line",
+                //     data: fibUpper,
+                //     smooth: false,  // 使用折线连接
+                //     symbol: "none",
+                //     lineStyle: {
+                //         color: "#8888ff",
+                //         width: 1,
+                //         type: "dashed",
+                //     },
+                // },
+                // {
+                //     name: "Fib Lower",
+                //     type: "line",
+                //     data: fibLower,
+                //     smooth: false,  // 使用折线连接
+                //     symbol: "none",
+                //     lineStyle: {
+                //         color: "#ff8888",
+                //         width: 1,
+                //         type: "dashed",
+                //     },
+                // },
+                // {
+                //     name: "Range Filter",
+                //     type: "line",
+                //     data: swimingFilt,
+                //     smooth: false,  // 使用折线连接
+                //     symbol: "none",
+                //     lineStyle: {
+                //         color: "#ffffff",
+                //         width: 2,
+                //     },
+                // },
+                // {
+                //     name: "Squeeze Box 中线",
+                //     type: "line",
+                //     data: squeezeBoxBasis,
+                //     smooth: false,  // 使用折线连接
+                //     symbol: "none",
+                //     lineStyle: {
+                //         color: "#ff00ff",
+                //         width: 1,
+                //         opacity: 0.8,
+                //     },
+                // },
                 {
-                    name: "SSL Up",
+                    name: "SSL55",
                     type: "line",
-                    data: sslUp,
+                    data: ssl55Value,
                     smooth: false,  // 使用折线连接
                     symbol: "none",
                     lineStyle: {
-                        color: "#00ffff",
-                        width: 1,
-                        opacity: 0.7,
+                        color: "#ffff603d",
+                        width: 2,
+                        opacity: 0.9,
                     },
                 },
                 {
-                    name: "SSL Down",
+                    name: "Squeeze Box 上轨",
                     type: "line",
-                    data: sslDown,
-                    smooth: false,  // 使用折线连接
-                    symbol: "none",
-                    lineStyle: {
-                        color: "#00cccc",  // 青色调颜色
-                        width: 1,
-                        opacity: 0.7,
-                    },
-                },
-                {
-                    name: "SSL2 Up",
-                    type: "line",
-                    data: ssl2Up,
-                    smooth: false,  // 使用折线连接
-                    symbol: "none",
-                    lineStyle: {
-                        color: "#ffff00",
-                        width: 1,
-                        opacity: 0.5,
-                    },
-                },
-                {
-                    name: "SSL2 Down",
-                    type: "line",
-                    data: ssl2Down,
+                    data: squeezeBoxBh,
                     smooth: false,  // 使用折线连接
                     symbol: "none",
                     lineStyle: {
                         color: "#ff8800",
                         width: 1,
-                        opacity: 0.5,
+                        opacity: 0.7,
                     },
                 },
                 {
-                    name: "Fib Upper",
+                    name: "Squeeze Box 下轨",
                     type: "line",
-                    data: fibUpper,
+                    data: squeezeBoxBl,
                     smooth: false,  // 使用折线连接
                     symbol: "none",
                     lineStyle: {
-                        color: "#8888ff",
+                        color: "#ff8800",
                         width: 1,
-                        type: "dashed",
-                    },
-                },
-                {
-                    name: "Fib Lower",
-                    type: "line",
-                    data: fibLower,
-                    smooth: false,  // 使用折线连接
-                    symbol: "none",
-                    lineStyle: {
-                        color: "#ff8888",
-                        width: 1,
-                        type: "dashed",
-                    },
-                },
-                {
-                    name: "Range Filter",
-                    type: "line",
-                    data: swimingFilt,
-                    smooth: false,  // 使用折线连接
-                    symbol: "none",
-                    lineStyle: {
-                        color: "#ffffff",
-                        width: 2,
+                        opacity: 0.7,
                     },
                 },
             ],
@@ -748,7 +833,7 @@
                 splitLine: {
                     show: true,  // 显示Y轴分割线
                     lineStyle: {
-                        color: 'rgba(255, 255, 255, 0.8)',  // 白色，透明度80%
+                        color: '#34384980',  // 白色，透明度80%
                     },
                 },
             },
@@ -790,24 +875,47 @@
 
         profitChart.setOption(profitOption);
 
-        // 盈亏比变化曲线图
-        const profitLossRatioData = [];
-        const profitLossRatioTimes = [];
+        // 计算盈利百分比和亏损百分比数据
+        const profitPercentData = [];
+        const lossPercentData = [];
+        const profitPercentTimes = [];
+        const lossPercentTimes = [];
         
-        // 构建盈亏比曲线数据：每个平仓对应一个数据点
-        for (let i = 0; i < stats.tradeProfitLossRatios.length; i++) {
-            profitLossRatioTimes.push(i); // 横轴为索引
-            const ratio = stats.tradeProfitLossRatios[i];
-            // 如果是Infinity，设置为null或一个很大的值
-            profitLossRatioData.push(ratio === Infinity ? null : ratio);
+        // 计算每笔交易的百分比
+        for (let i = 0; i < openPriceHistory.length; i++) {
+            const openPrice = openPriceHistory[i];
+            const closePrice = closePriceHistory[i];
+            
+            if (openPrice && closePrice && openPrice > 0) {
+                const percent = closePrice / openPrice; // 平仓价/开仓价
+                
+                if (percent > 1) {
+                    // 盈利：平仓价 > 开仓价
+                    profitPercentTimes.push(i);
+                    profitPercentData.push(percent);
+                } else if (percent < 1) {
+                    // 亏损：平仓价 < 开仓价
+                    lossPercentTimes.push(i);
+                    lossPercentData.push(percent);
+                }
+                // 平盘（percent === 1）不添加到任何图表
+            }
         }
         
-        // 使用与统计面板一致的平均盈亏比计算方式：总平均盈利 / 总平均亏损
-        const avgProfitLossRatio = stats.profitLossRatio === Infinity ? 0 : stats.profitLossRatio;
+        // 计算平均盈利百分比和平均亏损百分比
+        const validProfitPercents = profitPercentData.filter(p => p !== null && p > 1);
+        const validLossPercents = lossPercentData.filter(p => p !== null && p < 1);
+        const avgProfitPercent = validProfitPercents.length > 0 
+            ? validProfitPercents.reduce((a, b) => a + b, 0) / validProfitPercents.length 
+            : null;
+        const avgLossPercent = validLossPercents.length > 0 
+            ? validLossPercents.reduce((a, b) => a + b, 0) / validLossPercents.length 
+            : null;
 
-        const profitLossRatioOption = {
+        // 盈利百分比曲线图
+        const profitPercentOption = {
             title: {
-                text: "盈亏比变化曲线",
+                text: "盈利百分比曲线（盈利时的平仓价/开仓价）",
                 left: 0,
                 textStyle: {
                     color: '#fff',
@@ -824,16 +932,21 @@
                 formatter: function (params) {
                     const index = params[0].dataIndex;
                     const closeTime = closeHistory[index] || 'N/A';
+                    const openPrice = openPriceHistory[index] !== null && openPriceHistory[index] !== undefined 
+                        ? openPriceHistory[index].toFixed(4) 
+                        : 'N/A';
                     const closePrice = closePriceHistory[index] !== null && closePriceHistory[index] !== undefined 
                         ? closePriceHistory[index].toFixed(4) 
                         : 'N/A';
-                    const ratio = stats.tradeProfitLossRatios[index];
                     let result = `<div><strong>平仓 #${index}</strong></div>`;
                     result += `<div>时间: ${closeTime}</div>`;
+                    result += `<div>开仓价格: ${openPrice}</div>`;
                     result += `<div>平仓价格: ${closePrice}</div>`;
                     params.forEach(function (item) {
-                        const value = ratio === Infinity ? '∞' : item.value.toFixed(2);
-                        result += `<div>${item.seriesName}: <span style="color: ${item.value >= 0 ? '#00ff00' : '#ff0000'}">${value}</span></div>`;
+                        if (item.value !== null && item.value !== undefined) {
+                            const percent = ((item.value - 1) * 100).toFixed(2) + '%';
+                            result += `<div>${item.seriesName}: <span style="color: #00ff00">${item.value.toFixed(4)} (${percent})</span></div>`;
+                        }
                     });
                     return result;
                 },
@@ -845,7 +958,7 @@
             },
             xAxis: {
                 type: "category",
-                data: profitLossRatioTimes,
+                data: profitPercentTimes,
                 boundaryGap: false,
                 axisLabel: {
                     color: '#999',
@@ -853,6 +966,9 @@
             },
             yAxis: {
                 type: "value",
+                scale: true,
+                min: 'dataMin',
+                max: 'dataMax',
                 splitArea: {
                     show: false,
                 },
@@ -862,13 +978,13 @@
                 axisLabel: {
                     color: '#999',
                     formatter: function (value) {
-                        return value.toFixed(2);
+                        return value.toFixed(4);
                     },
                 },
                 splitLine: {
                     show: true,
                     lineStyle: {
-                        color: 'rgba(255, 255, 255, 0.8)',
+                        color: '#34384980',
                     },
                 },
             },
@@ -891,37 +1007,162 @@
             ],
             series: [
                 {
-                    name: "盈亏比",
+                    name: "盈利百分比",
                     type: "line",
-                    data: profitLossRatioData,
+                    data: profitPercentData,
                     smooth: false,
                     step: false,
                     connectNulls: false,
                     symbol: "none",
                     lineStyle: {
-                        color: "#00ffff",
+                        color: "#00ff00",
                         width: 2,
                         type: "solid",
                     },
-                    markLine: {
+                    markLine: avgProfitPercent ? {
                         data: [
-                            { yAxis: 0, lineStyle: { color: '#888', type: 'dashed' } },
                             { 
-                                yAxis: avgProfitLossRatio, 
+                                yAxis: avgProfitPercent, 
                                 lineStyle: { color: '#ffff00', type: 'dashed', width: 2 },
                                 label: {
-                                    formatter: `平均盈亏比: ${avgProfitLossRatio.toFixed(2)}`,
+                                    formatter: `平均盈利百分比: ${avgProfitPercent.toFixed(4)} (${((avgProfitPercent - 1) * 100).toFixed(2)}%)`,
                                     position: 'middle',
                                     color: '#ffff00'
                                 }
                             }
                         ]
-                    },
+                    } : null,
                 },
             ],
         };
 
-        profitLossRatioChart.setOption(profitLossRatioOption);
+        profitPercentChart.setOption(profitPercentOption);
+
+        // 亏损百分比曲线图
+        const lossPercentOption = {
+            title: {
+                text: "亏损百分比曲线（亏损时的平仓价/开仓价）",
+                left: 0,
+                textStyle: {
+                    color: '#fff',
+                },
+            },
+            tooltip: {
+                trigger: "axis",
+                axisPointer: {
+                    type: "cross",
+                    label: {
+                        backgroundColor: '#6a7985',
+                    },
+                },
+                formatter: function (params) {
+                    const index = params[0].dataIndex;
+                    const closeTime = closeHistory[index] || 'N/A';
+                    const openPrice = openPriceHistory[index] !== null && openPriceHistory[index] !== undefined 
+                        ? openPriceHistory[index].toFixed(4) 
+                        : 'N/A';
+                    const closePrice = closePriceHistory[index] !== null && closePriceHistory[index] !== undefined 
+                        ? closePriceHistory[index].toFixed(4) 
+                        : 'N/A';
+                    let result = `<div><strong>平仓 #${index}</strong></div>`;
+                    result += `<div>时间: ${closeTime}</div>`;
+                    result += `<div>开仓价格: ${openPrice}</div>`;
+                    result += `<div>平仓价格: ${closePrice}</div>`;
+                    params.forEach(function (item) {
+                        if (item.value !== null && item.value !== undefined) {
+                            const percent = ((item.value - 1) * 100).toFixed(2) + '%';
+                            result += `<div>${item.seriesName}: <span style="color: #ff0000">${item.value.toFixed(4)} (${percent})</span></div>`;
+                        }
+                    });
+                    return result;
+                },
+            },
+            grid: {
+                left: "3%",
+                right: "4%",
+                bottom: "15%",
+            },
+            xAxis: {
+                type: "category",
+                data: lossPercentTimes,
+                boundaryGap: false,
+                axisLabel: {
+                    color: '#999',
+                },
+            },
+            yAxis: {
+                type: "value",
+                scale: true,
+                min: 'dataMin',
+                max: 'dataMax',
+                splitArea: {
+                    show: false,
+                },
+                axisLine: {
+                    show: false,
+                },
+                axisLabel: {
+                    color: '#999',
+                    formatter: function (value) {
+                        return value.toFixed(4);
+                    },
+                },
+                splitLine: {
+                    show: true,
+                    lineStyle: {
+                        color: '#34384980',
+                    },
+                },
+            },
+            dataZoom: [
+                {
+                    type: "inside",
+                    start: 50,
+                    end: 100,
+                },
+                {
+                    show: true,
+                    type: "slider",
+                    top: "85%",
+                    start: 50,
+                    end: 100,
+                    textStyle: {
+                        color: '#999',
+                    },
+                },
+            ],
+            series: [
+                {
+                    name: "亏损百分比",
+                    type: "line",
+                    data: lossPercentData,
+                    smooth: false,
+                    step: false,
+                    connectNulls: false,
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#ff0000",
+                        width: 2,
+                        type: "solid",
+                    },
+                    markLine: avgLossPercent ? {
+                        data: [
+                            { 
+                                yAxis: avgLossPercent, 
+                                lineStyle: { color: '#ffff00', type: 'dashed', width: 2 },
+                                label: {
+                                    formatter: `平均亏损百分比: ${avgLossPercent.toFixed(4)} (${((avgLossPercent - 1) * 100).toFixed(2)}%)`,
+                                    position: 'middle',
+                                    color: '#ffff00'
+                                }
+                            }
+                        ]
+                    } : null,
+                },
+            ],
+        };
+
+        lossPercentChart.setOption(lossPercentOption);
 
         // 连续亏损次数统计图
         const consecutiveLossData = [];
@@ -982,9 +1223,9 @@
                     color: '#999',
                 },
                 splitLine: {
-                    show: true,
+                    show: true,  // 显示Y轴分割线
                     lineStyle: {
-                        color: 'rgba(255, 255, 255, 0.8)',
+                        color: '#34384980',  // 白色，透明度80%
                     },
                 },
             },
@@ -1086,9 +1327,9 @@
                     },
                 },
                 splitLine: {
-                    show: true,
+                    show: true,  // 显示Y轴分割线
                     lineStyle: {
-                        color: 'rgba(255, 255, 255, 0.8)',
+                        color: '#34384980',  // 白色，透明度80%
                     },
                 },
             },
@@ -1146,7 +1387,8 @@
         window.addEventListener('resize', function () {
             chart.resize();
             profitChart.resize();
-            profitLossRatioChart.resize();
+            profitPercentChart.resize();
+            lossPercentChart.resize();
             consecutiveLossChart.resize();
             orderAmountChart.resize();
         });

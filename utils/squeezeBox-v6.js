@@ -215,10 +215,3 @@ function calculateLatestSqueezeBox(klineData, params = {}) {
       sqp: isNum(sqp[i]) ? sqp[i] : null,
     };
   }
-
-  
-  
-module.exports = {
-    calculateLatestSqueezeBox,
-};
-

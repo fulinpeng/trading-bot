@@ -271,7 +271,7 @@ function setSSL55Arr(klines, state, config) {
     // SSL55 需要至少 ssl55_Length 根K线，传入更多数据确保计算准确
     // HMA 计算需要：WMA(28) + WMA(55) + WMA(7)，至少需要 length + sqrt(length) - 1 根数据
     // 为了计算准确，建议至少传入 length * 3 根数据
-    const minRequired = Math.max(ssl55_Length * 3, 200); // 至少200根K线
+    const minRequired = ssl55_Length * 2; // 至少200根K线
     ssl55Arr.length >= 10 && ssl55Arr.shift();
     const ssl55 = calculateLatestSSL55(klines.slice(-minRequired), ssl55_Length);
     ssl55Arr.push(ssl55);

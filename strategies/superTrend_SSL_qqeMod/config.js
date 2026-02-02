@@ -85,24 +85,27 @@ const config = {
         squeeze_box_Deviation: 2,             // Squeeze Box 标准差倍数，默认2
         squeeze_box_Threshold: 50,           // Squeeze Box 挤压阈值百分比，默认50
         squeeze_box_Source: 'hl2',          // Squeeze Box 数据源，默认 'hl2' (可选: 'close', 'open', 'high', 'low', 'hlc3', 'hl2')
-        squeeze_box_MA_Type: 'EMA',         // Squeeze Box MA类型，默认 'EMA' (可选: 'EMA', 'SMA')
+        squeeze_box_MA_Type: 'EMA',         // Squeeze Box MA类型，默认 'EMA' (可选: 'EMA', 'SMA'， 'HULLMA')
         
         // ========== 风险管理配置 ==========
         // 固定止盈止损
         riskRewardRatio: 1.4,                // 固定止盈倍数，与 TradingView 一致
         priceTolerance: 0.0006,              // 价格容差，与 TradingView 一致
-        firstProtectProfitRate: 0.1,         // 首次保本止损比例（在updateSellstopLossPrice中使用）
         
         // 移动止损
         enableTrailingStop: false,            // 启用移动止损
-        qqeTrailingThresholdLong: 30.0,      // 做多移动止损QQE阈值，与 TradingView 一致
-        qqeTrailingThresholdShort: -30.0,    // 做空移动止损QQE阈值，与 TradingView 一致
+        qqeTrailingThresholdLong: 40.0,      // 做多移动止损QQE阈值，与 TradingView 一致
+        qqeTrailingThresholdShort: -40.0,    // 做空移动止损QQE阈值，与 TradingView 一致
         
         // 指标止盈
         enableSupertrendTakeProfit: true,    // 启用SuperTrend指标止盈，与 TradingView 一致
         enableFibonacciTakeProfit: true,     // 启用Fibonacci指标止盈，与 TradingView 一致
         indicatorTPCountThreshold: 2,        // 指标止盈计数阈值，与 TradingView 一致
-        indicatorTPPartialRatio: 1,        // 首次指标止盈平仓比例，默认60%
+        indicatorTPPartialRatio: 0.9,        // 首次指标止盈平仓比例，默认60%
+
+        // 盈利百分比止盈
+        enableProfitPercentTakeProfit: true, // 启用盈利百分比止盈
+        profitPercentTakeProfit: 0.03,       // 盈利百分比止盈阈值，默认1%（0.01）
     },
 };
 // [2, 4, 16, 48, 144]

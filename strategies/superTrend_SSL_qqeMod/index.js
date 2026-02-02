@@ -20,7 +20,7 @@ const config = require("./config.js");
 // 策略模块
 const { initEveryIndex, setEveryIndex } = require("./indicators.js");
 const { judgeTradingDirection, calculateTradingSignal } = require("./entry.js");
-const { gridPointClearTrading, updateSellstopLossPrice } = require("./exit.js");
+const { gridPointClearTrading } = require("./exit.js");
 
 // 日志收集模块（可选，通过配置开关控制）
 const { initLogCollector, getLogCollector } = require("./logs.js");
@@ -985,12 +985,6 @@ const startWebSocket = async () => {
             process.exit(0);
         }
 
-        // 在本地测试环境下，收到消息后立即请求下一条数据，提高执行速度
-        // 这样可以让服务器提前准备下一条数据，而不是等处理完再请求
-        if (isTestLocal) {
-            ws.send('hello');
-        }
-
         state.prePrice = state.currentPrice;
         state.currentPrice = Number(close) || 0;
 
@@ -1016,12 +1010,18 @@ const startWebSocket = async () => {
 
             if (!state.hasOrder) {
                 await kaiDanDaJi();
-                return;
-            }
-
-            if (isLoading() || state.prePrice === state.currentPrice) {
             } else {
-                await gridPointClearTrading(state.currentPrice, state, configEth, closeUp, closeDown);
+                if (isLoading() || state.prePrice === state.currentPrice) {
+                    // 不做任何操作
+                } else {
+                    await gridPointClearTrading(state.currentPrice, state, configEth, closeUp, closeDown);
+                }
+            }
+            
+            // 在本地测试环境下，处理完新K线数据后请求下一条数据
+            // 确保在处理完当前数据后再请求，避免重复推送
+            if (isTestLocal) {
+                ws.send('hello');
             }
         }
     });
