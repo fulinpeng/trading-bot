@@ -35,15 +35,18 @@ function judgeTradingDirection(state, config) {
     const section3Up2 = judgeSSL2LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Up3 = judgeADXLongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, config);
     const section3Up4 = enableSSL55Squeeze ? judgeSSL55SqueezeLongEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) : false;
-    const section3Up = section3Up1 || section3Up2 || section3Up3 || section3Up4;
+    const section3Up5 = judgeTrendReversalLongEntry(qqeModArr, superTrendArr, config);
+    const section3Up6 = judgeSuperTrendReversalLongEntry(superTrendArr);
+    const section3Up = section3Up3 || section3Up4 || section3Up5 || section3Up6;
 
     // 判断做空条件
     const section3Down1 = judgeSSL1ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Down2 = judgeSSL2ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
     const section3Down3 = judgeADXShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, config);
     const section3Down4 = enableSSL55Squeeze ? judgeSSL55SqueezeShortEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) : false;
-    const section3Down = section3Down1 || section3Down2 || section3Down3 || section3Down4;
-
+    const section3Down5 = judgeTrendReversalShortEntry(qqeModArr, superTrendArr, config);
+    const section3Down6 = judgeSuperTrendReversalShortEntry(superTrendArr);
+    const section3Down = section3Down3 || section3Down4 || section3Down5 || section3Down6;
         
     // 打印所有指标值
     const [superTrend3] = getLastFromArr(state.superTrendArr, 1);
@@ -58,11 +61,13 @@ function judgeTradingDirection(state, config) {
     const kLineDate = kLine3 ? (isTestLocal ? kLine3.openTime : getDate(kLine3.openTime)) : 'N/A';
 
     if (isUpOpen && section3Up) {
+        section3Up5 && console.log(kLineDate + "@@@ ~ judgeTradingDirection ~ section3Up3 || section3Up4 || section3Up5:", {section3Up3, section3Up4, section3Up5})
         state.readyTradingDirection = "up";
         return;
     }
 
     if (isDownOpen && section3Down) {
+        section3Down5 && console.log(kLineDate + "@@@ ~ judgeTradingDirection ~ section3Down3 || section3Down4 || section3Down5:", {section3Down3, section3Down4, section3Down5})
         state.readyTradingDirection = "down";
         return;
     }
@@ -74,14 +79,14 @@ function judgeTradingDirection(state, config) {
  * 计算交易信号
  * @param {Object} state - 策略状态对象
  * @param {Object} config - 配置对象
- * @returns {Object} 交易信号 { trend, stopLoss, stopProfit, entryType }
+ * @returns {Object} 交易信号 { trend, stopLoss, stopProfit }
  */
 function calculateTradingSignal(state, config) {
-    const { kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, adxArr, fibArr, readyTradingDirection, ssl55Arr, squeezeBoxArr } = state;
-    const { riskRewardRatio, enableSSL55Squeeze } = config;
+    const { kLineData, superTrendArr, readyTradingDirection } = state;
+    const { riskRewardRatio } = config;
     
     const [kLine3] = getLastFromArr(kLineData, 1);
-    const { open, close } = kLine3;
+    const { close } = kLine3;
     
     let [superTrend3] = getLastFromArr(superTrendArr, 1);
     if (!superTrend3) {
@@ -91,42 +96,19 @@ function calculateTradingSignal(state, config) {
     let max = Math.max(superTrend3.up, superTrend3.dn);
     let min = Math.min(superTrend3.up, superTrend3.dn);
 
-    // 判断入场方式
-    const section3Up1 = judgeSSL1LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
-    const section3Up2 = judgeSSL2LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
-    const section3Up3 = judgeADXLongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, config);
-    const section3Up4 = enableSSL55Squeeze ? judgeSSL55SqueezeLongEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) : false;
-    const section3Down1 = judgeSSL1ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
-    const section3Down2 = judgeSSL2ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
-    const section3Down3 = judgeADXShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, config);
-    const section3Down4 = enableSSL55Squeeze ? judgeSSL55SqueezeShortEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) : false;
-
-    // 与Pine Script保持一致：只要满足section3Up/section3Down就开仓，不需要close > open或close < open的条件
     if (readyTradingDirection === "up") {
-        let _entryType = 'SSL1';
-        if (section3Up4) _entryType = 'SSL55_SQUEEZE';
-        else if (section3Up3) _entryType = 'ADX';
-        else if (section3Up2) _entryType = 'SSL2';
-        
         return {
             trend: "up",
             stopLoss: min, // 止损（SuperTrend下轨），开仓时保存为initialLongStopLoss
             stopProfit: close + (close - min) * riskRewardRatio, // 固定止盈，使用当前close（即entryPrice）和min（即initialLongStopLoss）
-            entryType: _entryType,
         };
     }
 
     if (readyTradingDirection === "down") {
-        let _entryType = 'SSL1';
-        if (section3Down4) _entryType = 'SSL55_SQUEEZE';
-        else if (section3Down3) _entryType = 'ADX';
-        else if (section3Down2) _entryType = 'SSL2';
-        
         return {
             trend: "down",
             stopLoss: max, // 止损（SuperTrend上轨），开仓时保存为initialShortStopLoss
             stopProfit: close - (max - close) * riskRewardRatio, // 固定止盈，使用当前close（即entryPrice）和max（即initialShortStopLoss）
-            entryType: _entryType,
         };
     }
     
@@ -275,9 +257,9 @@ function calculateSSL2SlopeDown(ssl2Arr, lookback, ssl2RateDown) {
 function judgeSSL1LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config) {
     const [kLine1, kLine2, kLine3, kLine4, kLine5] = getLastFromArr(kLineData, 5);
     const [superTrend3] = getLastFromArr(superTrendArr, 1);
-    const [ssl3] = getLastFromArr(sslArr, 1);
-    const [ssl23] = getLastFromArr(ssl2Arr, 1);
-    if (!superTrend3 || !ssl3 || !ssl23) return false;
+    const [ssl1, ssl2, ssl3] = getLastFromArr(sslArr, 3);
+    const [ssl21, ssl22, ssl23] = getLastFromArr(ssl2Arr, 3);
+    if (!superTrend3 || !ssl1 || !ssl21) return false;
 
     const { close, low } = kLine5;
     const { low: low1 } = kLine4;
@@ -287,15 +269,22 @@ function judgeSSL1LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr
     const maxSSL2 = Math.max(ssl23.sslUp2, ssl23.sslDown2);
     const minSSL2 = Math.min(ssl23.sslUp2, ssl23.sslDown2);
 
+    const maxSSL1 = Math.max(ssl1.sslUp, ssl1.sslDown);
+    const minSSL1 = Math.min(ssl1.sslUp, ssl1.sslDown);
+    const maxSSL21 = Math.max(ssl21.sslUp2, ssl21.sslDown2);
+    const minSSL21 = Math.min(ssl21.sslUp2, ssl21.sslDown2);
+
     // section3Up1条件
-    const condition1 = maxSSL > minSSL2;
+    const condition1 = minSSL > minSSL2 && maxSSL > maxSSL2;
     const condition2 = superTrend3.trend == 1;
     const condition3 = judgeQQELongCondition(qqeModArr, config.qqe_entryThreshold1);
     const condition4 = close > maxSSL;
-    const condition5 = minSSL > minSSL2 && maxSSL > maxSSL2 && Math.min(low, low1) <= maxSSL;
-    const condition6 = calculateSSLSlopeUp(sslArr, config.sslSlopeLookback, config.sslRateUp);
+    const condition5 = Math.min(low, low1) <= maxSSL;
+    // const condition6 = calculateSSLSlopeUp(sslArr, config.sslSlopeLookback, config.sslRateUp);
+    const condition6 = !(minSSL1 > minSSL21 && maxSSL1 > maxSSL21);
+    const condition7 = superTrendArr[0].trend == -1;
 
-    return condition1 && condition2 && condition3 && condition4 && condition5 && condition6;
+    return condition1 && condition2 && condition3 && condition4 && condition5 && condition6 && condition7;
 }
 
 /**
@@ -323,8 +312,8 @@ function judgeSSL2LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr
     const condition4 = close > maxSSL2;
     const condition5 = minSSL > minSSL2 && maxSSL > maxSSL2 && Math.min(low, low1) <= maxSSL2;
     const condition6 = calculateSSL2SlopeUp(ssl2Arr, config.ssl2SlopeLookback, config.ssl2RateUp);
-
-    return condition1 && condition2 && condition3 && condition4 && condition5 && condition6;
+    const condition7 = superTrendArr[0].trend == -1;
+    return condition1 && condition2 && condition3 && condition4 && condition5 && condition6 && condition7;
 }
 
 /**
@@ -369,8 +358,9 @@ function judgeADXLongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fi
             break;
         }
     }
+    const condition8 = superTrendArr[0].trend == -1;
 
-    return condition1 && condition2 && condition3 && condition4 && condition5 && condition6 && condition7;
+    return condition1 && condition2 && condition3 && condition4 && condition5 && condition6 && condition7 && condition8;
 }
 
 /**
@@ -379,9 +369,9 @@ function judgeADXLongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fi
 function judgeSSL1ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config) {
     const [kLine1, kLine2, kLine3, kLine4, kLine5] = getLastFromArr(kLineData, 5);
     const [superTrend3] = getLastFromArr(superTrendArr, 1);
-    const [ssl3] = getLastFromArr(sslArr, 1);
-    const [ssl23] = getLastFromArr(ssl2Arr, 1);
-    if (!superTrend3 || !ssl3 || !ssl23) return false;
+    const [ssl1, ssl2, ssl3] = getLastFromArr(sslArr, 3);
+    const [ssl21, ssl22, ssl23] = getLastFromArr(ssl2Arr, 3);
+    if (!superTrend3 || !ssl1 || !ssl21) return false;
 
     const { close, high } = kLine5;
     const { high: high1 } = kLine4;
@@ -391,15 +381,21 @@ function judgeSSL1ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModAr
     const maxSSL2 = Math.max(ssl23.sslUp2, ssl23.sslDown2);
     const minSSL2 = Math.min(ssl23.sslUp2, ssl23.sslDown2);
 
+    const maxSSL1 = Math.max(ssl1.sslUp, ssl1.sslDown);
+    const minSSL1 = Math.min(ssl1.sslUp, ssl1.sslDown);
+    const maxSSL21 = Math.max(ssl21.sslUp2, ssl21.sslDown2);
+    const minSSL21 = Math.min(ssl21.sslUp2, ssl21.sslDown2);
+
     // section3Down1条件
-    const condition1 = minSSL < maxSSL2;
+    const condition1 = minSSL < minSSL2 && maxSSL < maxSSL2;
     const condition2 = superTrend3.trend == -1;
     const condition3 = judgeQQEShortCondition(qqeModArr, config.qqe_entryThreshold1);
     const condition4 = close < minSSL;
-    const condition5 = minSSL < minSSL2 && maxSSL < maxSSL2 && Math.max(high, high1) >= minSSL;
-    const condition6 = calculateSSLSlopeDown(sslArr, config.sslSlopeLookback, config.sslRateDown);
-
-    return condition1 && condition2 && condition3 && condition4 && condition5 && condition6;
+    const condition5 = Math.max(high, high1) >= minSSL;
+    // const condition6 = calculateSSLSlopeDown(sslArr, config.sslSlopeLookback, config.sslRateDown);
+    const condition6 = !(minSSL1 < minSSL21 && maxSSL1 < maxSSL21);
+    const condition7 = superTrendArr[0].trend == 1;
+    return condition1 && condition2 && condition3 && condition4 && condition5 && condition6 && condition7;
 }
 
 /**
@@ -427,8 +423,8 @@ function judgeSSL2ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModAr
     const condition4 = close < minSSL2;
     const condition5 = minSSL < minSSL2 && maxSSL < maxSSL2 && Math.max(high, high1) >= minSSL2;
     const condition6 = calculateSSL2SlopeDown(ssl2Arr, config.ssl2SlopeLookback, config.ssl2RateDown);
-
-    return condition1 && condition2 && condition3 && condition4 && condition5 && condition6;
+    const condition7 = superTrendArr[0].trend == 1;
+    return condition1 && condition2 && condition3 && condition4 && condition5 && condition6 && condition7;
 }
 
 /**
@@ -473,8 +469,9 @@ function judgeADXShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, f
             break;
         }
     }
+    const condition8 = superTrendArr[0].trend == 1;
 
-    return condition1 && condition2 && condition3 && condition4 && condition5 && condition6 && condition7;
+    return condition1 && condition2 && condition3 && condition4 && condition5 && condition6 && condition7 && condition8;
 }
 
 /**
@@ -514,8 +511,9 @@ function judgeSSL55SqueezeLongEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr,
     const condition4 = boxBlPrev !== null && boxBl !== null 
         ? (close > boxBl && kLineData.length >= 2 && Math.min(prevKLine.close, prevKLine.open) <= boxBlPrev)
         : (close > boxBl);
+    const condition5 = superTrendArr[0].trend == -1 ? (condition2 || condition3) : (condition2 && condition3);
     
-    return condition1 && condition2 && condition3 && condition4;
+    return condition1 && condition4 && condition5;
 }
 
 /**
@@ -555,8 +553,104 @@ function judgeSSL55SqueezeShortEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr
     const condition4 = boxBhPrev !== null && boxBh !== null
         ? (close < boxBh && kLineData.length >= 2 && Math.max(prevKLine.close, prevKLine.open) >= boxBhPrev)
         : (close < boxBh);
+    const condition5 = superTrendArr[0].trend == 1 ? (condition2 || condition3) : (condition2 && condition3);
     
-    return condition1 && condition2 && condition3 && condition4;
+    return condition1 && condition4 && condition5;
+}
+
+/**
+ * 判断QQE MOD趋势反转入场条件（做多）
+ * 条件：QQE MOD拐头向上 && 中间那个QQE MOD < 阈值（默认0）&& SuperTrend趋势为1
+ * 拐头向上：qqeModBar[2] < qqeModBar[1] < qqeModBar[0]
+ */
+function judgeTrendReversalLongEntry(qqeModArr, superTrendArr, config) {
+    if (!qqeModArr || qqeModArr.length < 3) return false;
+    if (!superTrendArr || superTrendArr.length < 1) return false;
+    if (!config) return false;
+    
+    let { qqeModTrendReversalThreshold = 0 } = config;
+
+    qqeModTrendReversalThreshold = superTrendArr[0].trend == -1 ? qqeModTrendReversalThreshold : qqeModTrendReversalThreshold * 2;
+    
+    // 获取最近三根K线的QQE MOD数据
+    const [qqeMod2, qqeMod1, qqeMod0] = getLastFromArr(qqeModArr, 3);
+    if (!qqeMod2 || !qqeMod1 || !qqeMod0) return false;
+    
+    const qqeModBar0 = qqeMod0.qqeModBar0 || 0;
+    const qqeModBar1 = qqeMod1.qqeModBar0 || 0;
+    const qqeModBar2 = qqeMod2.qqeModBar0 || 0;
+    
+    // 拐头向上：qqeModBar[2] < qqeModBar[1] < qqeModBar[0]
+    const turnUp = qqeModBar2 < qqeModBar1 && qqeModBar1 < qqeModBar0;
+    // 中间那个QQE MOD < 阈值
+    const middleBelowThreshold = qqeModBar1 < qqeModTrendReversalThreshold;
+    const condition0 = turnUp && middleBelowThreshold;
+    // SuperTrend趋势为1（趋势为上升）
+    const condition1 = superTrendArr[superTrendArr.length - 1].trend == 1;
+    
+    return condition0 && condition1;
+}
+
+/**
+ * 判断QQE MOD趋势反转入场条件（做空）
+ * 条件：QQE MOD拐头向下 && 中间那个QQE MOD > 阈值（默认0）&& SuperTrend趋势为1
+ * 拐头向下：qqeModBar[2] > qqeModBar[1] > qqeModBar[0]
+ */
+function judgeTrendReversalShortEntry(qqeModArr, superTrendArr, config) {
+    if (!qqeModArr || qqeModArr.length < 3) return false;
+    if (!superTrendArr || superTrendArr.length < 1) return false;
+    if (!config) return false;
+    
+    let { qqeModTrendReversalThreshold = 0 } = config;
+    qqeModTrendReversalThreshold = superTrendArr[0].trend == 1 ? qqeModTrendReversalThreshold : qqeModTrendReversalThreshold * 2;
+    
+    // 获取最近三根K线的QQE MOD数据
+    const [qqeMod2, qqeMod1, qqeMod0] = getLastFromArr(qqeModArr, 3);
+    if (!qqeMod2 || !qqeMod1 || !qqeMod0) return false;
+    
+    const qqeModBar0 = qqeMod0.qqeModBar0 || 0;
+    const qqeModBar1 = qqeMod1.qqeModBar0 || 0;
+    const qqeModBar2 = qqeMod2.qqeModBar0 || 0;
+    
+    // 拐头向下：qqeModBar[2] > qqeModBar[1] > qqeModBar[0]
+    const turnDown = qqeModBar2 > qqeModBar1 && qqeModBar1 > qqeModBar0;
+    // 中间那个QQE MOD > 阈值
+    const middleAboveThreshold = qqeModBar1 > qqeModTrendReversalThreshold;
+    const condition0 = turnDown && middleAboveThreshold;
+    // SuperTrend趋势为-1（趋势为下降）
+    const condition1 = superTrendArr[superTrendArr.length - 1].trend == -1;
+    
+    return condition0 && condition1;
+}
+
+/**
+ * 判断SuperTrend趋势反转入场条件（做多）
+ * 条件：trend[1] == -1 and trend == 1
+ * 上一根K线的trend == -1 且 当前K线的trend == 1
+ */
+function judgeSuperTrendReversalLongEntry(superTrendArr) {
+    if (!superTrendArr || superTrendArr.length < 2) return false;
+    
+    const [superTrend1, superTrend0] = getLastFromArr(superTrendArr, 2);
+    if (!superTrend1 || !superTrend0) return false;
+    
+    // trend[1] == -1 and trend == 1
+    return superTrend1.trend == -1 && superTrend0.trend == 1;
+}
+
+/**
+ * 判断SuperTrend趋势反转入场条件（做空）
+ * 条件：trend[1] == 1 and trend == -1
+ * 上一根K线的trend == 1 且 当前K线的trend == -1
+ */
+function judgeSuperTrendReversalShortEntry(superTrendArr) {
+    if (!superTrendArr || superTrendArr.length < 2) return false;
+    
+    const [superTrend1, superTrend0] = getLastFromArr(superTrendArr, 2);
+    if (!superTrend1 || !superTrend0) return false;
+    
+    // trend[1] == 1 and trend == -1
+    return superTrend1.trend == 1 && superTrend0.trend == -1;
 }
 
 module.exports = {

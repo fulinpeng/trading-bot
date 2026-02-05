@@ -27,6 +27,7 @@ class LogCollector {
             trendHistory: [],       // 交易方向（'up'/'down'）
             openPriceHistory: [],   // 开仓价格
             closePriceHistory: [],  // 平仓价格
+            initialStopLossHistory: [], // 初始止损价格
             orderAmountHistory: [], // 订单金额
             curTestMoneyHistory: [], // 当前测试资金历史
             kLineData: [],          // K线数据（与指标数据一一对应）
@@ -98,8 +99,9 @@ class LogCollector {
      * @param {string} trend - 交易方向（'up'/'down'）
      * @param {number} testMoney - 当前测试资金
      * @param {number} quantity - 订单数量（可选）
+     * @param {number} stopLoss - 初始止损价格（可选）
      */
-    recordOpen(time, price, trend, testMoney, quantity) {
+    recordOpen(time, price, trend, testMoney, quantity, stopLoss) {
         if (!this.enabled) return;
         
         // 计算订单金额 = 开仓价格 × 订单数量
@@ -108,6 +110,7 @@ class LogCollector {
         this.data.openHistory.push(time);
         this.data.openPriceHistory.push(price);
         this.data.trendHistory.push(trend);
+        this.data.initialStopLossHistory.push(stopLoss || null);
         this.data.orderAmountHistory.push(orderAmount);
     }
 
@@ -164,6 +167,7 @@ class LogCollector {
         var trendHistory = ${JSON.stringify(this.data.trendHistory, null, 8)}
         var openPriceHistory = ${JSON.stringify(this.data.openPriceHistory, null, 8)}
         var closePriceHistory = ${JSON.stringify(this.data.closePriceHistory, null, 8)}
+        var initialStopLossHistory = ${JSON.stringify(this.data.initialStopLossHistory, null, 8)}
         var orderAmountHistory = ${JSON.stringify(this.data.orderAmountHistory, null, 8)}
         var curTestMoneyHistory = ${JSON.stringify(this.data.curTestMoneyHistory, null, 8)}
         var superTrendArr = ${JSON.stringify(this.data.superTrendArr, null, 8)}
@@ -184,6 +188,7 @@ class LogCollector {
             trendHistory,
             openPriceHistory,
             closePriceHistory,
+            initialStopLossHistory,
             orderAmountHistory,
             curTestMoneyHistory,
             superTrendArr,
@@ -225,6 +230,7 @@ class LogCollector {
             trendHistory: [],
             openPriceHistory: [],
             closePriceHistory: [],
+            initialStopLossHistory: [],
             orderAmountHistory: [],
             curTestMoneyHistory: [],
             kLineData: [],

@@ -132,6 +132,7 @@
         const closeHistory = {{closeHistory}};
         const openPriceHistory = {{openPriceHistory}};
         const closePriceHistory = {{closePriceHistory}};
+        const initialStopLossHistory = {{initialStopLossHistory}} || [];
         const orderAmountHistory = {{orderAmountHistory}};
         const trendHistory = {{trendHistory}};
         const curTestMoneyHistory = {{curTestMoneyHistory}};
@@ -305,6 +306,7 @@
         const alignedAdxArr = adxArr;
         const alignedSsl55Arr = ssl55Arr;
         const alignedSqueezeBoxArr = squeezeBoxArr;
+        const alignedPreHighLowArr = preHighLowArr;
 
         // 从指标数组中提取数据
         function extractValue(arr, valuePath) {
@@ -330,6 +332,11 @@
         // Fibonacci
         const fibUpper = extractValue(alignedFibArr, 'upper_7');
         const fibLower = extractValue(alignedFibArr, 'lower_7');
+
+        // PreHighLow
+        const preHigh = extractValue(alignedPreHighLowArr, 'preHigh');
+        const preLow = extractValue(alignedPreHighLowArr, 'preLow');
+        console.log("@@@@@🚀 ~ preHigh, preLow:", preHigh, preLow)
 
         // Range Filter (swimingFree)
         const swimingFilt = extractValue(alignedSwimingFreeArr, 'filt');
@@ -433,9 +440,17 @@
                 },
                 formatter: function (params) {
                     let result = `<div style="margin-bottom: 5px;"><strong>${params[0].axisValue}</strong></div>`;
+                    
                     params.forEach(function (item) {
-                        if (item.value !== null && item.value !== undefined) {
-                            result += `<div>${item.seriesName}: <span style="color: ${item.color}">${typeof item.value === 'number' ? item.value.toFixed(4) : item.value}</span></div>`;
+                        if (item.seriesName === "K线" && item.value !== null && item.value !== undefined) {
+                            // K线数据格式：[open, close, low, high]
+                            const klineData = item.value;
+                            if (Array.isArray(klineData) && klineData.length >= 4) {
+                                result += `<div>open: <span style="color: ${item.color}">${klineData[0].toFixed(4)}</span></div>`;
+                                result += `<div>close: <span style="color: ${item.color}">${klineData[1].toFixed(4)}</span></div>`;
+                                result += `<div>low: <span style="color: ${item.color}">${klineData[2].toFixed(4)}</span></div>`;
+                                result += `<div>high: <span style="color: ${item.color}">${klineData[3].toFixed(4)}</span></div>`;
+                            }
                         }
                     });
                     
@@ -449,8 +464,9 @@
                     const fib = alignedFibArr[idx];
                     const ssl55 = alignedSsl55Arr[idx];
                     const squeezeBox = alignedSqueezeBoxArr[idx];
+                    const preHighLow = alignedPreHighLowArr[idx];
                     
-                    if (superTrend || ssl || swimingFree || qqeMod || adx || fib || ssl55 || squeezeBox) {
+                    if (superTrend || ssl || swimingFree || qqeMod || adx || fib || ssl55 || squeezeBox || preHighLow) {
                         result += '<div style="margin-top: 10px; border-top: 1px solid #333; padding-top: 5px;">';
                         result += '<strong>指标详情:</strong><br>';
                         if (superTrend) {
@@ -464,12 +480,6 @@
                             if (superTrend.dn !== null && superTrend.dn !== undefined) {
                                 result += `SuperTrend DN: ${superTrend.dn.toFixed(4)}<br>`;
                             }
-                            if (superTrend.atr !== null && superTrend.atr !== undefined) {
-                                result += `SuperTrend ATR: ${superTrend.atr.toFixed(4)}<br>`;
-                            }
-                            if (superTrend.tr !== null && superTrend.tr !== undefined) {
-                                result += `SuperTrend TR: ${superTrend.tr.toFixed(4)}<br>`;
-                            }
                         }
                         if (ssl) {
                             result += `SSL: ${ssl.hlv === 1 ? 'UP' : 'DOWN'}<br>`;
@@ -481,7 +491,7 @@
                             result += `QQE MOD: ${qqeMod.qqeModBar0?.toFixed(2) || 'N/A'}<br>`;
                         }
                         if (adx) {
-                            result += `ADX: ${adx.ADX?.toFixed(2) || 'N/A'}<br>`;
+                            result += `ADX: ${adx.ADX?.toFixed(2) || 'N/A'}, `;
                             result += `DI+: ${adx.DIPlus0?.toFixed(2) || 'N/A'}, DI-: ${adx.DIMinus0?.toFixed(2) || 'N/A'}<br>`;
                         }
                         if (fib) {
@@ -501,6 +511,14 @@
                             result += `Squeeze Box 下轨: ${squeezeBox.bl !== null && squeezeBox.bl !== undefined ? squeezeBox.bl.toFixed(4) : 'N/A'}<br>`;
                             if (squeezeBox.basis !== null && squeezeBox.basis !== undefined) {
                                 result += `Squeeze Box 中线: ${squeezeBox.basis.toFixed(4)}<br>`;
+                            }
+                        }
+                        if (preHighLow) {
+                            if (preHighLow.preHigh !== null && preHighLow.preHigh !== undefined) {
+                                result += `摆动高: ${preHighLow.preHigh.toFixed(4)}<br>`;
+                            }
+                            if (preHighLow.preLow !== null && preHighLow.preLow !== undefined) {
+                                result += `摆动低: ${preHighLow.preLow.toFixed(4)}<br>`;
                             }
                         }
                         result += '</div>';
@@ -524,61 +542,111 @@
                     "Squeeze Box 中线",
                     "Squeeze Box 上轨",
                     "Squeeze Box 下轨",
+                    "QQE MOD",
                 ],
                 textStyle: {
                     color: '#fff',
                 },
             },
-            grid: {
-                left: "3%",
-                right: "4%",
-                bottom: "15%",
-            },
-            xAxis: {
-                type: "category",
-                data: data0.categoryData,
-                boundaryGap: false,
-                axisLine: { onZero: false },
-                splitLine: { show: false },
-                min: "dataMin",
-                max: "dataMax",
-                axisLabel: {
-                    color: '#999',
+            grid: [
+                {
+                    left: "3%",
+                    right: "4%",
+                    top: "10%",
+                    bottom: "25%",  // 为底部柱状图留出空间
                 },
-            },
-            yAxis: {
-                scale: true,
-                splitArea: {
-                    show: false,  // 去掉背景区域
-                },
-                axisLabel: {
-                    color: '#999',
-                },
-                axisLine: {
-                    show: false,  // 隐藏Y轴轴线（白线）
-                },
-                splitLine: {
-                    show: true,  // 显示Y轴分割线
-                    lineStyle: {
-                        color: '#34384980',  // 白色，透明度80%
+                {
+                    left: "3%",
+                    right: "4%",
+                    top: "75%",  // 柱状图在底部
+                    bottom: "15%",
+                    height: "15%",  // 柱状图高度
+                }
+            ],
+            xAxis: [
+                {
+                    type: "category",
+                    data: data0.categoryData,
+                    boundaryGap: false,
+                    axisLine: { onZero: false },
+                    splitLine: { show: false },
+                    min: "dataMin",
+                    max: "dataMax",
+                    axisLabel: {
+                        color: '#999',
                     },
+                    gridIndex: 0,
                 },
-            },
+                {
+                    type: "category",
+                    data: data0.categoryData,
+                    boundaryGap: false,
+                    axisLine: { onZero: false },
+                    splitLine: { show: false },
+                    min: "dataMin",
+                    max: "dataMax",
+                    axisLabel: {
+                        color: '#999',
+                        show: false,  // 底部x轴不显示标签，避免重复
+                    },
+                    gridIndex: 1,
+                }
+            ],
+            yAxis: [
+                {
+                    scale: true,
+                    splitArea: {
+                        show: false,  // 去掉背景区域
+                    },
+                    axisLabel: {
+                        color: '#999',
+                    },
+                    axisLine: {
+                        show: false,  // 隐藏Y轴轴线（白线）
+                    },
+                    splitLine: {
+                        show: true,  // 显示Y轴分割线
+                        lineStyle: {
+                            color: '#34384980',  // 白色，透明度80%
+                        },
+                    },
+                    gridIndex: 0,
+                },
+                {
+                    type: "value",
+                    scale: true,
+                    axisLabel: {
+                        color: '#999',
+                    },
+                    axisLine: {
+                        show: false,
+                    },
+                    splitLine: {
+                        show: true,
+                        lineStyle: {
+                            color: '#34384980',
+                        },
+                    },
+                    gridIndex: 1,
+                }
+            ],
             dataZoom: [
                 {
                     type: "inside",
                     start: 50,
                     end: 100,
+                    xAxisIndex: [0, 1],  // 同时控制两个x轴
                 },
                 {
                     show: true,
                     type: "slider",
-                    top: "85%",
+                    top: "90%",  // 调整位置，因为底部有柱状图
                     start: 50,
                     end: 100,
                     textStyle: {
                         color: '#999',
                     },
+                    xAxisIndex: [0, 1],  // 同时控制两个x轴
                 },
             ],
             series: [
@@ -624,78 +692,78 @@
                         opacity: 0.5,  // 50%透明度
                     },
                 },
-                // {
-                //     name: "SSL Up",
-                //     type: "line",
-                //     data: sslUp,
-                //     smooth: false,  // 使用折线连接
-                //     symbol: "none",
-                //     lineStyle: {
-                //         color: "#00ffff",
-                //         width: 1,
-                //         opacity: 0.7,
-                //     },
-                // },
-                // {
-                //     name: "SSL Down",
-                //     type: "line",
-                //     data: sslDown,
-                //     smooth: false,  // 使用折线连接
-                //     symbol: "none",
-                //     lineStyle: {
-                //         color: "#00cccc",  // 青色调颜色
-                //         width: 1,
-                //         opacity: 0.7,
-                //     },
-                // },
-                // {
-                //     name: "SSL2 Up",
-                //     type: "line",
-                //     data: ssl2Up,
-                //     smooth: false,  // 使用折线连接
-                //     symbol: "none",
-                //     lineStyle: {
-                //         color: "#ffff00",
-                //         width: 1,
-                //         opacity: 0.5,
-                //     },
-                // },
-                // {
-                //     name: "SSL2 Down",
-                //     type: "line",
-                //     data: ssl2Down,
-                //     smooth: false,  // 使用折线连接
-                //     symbol: "none",
-                //     lineStyle: {
-                //         color: "#ff8800",
-                //         width: 1,
-                //         opacity: 0.5,
-                //     },
-                // },
-                // {
-                //     name: "Fib Upper",
-                //     type: "line",
-                //     data: fibUpper,
-                //     smooth: false,  // 使用折线连接
-                //     symbol: "none",
-                //     lineStyle: {
-                //         color: "#8888ff",
-                //         width: 1,
-                //         type: "dashed",
-                //     },
-                // },
-                // {
-                //     name: "Fib Lower",
-                //     type: "line",
-                //     data: fibLower,
-                //     smooth: false,  // 使用折线连接
-                //     symbol: "none",
-                //     lineStyle: {
-                //         color: "#ff8888",
-                //         width: 1,
-                //         type: "dashed",
-                //     },
-                // },
+                {
+                    name: "SSL Up",
+                    type: "line",
+                    data: sslUp,
+                    smooth: false,  // 使用折线连接
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#00ffff",
+                        width: 1,
+                        opacity: 0.7,
+                    },
+                },
+                {
+                    name: "SSL Down",
+                    type: "line",
+                    data: sslDown,
+                    smooth: false,  // 使用折线连接
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#00cccc",  // 青色调颜色
+                        width: 1,
+                        opacity: 0.7,
+                    },
+                },
+                {
+                    name: "SSL2 Up",
+                    type: "line",
+                    data: ssl2Up,
+                    smooth: false,  // 使用折线连接
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#ff1860",
+                        width: 1,
+                        opacity: 0.5,
+                    },
+                },
+                {
+                    name: "SSL2 Down",
+                    type: "line",
+                    data: ssl2Down,
+                    smooth: false,  // 使用折线连接
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#ff1860",
+                        width: 1,
+                        opacity: 0.5,
+                    },
+                },
+                {
+                    name: "Fib Upper",
+                    type: "line",
+                    data: fibUpper,
+                    smooth: false,  // 使用折线连接
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#ff8888",
+                        width: 1,
+                        type: "dashed",
+                    },
+                },
+                {
+                    name: "Fib Lower",
+                    type: "line",
+                    data: fibLower,
+                    smooth: false,  // 使用折线连接
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#ff8888",
+                        width: 1,
+                        type: "dashed",
+                    },
+                },
                 // {
                 //     name: "Range Filter",
                 //     type: "line",
@@ -719,18 +787,18 @@
                 //         opacity: 0.8,
                 //     },
                 // },
-                {
-                    name: "SSL55",
-                    type: "line",
-                    data: ssl55Value,
-                    smooth: false,  // 使用折线连接
-                    symbol: "none",
-                    lineStyle: {
-                        color: "#ffff603d",
-                        width: 2,
-                        opacity: 0.9,
-                    },
-                },
+                // {
+                //     name: "SSL55",
+                //     type: "line",
+                //     data: ssl55Value,
+                //     smooth: false,  // 使用折线连接
+                //     symbol: "none",
+                //     lineStyle: {
+                //         color: "#ffff603d",
+                //         width: 2,
+                //         opacity: 0.9,
+                //     },
+                // },
                 {
                     name: "Squeeze Box 上轨",
                     type: "line",
@@ -755,6 +823,54 @@
                         opacity: 0.7,
                     },
                 },
+                {
+                    name: "QQE MOD",
+                    type: "bar",
+                    data: qqeModBar,
+                    xAxisIndex: 1,
+                    yAxisIndex: 1,
+                    itemStyle: {
+                        color: function(params) {
+                            // 根据值正负显示不同颜色
+                            const value = params.value;
+                            if (value === null || value === undefined) {
+                                return 'transparent';
+                            }
+                            return value >= 0 ? '#00ff00' : '#ff0000';  // 正数绿色，负数红色
+                        },
+                    },
+                    barWidth: '60%',
+                },
+                // {
+                //     name: "PreHigh",
+                //     type: "scatter",
+                //     data: preHigh,
+                //     symbolSize: 2,  // 最小点
+                //     itemStyle: {
+                //         color: '#ffff00',  // 黄色
+                //     },
+                //     label: {
+                //         show: false,  // 不显示标签
+                //     },
+                //     large: true,  // 启用大数据量优化
+                //     largeThreshold: 200,  // 超过200个点时启用优化
+                //     animation: false,  // 禁用动画，避免缩放时重绘问题
+                // },
+                // {
+                //     name: "PreLow",
+                //     type: "scatter",
+                //     data: preLow,
+                //     symbolSize: 2,  // 最小点
+                //     itemStyle: {
+                //         color: '#00ffff',  // 青色
+                //     },
+                //     label: {
+                //         show: false,  // 不显示标签
+                //     },
+                //     large: true,  // 启用大数据量优化
+                //     largeThreshold: 200,  // 超过200个点时启用优化
+                //     animation: false,  // 禁用动画，避免缩放时重绘问题
+                // },
             ],
         };
 
@@ -887,24 +1003,56 @@
             const closePrice = closePriceHistory[i];
             
             if (openPrice && closePrice && openPrice > 0) {
-                const percent = closePrice / openPrice; // 平仓价/开仓价
+                const percent = Math.abs(closePrice - openPrice) / openPrice; // abs(平仓价 - 开仓价) / 开仓价
                 
-                if (percent > 1) {
+                if (closePrice > openPrice) {
                     // 盈利：平仓价 > 开仓价
                     profitPercentTimes.push(i);
                     profitPercentData.push(percent);
-                } else if (percent < 1) {
+                } else if (closePrice < openPrice) {
                     // 亏损：平仓价 < 开仓价
                     lossPercentTimes.push(i);
                     lossPercentData.push(percent);
                 }
-                // 平盘（percent === 1）不添加到任何图表
+                // 平盘（closePrice === openPrice）不添加到任何图表
+            }
+        }
+        
+        // 计算初始止损百分比数据（与盈利百分比使用相同的x轴索引）
+        const initialStopLossPercentData = [];
+        // 为每个盈利单子计算对应的初始止损百分比
+        for (let i = 0; i < profitPercentTimes.length; i++) {
+            const originalIndex = profitPercentTimes[i];
+            const openPrice = openPriceHistory[originalIndex];
+            const initialStopLoss = initialStopLossHistory[originalIndex];
+            
+            if (openPrice && initialStopLoss !== null && initialStopLoss !== undefined && openPrice > 0) {
+                const stopLossPercent = Math.abs(initialStopLoss - openPrice) / openPrice; // abs(初始止损价 - 开仓价) / 开仓价
+                initialStopLossPercentData.push(stopLossPercent);
+            } else {
+                initialStopLossPercentData.push(null); // 如果没有数据，使用null
+            }
+        }
+        
+        // 计算亏损单子对应的初始止损百分比数据（与亏损百分比使用相同的x轴索引）
+        const lossInitialStopLossPercentData = [];
+        // 为每个亏损单子计算对应的初始止损百分比
+        for (let i = 0; i < lossPercentTimes.length; i++) {
+            const originalIndex = lossPercentTimes[i];
+            const openPrice = openPriceHistory[originalIndex];
+            const initialStopLoss = initialStopLossHistory[originalIndex];
+            
+            if (openPrice && initialStopLoss !== null && initialStopLoss !== undefined && openPrice > 0) {
+                const stopLossPercent = Math.abs(initialStopLoss - openPrice) / openPrice; // abs(初始止损价 - 开仓价) / 开仓价
+                lossInitialStopLossPercentData.push(stopLossPercent);
+            } else {
+                lossInitialStopLossPercentData.push(null); // 如果没有数据，使用null
             }
         }
         
         // 计算平均盈利百分比和平均亏损百分比
-        const validProfitPercents = profitPercentData.filter(p => p !== null && p > 1);
-        const validLossPercents = lossPercentData.filter(p => p !== null && p < 1);
+        const validProfitPercents = profitPercentData.filter(p => p !== null && p > 0);
+        const validLossPercents = lossPercentData.filter(p => p !== null && p > 0);
         const avgProfitPercent = validProfitPercents.length > 0 
             ? validProfitPercents.reduce((a, b) => a + b, 0) / validProfitPercents.length 
             : null;
@@ -915,7 +1063,7 @@
         // 盈利百分比曲线图
         const profitPercentOption = {
             title: {
-                text: "盈利百分比曲线（盈利时的平仓价/开仓价）",
+                text: "盈利百分比曲线（|平仓价 - 开仓价| / 开仓价）",
                 left: 0,
                 textStyle: {
                     color: '#fff',
@@ -930,7 +1078,10 @@
                     },
                 },
                 formatter: function (params) {
-                    const index = params[0].dataIndex;
+                    // 使用第一个参数的dataIndex作为profitPercentTimes的索引
+                    const dataIndex = params[0].dataIndex;
+                    const index = profitPercentTimes[dataIndex]; // 获取原始单子索引
+                    
                     const closeTime = closeHistory[index] || 'N/A';
                     const openPrice = openPriceHistory[index] !== null && openPriceHistory[index] !== undefined 
                         ? openPriceHistory[index].toFixed(4) 
@@ -938,14 +1089,21 @@
                     const closePrice = closePriceHistory[index] !== null && closePriceHistory[index] !== undefined 
                         ? closePriceHistory[index].toFixed(4) 
                         : 'N/A';
+                    const initialStopLoss = initialStopLossHistory[index] !== null && initialStopLossHistory[index] !== undefined 
+                        ? initialStopLossHistory[index].toFixed(4) 
+                        : 'N/A';
+                    
                     let result = `<div><strong>平仓 #${index}</strong></div>`;
                     result += `<div>时间: ${closeTime}</div>`;
                     result += `<div>开仓价格: ${openPrice}</div>`;
                     result += `<div>平仓价格: ${closePrice}</div>`;
+                    result += `<div>初始止损价格: ${initialStopLoss}</div>`;
+                    
                     params.forEach(function (item) {
                         if (item.value !== null && item.value !== undefined) {
-                            const percent = ((item.value - 1) * 100).toFixed(2) + '%';
-                            result += `<div>${item.seriesName}: <span style="color: #00ff00">${item.value.toFixed(4)} (${percent})</span></div>`;
+                            const percent = (item.value * 100).toFixed(2) + '%';
+                            const color = item.seriesName === "初始止损百分比" ? "#ff69b4" : "#00ff00";
+                            result += `<div>${item.seriesName}: <span style="color: ${color}">${percent}</span></div>`;
                         }
                     });
                     return result;
@@ -978,7 +1136,7 @@
                 axisLabel: {
                     color: '#999',
                     formatter: function (value) {
-                        return value.toFixed(4);
+                        return (value * 100).toFixed(2) + '%';
                     },
                 },
                 splitLine: {
@@ -1025,13 +1183,27 @@
                                 yAxis: avgProfitPercent, 
                                 lineStyle: { color: '#ffff00', type: 'dashed', width: 2 },
                                 label: {
-                                    formatter: `平均盈利百分比: ${avgProfitPercent.toFixed(4)} (${((avgProfitPercent - 1) * 100).toFixed(2)}%)`,
+                                    formatter: `平均盈利百分比: ${(avgProfitPercent * 100).toFixed(2)}%`,
                                     position: 'middle',
                                     color: '#ffff00'
                                 }
                             }
                         ]
                     } : null,
+                },
+                {
+                    name: "初始止损百分比",
+                    type: "line",
+                    data: initialStopLossPercentData,
+                    smooth: false,
+                    step: false,
+                    connectNulls: false,
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#ff69b4",
+                        width: 2,
+                        type: "solid",
+                    },
                 },
             ],
         };
@@ -1041,7 +1213,7 @@
         // 亏损百分比曲线图
         const lossPercentOption = {
             title: {
-                text: "亏损百分比曲线（亏损时的平仓价/开仓价）",
+                text: "亏损百分比曲线（|平仓价 - 开仓价| / 开仓价）",
                 left: 0,
                 textStyle: {
                     color: '#fff',
@@ -1056,7 +1228,10 @@
                     },
                 },
                 formatter: function (params) {
-                    const index = params[0].dataIndex;
+                    // 使用第一个参数的dataIndex作为lossPercentTimes的索引
+                    const dataIndex = params[0].dataIndex;
+                    const index = lossPercentTimes[dataIndex]; // 获取原始单子索引
+                    
                     const closeTime = closeHistory[index] || 'N/A';
                     const openPrice = openPriceHistory[index] !== null && openPriceHistory[index] !== undefined 
                         ? openPriceHistory[index].toFixed(4) 
@@ -1064,14 +1239,21 @@
                     const closePrice = closePriceHistory[index] !== null && closePriceHistory[index] !== undefined 
                         ? closePriceHistory[index].toFixed(4) 
                         : 'N/A';
+                    const initialStopLoss = initialStopLossHistory[index] !== null && initialStopLossHistory[index] !== undefined 
+                        ? initialStopLossHistory[index].toFixed(4) 
+                        : 'N/A';
+                    
                     let result = `<div><strong>平仓 #${index}</strong></div>`;
                     result += `<div>时间: ${closeTime}</div>`;
                     result += `<div>开仓价格: ${openPrice}</div>`;
                     result += `<div>平仓价格: ${closePrice}</div>`;
+                    result += `<div>初始止损价格: ${initialStopLoss}</div>`;
+                    
                     params.forEach(function (item) {
                         if (item.value !== null && item.value !== undefined) {
-                            const percent = ((item.value - 1) * 100).toFixed(2) + '%';
-                            result += `<div>${item.seriesName}: <span style="color: #ff0000">${item.value.toFixed(4)} (${percent})</span></div>`;
+                            const percent = (item.value * 100).toFixed(2) + '%';
+                            const color = item.seriesName === "初始止损百分比" ? "#ff69b4" : "#ff0000";
+                            result += `<div>${item.seriesName}: <span style="color: ${color}">${percent}</span></div>`;
                         }
                     });
                     return result;
@@ -1104,7 +1286,7 @@
                 axisLabel: {
                     color: '#999',
                     formatter: function (value) {
-                        return value.toFixed(4);
+                        return (value * 100).toFixed(2) + '%';
                     },
                 },
                 splitLine: {
@@ -1151,13 +1333,27 @@
                                 yAxis: avgLossPercent, 
                                 lineStyle: { color: '#ffff00', type: 'dashed', width: 2 },
                                 label: {
-                                    formatter: `平均亏损百分比: ${avgLossPercent.toFixed(4)} (${((avgLossPercent - 1) * 100).toFixed(2)}%)`,
+                                    formatter: `平均亏损百分比: ${(avgLossPercent * 100).toFixed(2)}%`,
                                     position: 'middle',
                                     color: '#ffff00'
                                 }
                             }
                         ]
                     } : null,
+                },
+                {
+                    name: "初始止损百分比",
+                    type: "line",
+                    data: lossInitialStopLossPercentData,
+                    smooth: false,
+                    step: false,
+                    connectNulls: false,
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#ff69b4",
+                        width: 2,
+                        type: "solid",
+                    },
                 },
             ],
         };

@@ -2,7 +2,7 @@
 
 #### 入场条件
 
-**条件组合**：`section3Up = (section3Up1 or section3Up2 or section3Up3)`
+**条件组合**：`section3Up = (section3Up1 or section3Up2 or section3Up3 or section3Up4)`
 
 **section3Up1**：
 - 满足所有条件可以SSL入场
@@ -37,10 +37,17 @@
     - `DIPlus > adx_threshold_low and DIMinus < adx_threshold_low and adx_threshold_low < ADX < adx_threshold_high`（`adx_threshold_low`默认20，`adx_threshold_high`默认40，可配置）
     - 最近10根K线不能有 `close > upper_6`（Fibonacci上轨）
 
+**section3Up4**（需开启`enableSSL55Squeeze`，默认关闭）：
+- 满足所有条件可以SSL55+Squeeze入场
+    - `trend == 1`（SuperTrend趋势为上升）
+    - `close > minSSL2`（收盘价在minSSL2上方）
+    - `close > SSL55`（收盘价在SSL55上方）
+    - `close`上穿`BOX_bl`（Squeeze Box下轨）：当前`close > BOX_bl`且上一根K线的`close`或`open <= BOX_bl[1]`
+
 **开仓条件**：
 - 当前无持仓（`!hasOrder`）
 - `section3Up = true` 且 `readyTradingDirection === "up"`
-- **额外条件**：`close > open`（当前K线为阳线）
+- **注意**：与Pine Script保持一致，只要满足`section3Up`就开仓，不需要`close > open`的条件
 
 #### 开仓设置
 
@@ -51,6 +58,7 @@
     - `'多_SSL1'`（SSL1入场）
     - `'多_SSL2'`（SSL2入场）
     - `'多_ADX'`（ADX入场）
+    - `'多_SSL55_SQUEEZE'`（SSL55+Squeeze入场，需开启`enableSSL55Squeeze`）
 
 #### 止损
 
@@ -60,19 +68,23 @@
 
 #### 移动止损（默认关闭移动止损，多空使用同一个开关 `enableTrailingStop`）
 
-1. 触发条件：QQE柱子值（`qqeModBar`）> `qqeTrailingThresholdLong`（默认30.0，可配置）
-2. 第一次触发时：移动一次止损位置到 `max(订单的当前限价止损价, preLow)`
+1. 触发条件：QQE柱子值（`qqeModBar`）> `qqeTrailingThresholdLong`（默认40.0，可配置）
+2. 第一次触发时：移动一次止损位置到 `max(订单的当前限价止损价, BOX_bl)`
     - `订单的当前限价止损价`：当前SuperTrend下轨（`minSuper`）
-    - `preLow`：前低点（通过`swingLength`周期计算，默认21，可配置）
+    - `BOX_bl`：Squeeze Box下轨（当前K线的`bl`值）
 3. 移动止损激活后，止损位固定为移动后的值，不再更新
 
 #### 止盈
 
-1. **固定止盈**：1:`riskRewardRatio`（`riskRewardRatio`默认3.0，可配置）作为止盈位，全部平仓
+1. **盈利百分比止盈**（可配置，默认开启 `enableProfitPercentTakeProfit`，优先级高于固定止盈）
+    - 止盈价 = `entryPrice * (1 + profitPercentTakeProfit)`（`profitPercentTakeProfit`默认0.03即3%，可配置）
+    - 达到任何位置都可以止盈：`close >= takeProfitPrice || high >= takeProfitPrice` 立即平仓全部仓位
+
+2. **固定止盈**：1:`riskRewardRatio`（`riskRewardRatio`默认1.4，可配置）作为止盈位，全部平仓
     - 止盈价 = `entryPrice + (entryPrice - initialLongStopLoss) * riskRewardRatio`
     - 达到任何位置都可以止盈：`close >= longTakeProfit || high >= longTakeProfit` 立即平仓全部仓位
 
-2. **指标止盈**（可配置，默认关闭 `enableSupertrendTakeProfit` / `enableFibonacciTakeProfit`）
+3. **指标止盈**（可配置，默认开启 `enableSupertrendTakeProfit` / `enableFibonacciTakeProfit`）
     - 到达一次指标止盈位计数加1，随后5根K线之内如果再次满足该条件不计数，超过5根K线再次到达的需要增加一次计数
     - 冷却期：5根K线（使用`currentKLineCount`跟踪）
     - 容差机制：目标价格 * (1 - `priceTolerance`)（`priceTolerance`默认0.0005，可配置）
@@ -81,11 +93,12 @@
         - `close > Fibonacci上轨(upper_7) * (1 - priceTolerance) || high > Fibonacci上轨(upper_7) * (1 - priceTolerance)`（需开启`enableFibonacciTakeProfit`）
     - 首次达到指标止盈时：移动一次止损位置到 `max(订单的当前限价止损价, preLow)`（如果移动止损未激活）
 
-3. **指标止盈计数**：计数大于等于`indicatorTPCountThreshold`（默认3，可配置），立即全部平仓
+4. **指标止盈计数**：计数大于等于`indicatorTPCountThreshold`（默认4，可配置），立即全部平仓
 
-4. **首次指标止盈部分平仓**：首次达到指标止盈位置时，平仓初始仓位的`indicatorTPPartialRatio`比例（默认0.5即50%，可配置），剩余仓位博弈更多的可能
+5. **首次指标止盈部分平仓**：当指标止盈计数达到`indicatorTPPartialCount`（默认2，可配置）时，平仓初始仓位的`indicatorTPPartialRatio`比例（默认0.6即60%，可配置），剩余仓位博弈更多的可能
     - 如果`indicatorTPPartialRatio`配置为0，不执行平仓逻辑，认为是关闭了分批止盈
     - 部分平仓使用市价单，平仓后不重置`hasOrder`，继续持有剩余仓位
+    - 部分平仓后，如果指标止盈条件继续满足（且不在冷却期），计数会继续增加
 
 **平仓注释**：
 - 全部平仓时，根据 `close > entryPrice` 判断：
@@ -98,7 +111,7 @@
 
 #### 入场条件
 
-**条件组合**：`section3Down = (section3Down1 or section3Down2 or section3Down3)`
+**条件组合**：`section3Down = (section3Down1 or section3Down2 or section3Down3 or section3Down4)`
 
 **section3Down1**：
 - 满足所有条件可以SSL入场
@@ -133,10 +146,17 @@
     - `DIMinus > adx_threshold_low and DIPlus < adx_threshold_low and adx_threshold_low < ADX < adx_threshold_high`（`adx_threshold_low`默认20，`adx_threshold_high`默认40，可配置）
     - 最近10根K线不能有 `close < lower_6`（Fibonacci下轨）
 
+**section3Down4**（需开启`enableSSL55Squeeze`，默认关闭）：
+- 满足所有条件可以SSL55+Squeeze入场
+    - `trend == -1`（SuperTrend趋势为下降）
+    - `close < maxSSL2`（收盘价在maxSSL2下方）
+    - `close < SSL55`（收盘价在SSL55下方）
+    - `close`下穿`BOX_bh`（Squeeze Box上轨）：当前`close < BOX_bh`且上一根K线的`close`或`open >= BOX_bh[1]`
+
 **开仓条件**：
 - 当前无持仓（`!hasOrder`）
 - `section3Down = true` 且 `readyTradingDirection === "down"`
-- **额外条件**：`close < open`（当前K线为阴线）
+- **注意**：与Pine Script保持一致，只要满足`section3Down`就开仓，不需要`close < open`的条件
 
 #### 开仓设置
 
@@ -147,6 +167,7 @@
     - `'空_SSL1'`（SSL1入场）
     - `'空_SSL2'`（SSL2入场）
     - `'空_ADX'`（ADX入场）
+    - `'空_SSL55_SQUEEZE'`（SSL55+Squeeze入场，需开启`enableSSL55Squeeze`）
 
 #### 止损
 
@@ -156,19 +177,23 @@
 
 #### 移动止损（默认关闭移动止损，多空使用同一个开关 `enableTrailingStop`）
 
-1. 触发条件：QQE柱子值（`qqeModBar`）< `qqeTrailingThresholdShort`（默认-30.0，可配置）
-2. 第一次触发时：移动一次止损位置到 `min(订单的当前限价止损价, preHigh)`
+1. 触发条件：QQE柱子值（`qqeModBar`）< `qqeTrailingThresholdShort`（默认-40.0，可配置）
+2. 第一次触发时：移动一次止损位置到 `min(订单的当前限价止损价, BOX_bh)`
     - `订单的当前限价止损价`：当前SuperTrend上轨（`maxSuper`）
-    - `preHigh`：前高点（通过`swingLength`周期计算，默认21，可配置）
+    - `BOX_bh`：Squeeze Box上轨（当前K线的`bh`值）
 3. 移动止损激活后，止损位固定为移动后的值，不再更新
 
 #### 止盈
 
-1. **固定止盈**：1:`riskRewardRatio`（`riskRewardRatio`默认3.0，可配置）作为止盈位，全部平仓
+1. **盈利百分比止盈**（可配置，默认开启 `enableProfitPercentTakeProfit`，优先级高于固定止盈）
+    - 止盈价 = `entryPrice * (1 - profitPercentTakeProfit)`（`profitPercentTakeProfit`默认0.03即3%，可配置）
+    - 达到任何位置都可以止盈：`close <= takeProfitPrice || low <= takeProfitPrice` 立即平仓全部仓位
+
+2. **固定止盈**：1:`riskRewardRatio`（`riskRewardRatio`默认1.4，可配置）作为止盈位，全部平仓
     - 止盈价 = `entryPrice - (initialShortStopLoss - entryPrice) * riskRewardRatio`
     - 达到任何位置都可以止盈：`close <= shortTakeProfit || low <= shortTakeProfit` 立即平仓全部仓位
 
-2. **指标止盈**（可配置，默认关闭 `enableSupertrendTakeProfit` / `enableFibonacciTakeProfit`）
+3. **指标止盈**（可配置，默认开启 `enableSupertrendTakeProfit` / `enableFibonacciTakeProfit`）
     - 到达一次指标止盈位计数加1，随后5根K线之内如果再次满足该条件不计数，超过5根K线再次到达的需要增加一次计数
     - 冷却期：5根K线（使用`currentKLineCount`跟踪）
     - 容差机制：目标价格 * (1 + `priceTolerance`)（`priceTolerance`默认0.0005，可配置）
@@ -177,11 +202,12 @@
         - `close < Fibonacci下轨(lower_7) * (1 + priceTolerance) || low < Fibonacci下轨(lower_7) * (1 + priceTolerance)`（需开启`enableFibonacciTakeProfit`）
     - 首次达到指标止盈时：移动一次止损位置到 `min(订单的当前限价止损价, preHigh)`（如果移动止损未激活）
 
-3. **指标止盈计数**：计数大于等于`indicatorTPCountThreshold`（默认3，可配置），立即全部平仓
+4. **指标止盈计数**：计数大于等于`indicatorTPCountThreshold`（默认4，可配置），立即全部平仓
 
-4. **首次指标止盈部分平仓**：首次达到指标止盈位置时，平仓初始仓位的`indicatorTPPartialRatio`比例（默认0.5即50%，可配置），剩余仓位博弈更多的可能
+5. **首次指标止盈部分平仓**：当指标止盈计数达到`indicatorTPPartialCount`（默认2，可配置）时，平仓初始仓位的`indicatorTPPartialRatio`比例（默认0.6即60%，可配置），剩余仓位博弈更多的可能
     - 如果`indicatorTPPartialRatio`配置为0，不执行平仓逻辑，认为是关闭了分批止盈
     - 部分平仓使用市价单，平仓后不重置`hasOrder`，继续持有剩余仓位
+    - 部分平仓后，如果指标止盈条件继续满足（且不在冷却期），计数会继续增加
 
 **平仓注释**：
 - 全部平仓时，根据 `close < entryPrice` 判断：
@@ -201,14 +227,16 @@
     - 做空：目标价格向上放宽，`目标价格 * (1 + priceTolerance)`
     - 容差范围：`[目标价格*(1-容差配置), 目标价格*(1+容差配置)]`，在容差范围内均可认为达到目标
 
-4. **前高点/前低点**：通过`calculateLatestPreHighLow`函数计算，使用`swingLength`周期（默认21，可配置）寻找pivot high/low
+4. **移动止损参考点**：做多使用`BOX_bl`（Squeeze Box下轨），做空使用`BOX_bh`（Squeeze Box上轨），而非前高点/前低点
 
 5. **指标计算周期**：
     - SSL：`sslPeriod`（默认200）
     - SSL2：`sslPeriod * 3`（默认600）
+    - SSL55：`ssl55_Length`（默认55）
     - ADX：`adx_len`（默认12）
     - QQE MOD：使用Primary和Secondary两组参数
     - Fibonacci Bollinger Bands：固定参数
+    - Squeeze Box：`squeeze_box_Period`（默认24）
 
 6. **多种仓位管理模式**：
     - 注意：sizingMode为 'Fixed' 、 'RiskBased' 时可以启用滚仓模式，可用资金为: max(DefaultAvailableMoney + 当前全部盈利, DefaultAvailableMoney)

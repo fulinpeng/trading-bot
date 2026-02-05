@@ -49,6 +49,7 @@ const {
     maxLossCount,
     maxKLinelen,
     enableVisualizationLogs,
+    maxConsecutiveLoss,
 } = configEth;
 
 // 全局状态对象
@@ -105,7 +106,6 @@ const state = {
     initialShortStopLoss: null,
     initialLongPositionSize: null,
     initialShortPositionSize: null,
-    entryType: null,
 
     // 指标止盈相关
     lastLongIndicatorTPKLineCount: null,
@@ -291,6 +291,37 @@ const refreshKLineAndIndex = async (curKLine) => {
     setKLinesTemp(curKLine);
     await setEveryIndex(state.historyClosePrices, state.kLineData, state, configEth);
 
+    // 检测Fibonacci突破，用于重置连续亏损计数
+    if (maxConsecutiveLoss > 0 && state.lossCount >= maxConsecutiveLoss) {
+        const [fib3] = getLastFromArr(state.fibArr, 1);
+        if (fib3 && fib3.upper_7 !== null && fib3.upper_7 !== undefined && 
+            fib3.lower_7 !== null && fib3.lower_7 !== undefined) {
+            const close = curKLine.close;
+            const fibUpper = fib3.upper_7;
+            const fibLower = fib3.lower_7;
+            
+            // 检查价格是否突破Fibonacci上下沿（使用最新的Fibonacci值）
+            let isBreakthrough = false;
+            
+            // 价格突破上沿：close > Fibonacci上沿
+            if (close > fibUpper) {
+                isBreakthrough = true;
+                console.log(`[连续亏损保护] 价格突破Fibonacci上沿，重置连续亏损计数。close: ${close}, Fibonacci上沿: ${fibUpper}`);
+            }
+            // 价格突破下沿：close < Fibonacci下沿
+            if (close < fibLower) {
+                isBreakthrough = true;
+                console.log(`[连续亏损保护] 价格突破Fibonacci下沿，重置连续亏损计数。close: ${close}, Fibonacci下沿: ${fibLower}`);
+            }
+            
+            // 如果发生突破，重置连续亏损计数
+            if (isBreakthrough) {
+                state.lossCount = 0;
+                console.log(`[连续亏损保护] 连续亏损计数已重置，恢复开单逻辑`);
+            }
+        }
+    }
+
     // 收集日志数据（如果启用）
     if (enableVisualizationLogs) {
         const collector = getLogCollector();
@@ -322,7 +353,14 @@ const kaiDanDaJi = async () => {
 const judgeAndTrading = async () => {
     state.loadingTrading = true;
 
-    const { trend, stopLoss, stopProfit, entryType: _entryType } = calculateTradingSignal(state, configEth);
+    // 检查连续亏损保护：如果达到阈值，阻止开仓
+    if (maxConsecutiveLoss > 0 && state.lossCount >= maxConsecutiveLoss) {
+        console.log(`[连续亏损保护] 连续亏损次数已达到阈值(${state.lossCount}/${maxConsecutiveLoss})，暂停开单，等待价格突破Fibonacci上下沿`);
+        state.loadingTrading = false;
+        return;
+    }
+
+    const { trend, stopLoss, stopProfit } = calculateTradingSignal(state, configEth);
     console.log("预备开仓信息： Trading trend, stopLoss, stopProfit:", trend, stopLoss, stopProfit);
 
     switch (trend) {
@@ -333,7 +371,6 @@ const judgeAndTrading = async () => {
             state.entryKLineCount = state.currentKLineCount;
             state.initialLongStopLoss = stopLoss;
             state.longTakeProfit = stopProfit;
-            state.entryType = _entryType;
             state.initialLongPositionSize = null;
             // 重置指标止盈相关
             state.lastLongIndicatorTPKLineCount = null;
@@ -341,6 +378,19 @@ const judgeAndTrading = async () => {
             state.longTrailActive = false;
             state.longTrailStop = null;
             state.hasOrder = true;
+            // 更新开仓日志中的初始止损价格
+            if (enableVisualizationLogs) {
+                const collector = getLogCollector();
+                if (collector && collector.data.openHistory.length > 0) {
+                    // 更新最后一次开仓记录的初始止损价格
+                    const lastIndex = collector.data.openHistory.length - 1;
+                    if (collector.data.initialStopLossHistory.length <= lastIndex) {
+                        collector.data.initialStopLossHistory.push(stopLoss);
+                    } else {
+                        collector.data.initialStopLossHistory[lastIndex] = stopLoss;
+                    }
+                }
+            }
             break;
         case "down":
             await teadeSell(stopLoss);
@@ -349,7 +399,6 @@ const judgeAndTrading = async () => {
             state.entryKLineCount = state.currentKLineCount;
             state.initialShortStopLoss = stopLoss;
             state.shortTakeProfit = stopProfit;
-            state.entryType = _entryType;
             state.initialShortPositionSize = null;
             // 重置指标止盈相关
             state.lastShortIndicatorTPKLineCount = null;
@@ -357,6 +406,19 @@ const judgeAndTrading = async () => {
             state.shortTrailActive = false;
             state.shortTrailStop = null;
             state.hasOrder = true;
+            // 更新开仓日志中的初始止损价格
+            if (enableVisualizationLogs) {
+                const collector = getLogCollector();
+                if (collector && collector.data.openHistory.length > 0) {
+                    // 更新最后一次开仓记录的初始止损价格
+                    const lastIndex = collector.data.openHistory.length - 1;
+                    if (collector.data.initialStopLossHistory.length <= lastIndex) {
+                        collector.data.initialStopLossHistory.push(stopLoss);
+                    } else {
+                        collector.data.initialStopLossHistory[lastIndex] = stopLoss;
+                    }
+                }
+            }
             break;
         default:
             break;
@@ -539,7 +601,6 @@ const closeOrder = async (side, quantity, cb) => {
                 state.shortTrailStop = null;
                 state.longTakeProfit = null;
                 state.shortTakeProfit = null;
-                state.entryType = null;
 
                 saveGlobalVariables();
             }
@@ -601,17 +662,24 @@ const recordRradingInfo = async (info) => {
 };
 
 const setLossCount = (curTestMoney) => {
-    if (sizingMode === 'Martingale') {
-        if (curTestMoney <= 0) {
+    // 更新连续亏损次数
+    if (curTestMoney <= 0) {
+        // 亏损：增加计数
+        if (sizingMode === 'Martingale') {
             state.lossCount = state.lossCount + 1 > maxLossCount ? maxLossCount : state.lossCount + 1;
         } else {
-            state.lossCount = 0;
+            // 非Martingale模式也记录连续亏损次数（用于连续亏损保护）
+            state.lossCount = state.lossCount + 1;
         }
+    } else {
+        // 盈利：重置计数
+        state.lossCount = 0;
     }
 };
 
-const closeUp = async (quantity) => {
-    const _currentPrice = state.currentPrice;
+const closeUp = async (quantity, stopPrice) => {
+    // 指定平仓价格（如果指定，则使用指定价格，否则使用当前价格）
+    const _currentPrice = stopPrice || state.currentPrice;
     // 如果没有指定数量，则全部平仓
     const closeQuantity = quantity || state.tradingInfo.quantity;
     // 保存平仓前的数量，用于判断部分平仓和计算剩余数量
@@ -642,8 +710,9 @@ const closeUp = async (quantity) => {
     });
 };
 
-const closeDown = async (quantity) => {
-    const _currentPrice = state.currentPrice;
+const closeDown = async (quantity, stopPrice) => {
+    // 指定平仓价格（如果指定，则使用指定价格，否则使用当前价格）
+    const _currentPrice = stopPrice || state.currentPrice;
     // 如果没有指定数量，则全部平仓
     const closeQuantity = quantity || state.tradingInfo.quantity;
     // 保存平仓前的数量，用于判断部分平仓和计算剩余数量
@@ -814,7 +883,6 @@ const recoverHistoryData = async (historyDatas) => {
         shortTrailStop: __shortTrailStop,
         longTakeProfit: __longTakeProfit,
         shortTakeProfit: __shortTakeProfit,
-        entryType: __entryType,
         downArrivedProfit: __downArrivedProfit,
         sellstopLossPrice: __sellstopLossPrice,
     } = historyDatas;
@@ -845,7 +913,6 @@ const recoverHistoryData = async (historyDatas) => {
     if (__shortTrailStop !== undefined) state.shortTrailStop = __shortTrailStop;
     if (__longTakeProfit !== undefined) state.longTakeProfit = __longTakeProfit;
     if (__shortTakeProfit !== undefined) state.shortTakeProfit = __shortTakeProfit;
-    if (__entryType !== undefined) state.entryType = __entryType;
     if (__downArrivedProfit !== undefined) state.downArrivedProfit = __downArrivedProfit;
     if (__sellstopLossPrice !== undefined) state.sellstopLossPrice = __sellstopLossPrice;
 };
@@ -1068,6 +1135,7 @@ const createLogs = () => {
     const originalConsoleLog = console.log;
     console.log = function (...args) {
         if (isTestLocal) {
+            // return;
             if (args[0] && args[0].indexOf && args[0].indexOf('@@') < 0) {
                 return;
             }
@@ -1150,7 +1218,6 @@ function saveGlobalVariables() {
                 shortTrailStop: state.shortTrailStop,
                 longTakeProfit: state.longTakeProfit,
                 shortTakeProfit: state.shortTakeProfit,
-                entryType: state.entryType,
                 downArrivedProfit: state.downArrivedProfit,
                 sellstopLossPrice: state.sellstopLossPrice,
             });
