@@ -58,16 +58,15 @@ function judgeTradingDirection(state, config) {
     const [preHighLow3] = getLastFromArr(state.preHighLowArr, 1);
     const [swimingFree3] = getLastFromArr(state.swimingFreeArr, 1);
     const [kLine3] = getLastFromArr(state.kLineData, 1);
-    const kLineDate = kLine3 ? (isTestLocal ? kLine3.openTime : getDate(kLine3.openTime)) : 'N/A';
 
     if (isUpOpen && section3Up) {
-        section3Up5 && console.log(kLineDate + "@@@ ~ judgeTradingDirection ~ section3Up3 || section3Up4 || section3Up5:", {section3Up3, section3Up4, section3Up5})
+        section3Up5 && console.log("@@@ ~ judgeTradingDirection ~ section3Up3 || section3Up4 || section3Up5:", {section3Up3, section3Up4, section3Up5})
         state.readyTradingDirection = "up";
         return;
     }
 
     if (isDownOpen && section3Down) {
-        section3Down5 && console.log(kLineDate + "@@@ ~ judgeTradingDirection ~ section3Down3 || section3Down4 || section3Down5:", {section3Down3, section3Down4, section3Down5})
+        section3Down5 && console.log("@@@ ~ judgeTradingDirection ~ section3Down3 || section3Down4 || section3Down5:", {section3Down3, section3Down4, section3Down5})
         state.readyTradingDirection = "down";
         return;
     }
@@ -82,7 +81,7 @@ function judgeTradingDirection(state, config) {
  * @returns {Object} 交易信号 { trend, stopLoss, stopProfit }
  */
 function calculateTradingSignal(state, config) {
-    const { kLineData, superTrendArr, readyTradingDirection } = state;
+    const { kLineData, superTrendArr, preHighLowArr, readyTradingDirection } = state;
     const { riskRewardRatio } = config;
     
     const [kLine3] = getLastFromArr(kLineData, 1);
@@ -95,20 +94,29 @@ function calculateTradingSignal(state, config) {
 
     let max = Math.max(superTrend3.up, superTrend3.dn);
     let min = Math.min(superTrend3.up, superTrend3.dn);
+    
+    // 获取前高/前低
+    const [preHighLow3] = getLastFromArr(preHighLowArr, 1);
+    const preLow = preHighLow3?.preLow;
+    const preHigh = preHighLow3?.preHigh;
 
     if (readyTradingDirection === "up") {
+        // 多单：max(min, 前低)
+        const stopLoss = min //preLow !== null && preLow !== undefined ? Math.max(min, preLow) : min;
         return {
             trend: "up",
-            stopLoss: min, // 止损（SuperTrend下轨），开仓时保存为initialLongStopLoss
-            stopProfit: close + (close - min) * riskRewardRatio, // 固定止盈，使用当前close（即entryPrice）和min（即initialLongStopLoss）
+            stopLoss: stopLoss, // 止损（max(SuperTrend下轨, 前低)），开仓时保存为initialLongStopLoss
+            stopProfit: close + (close - stopLoss) * riskRewardRatio, // 固定止盈，使用当前close（即entryPrice）和stopLoss（即initialLongStopLoss）
         };
     }
 
     if (readyTradingDirection === "down") {
+        // 空单：min(max, 前高)
+        const stopLoss = max // preHigh !== null && preHigh !== undefined ? Math.min(max, preHigh) : max;
         return {
             trend: "down",
-            stopLoss: max, // 止损（SuperTrend上轨），开仓时保存为initialShortStopLoss
-            stopProfit: close - (max - close) * riskRewardRatio, // 固定止盈，使用当前close（即entryPrice）和max（即initialShortStopLoss）
+            stopLoss: stopLoss, // 止损（min(SuperTrend上轨, 前高)），开仓时保存为initialShortStopLoss
+            stopProfit: close - (stopLoss - close) * riskRewardRatio, // 固定止盈，使用当前close（即entryPrice）和stopLoss（即initialShortStopLoss）
         };
     }
     
@@ -583,7 +591,7 @@ function judgeTrendReversalLongEntry(qqeModArr, superTrendArr, config) {
     // 拐头向上：qqeModBar[2] < qqeModBar[1] < qqeModBar[0]
     const turnUp = qqeModBar2 < qqeModBar1 && qqeModBar1 < qqeModBar0;
     // 中间那个QQE MOD < 阈值
-    const middleBelowThreshold = qqeModBar1 < qqeModTrendReversalThreshold;
+    const middleBelowThreshold = qqeModBar1 < -qqeModTrendReversalThreshold;
     const condition0 = turnUp && middleBelowThreshold;
     // SuperTrend趋势为1（趋势为上升）
     const condition1 = superTrendArr[superTrendArr.length - 1].trend == 1;

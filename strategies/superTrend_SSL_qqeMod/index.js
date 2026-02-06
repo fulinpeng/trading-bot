@@ -104,20 +104,18 @@ const state = {
     entryKLineCount: null,
     initialLongStopLoss: null,
     initialShortStopLoss: null,
-    initialLongPositionSize: null,
-    initialShortPositionSize: null,
+    initialPositionSize: null,        // 初始仓位大小
 
     // 指标止盈相关
-    lastLongIndicatorTPKLineCount: null,
-    lastShortIndicatorTPKLineCount: null,
-    longIndicatorTPCount: 0,
-    shortIndicatorTPCount: 0,
+    lastIndicatorTPKLineCount: null,  // 上次触发指标止盈的K线计数
+    indicatorTPCount: 0,              // 指标止盈计数
+
+    // 指标止损相关
+    isHighRisk: false,                // 是否标记为高风险
 
     // 移动止损相关
-    longTrailActive: false,
-    longTrailStop: null,
-    shortTrailActive: false,
-    shortTrailStop: null,
+    trailActive: false,               // 移动止损是否激活
+    trailStop: null,                  // 移动止损价格
 
     // 固定止盈位（开仓时计算）
     longTakeProfit: null,
@@ -371,12 +369,14 @@ const judgeAndTrading = async () => {
             state.entryKLineCount = state.currentKLineCount;
             state.initialLongStopLoss = stopLoss;
             state.longTakeProfit = stopProfit;
-            state.initialLongPositionSize = null;
+            state.initialPositionSize = null;
             // 重置指标止盈相关
-            state.lastLongIndicatorTPKLineCount = null;
-            state.longIndicatorTPCount = 0;
-            state.longTrailActive = false;
-            state.longTrailStop = null;
+            state.lastIndicatorTPKLineCount = null;
+            state.indicatorTPCount = 0;
+            state.trailActive = false;
+            state.trailStop = null;
+            // 重置指标止损相关
+            state.isHighRisk = false;
             state.hasOrder = true;
             // 更新开仓日志中的初始止损价格
             if (enableVisualizationLogs) {
@@ -399,12 +399,14 @@ const judgeAndTrading = async () => {
             state.entryKLineCount = state.currentKLineCount;
             state.initialShortStopLoss = stopLoss;
             state.shortTakeProfit = stopProfit;
-            state.initialShortPositionSize = null;
+            state.initialPositionSize = null;
             // 重置指标止盈相关
-            state.lastShortIndicatorTPKLineCount = null;
-            state.shortIndicatorTPCount = 0;
-            state.shortTrailActive = false;
-            state.shortTrailStop = null;
+            state.lastIndicatorTPKLineCount = null;
+            state.indicatorTPCount = 0;
+            state.trailActive = false;
+            state.trailStop = null;
+            // 重置指标止损相关
+            state.isHighRisk = false;
             state.hasOrder = true;
             // 更新开仓日志中的初始止损价格
             if (enableVisualizationLogs) {
@@ -589,18 +591,14 @@ const closeOrder = async (side, quantity, cb) => {
                 state.entryKLineCount = null;
                 state.initialLongStopLoss = null;
                 state.initialShortStopLoss = null;
-                state.initialLongPositionSize = null;
-                state.initialShortPositionSize = null;
-                state.lastLongIndicatorTPKLineCount = null;
-                state.lastShortIndicatorTPKLineCount = null;
-                state.longIndicatorTPCount = 0;
-                state.shortIndicatorTPCount = 0;
-                state.longTrailActive = false;
-                state.longTrailStop = null;
-                state.shortTrailActive = false;
-                state.shortTrailStop = null;
+                state.initialPositionSize = null;
+                state.lastIndicatorTPKLineCount = null;
+                state.indicatorTPCount = 0;
+                state.trailActive = false;
+                state.trailStop = null;
                 state.longTakeProfit = null;
                 state.shortTakeProfit = null;
+                state.isHighRisk = false;
 
                 saveGlobalVariables();
             }
@@ -686,7 +684,7 @@ const closeUp = async (quantity, stopPrice) => {
     const quantityBeforeClose = state.tradingInfo.quantity;
     const isPartialClose = closeQuantity < quantityBeforeClose;
     
-    // 注意：initialLongPositionSize 应该在 judgeProfitRunOrProfit 函数开始时记录（与Pine Script一致）
+    // 注意：initialPositionSize 应该在 judgeProfitRunOrProfit 函数开始时记录（与Pine Script一致）
     await closeOrder("SELL", closeQuantity, () => {
         const curTestMoney =
             closeQuantity * (_currentPrice - state.tradingInfo.orderPrice) -
@@ -704,7 +702,7 @@ const closeUp = async (quantity, stopPrice) => {
         if (enableVisualizationLogs) {
             const collector = getLogCollector();
             if (collector) {
-                collector.recordClose(kLineDate, _currentPrice, state.testMoney);
+                collector.recordClose(kLineDate, _currentPrice, state.testMoney, state.tradingInfo.orderPrice);
             }
         }
     });
@@ -719,7 +717,7 @@ const closeDown = async (quantity, stopPrice) => {
     const quantityBeforeClose = state.tradingInfo.quantity;
     const isPartialClose = closeQuantity < quantityBeforeClose;
     
-    // 注意：initialShortPositionSize 应该在 judgeProfitRunOrProfit 函数开始时记录（与Pine Script一致）
+    // 注意：initialPositionSize 应该在 judgeProfitRunOrProfit 函数开始时记录（与Pine Script一致）
     await closeOrder("BUY", closeQuantity, () => {
         const curTestMoney =
             closeQuantity * (state.tradingInfo.orderPrice - _currentPrice) -
@@ -737,7 +735,7 @@ const closeDown = async (quantity, stopPrice) => {
         if (enableVisualizationLogs) {
             const collector = getLogCollector();
             if (collector) {
-                collector.recordClose(kLineDate, _currentPrice, state.testMoney);
+                collector.recordClose(kLineDate, _currentPrice, state.testMoney, state.tradingInfo.orderPrice);
             }
         }
     });
@@ -871,16 +869,11 @@ const recoverHistoryData = async (historyDatas) => {
         entryKLineCount: __entryKLineCount,
         initialLongStopLoss: __initialLongStopLoss,
         initialShortStopLoss: __initialShortStopLoss,
-        initialLongPositionSize: __initialLongPositionSize,
-        initialShortPositionSize: __initialShortPositionSize,
-        lastLongIndicatorTPKLineCount: __lastLongIndicatorTPKLineCount,
-        lastShortIndicatorTPKLineCount: __lastShortIndicatorTPKLineCount,
-        longIndicatorTPCount: __longIndicatorTPCount,
-        shortIndicatorTPCount: __shortIndicatorTPCount,
-        longTrailActive: __longTrailActive,
-        longTrailStop: __longTrailStop,
-        shortTrailActive: __shortTrailActive,
-        shortTrailStop: __shortTrailStop,
+        initialPositionSize: __initialPositionSize,
+        lastIndicatorTPKLineCount: __lastIndicatorTPKLineCount,
+        indicatorTPCount: __indicatorTPCount,
+        trailActive: __trailActive,
+        trailStop: __trailStop,
         longTakeProfit: __longTakeProfit,
         shortTakeProfit: __shortTakeProfit,
         downArrivedProfit: __downArrivedProfit,
@@ -901,16 +894,11 @@ const recoverHistoryData = async (historyDatas) => {
     if (__entryKLineCount !== undefined) state.entryKLineCount = __entryKLineCount;
     if (__initialLongStopLoss !== undefined) state.initialLongStopLoss = __initialLongStopLoss;
     if (__initialShortStopLoss !== undefined) state.initialShortStopLoss = __initialShortStopLoss;
-    if (__initialLongPositionSize !== undefined) state.initialLongPositionSize = __initialLongPositionSize;
-    if (__initialShortPositionSize !== undefined) state.initialShortPositionSize = __initialShortPositionSize;
-    if (__lastLongIndicatorTPKLineCount !== undefined) state.lastLongIndicatorTPKLineCount = __lastLongIndicatorTPKLineCount;
-    if (__lastShortIndicatorTPKLineCount !== undefined) state.lastShortIndicatorTPKLineCount = __lastShortIndicatorTPKLineCount;
-    if (__longIndicatorTPCount !== undefined) state.longIndicatorTPCount = __longIndicatorTPCount;
-    if (__shortIndicatorTPCount !== undefined) state.shortIndicatorTPCount = __shortIndicatorTPCount;
-    if (__longTrailActive !== undefined) state.longTrailActive = __longTrailActive;
-    if (__longTrailStop !== undefined) state.longTrailStop = __longTrailStop;
-    if (__shortTrailActive !== undefined) state.shortTrailActive = __shortTrailActive;
-    if (__shortTrailStop !== undefined) state.shortTrailStop = __shortTrailStop;
+    if (__initialPositionSize !== undefined) state.initialPositionSize = __initialPositionSize;
+    if (__lastIndicatorTPKLineCount !== undefined) state.lastIndicatorTPKLineCount = __lastIndicatorTPKLineCount;
+    if (__indicatorTPCount !== undefined) state.indicatorTPCount = __indicatorTPCount;
+    if (__trailActive !== undefined) state.trailActive = __trailActive;
+    if (__trailStop !== undefined) state.trailStop = __trailStop;
     if (__longTakeProfit !== undefined) state.longTakeProfit = __longTakeProfit;
     if (__shortTakeProfit !== undefined) state.shortTakeProfit = __shortTakeProfit;
     if (__downArrivedProfit !== undefined) state.downArrivedProfit = __downArrivedProfit;
@@ -1134,15 +1122,17 @@ const createLogs = () => {
 
     const originalConsoleLog = console.log;
     console.log = function (...args) {
-        if (isTestLocal) {
-            // return;
-            if (args[0] && args[0].indexOf && args[0].indexOf('@@') < 0) {
-                return;
-            }
-        }
-        const date = isTestLocal ? '' : getDate() + ': ';
+        // if (isTestLocal) {
+        //     // return;
+        //     if (args[0] && args[0].indexOf && args[0].indexOf('@@') < 0) {
+        //         return;
+        //     }
+        // }
+        const date = isTestLocal && state.kLineData && state.kLineData.length > 0 
+            ? state.kLineData[state.kLineData.length - 1].openTime 
+            : getDate();
         logStream.write(
-            `${date}${args
+            `${date} ${args
                 .map((v) => {
                     if (typeof v === "object") {
                         return JSON.stringify(v);
@@ -1206,16 +1196,11 @@ function saveGlobalVariables() {
                 entryKLineCount: state.entryKLineCount,
                 initialLongStopLoss: state.initialLongStopLoss,
                 initialShortStopLoss: state.initialShortStopLoss,
-                initialLongPositionSize: state.initialLongPositionSize,
-                initialShortPositionSize: state.initialShortPositionSize,
-                lastLongIndicatorTPKLineCount: state.lastLongIndicatorTPKLineCount,
-                lastShortIndicatorTPKLineCount: state.lastShortIndicatorTPKLineCount,
-                longIndicatorTPCount: state.longIndicatorTPCount,
-                shortIndicatorTPCount: state.shortIndicatorTPCount,
-                longTrailActive: state.longTrailActive,
-                longTrailStop: state.longTrailStop,
-                shortTrailActive: state.shortTrailActive,
-                shortTrailStop: state.shortTrailStop,
+                initialPositionSize: state.initialPositionSize,
+                lastIndicatorTPKLineCount: state.lastIndicatorTPKLineCount,
+                indicatorTPCount: state.indicatorTPCount,
+                trailActive: state.trailActive,
+                trailStop: state.trailStop,
                 longTakeProfit: state.longTakeProfit,
                 shortTakeProfit: state.shortTakeProfit,
                 downArrivedProfit: state.downArrivedProfit,

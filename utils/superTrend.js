@@ -195,9 +195,10 @@ function calculateRMA(series, length) {
 // 参考: E:\tradingview-stratagys\strategies\SuperTrend & ssl\SuperTrend & ssl-7.pine
 // Pine Script: calcSuperTrendBands(int periods, float multiplier, series float src, bool changeATR)
 // inertiaRatio: 趋势惯性，越大越没有考虑极端行情。当 inertiaRatio = 0 时，使用标准 TR 计算（与 Pine Script 一致）
+// trend: 初始趋势值，默认为 1（上升趋势），-1 表示下降趋势
 // ★★★★ 注意如果 supertrend计算总是和tradingview不对，需要把data数据多传入一些
 //      TODO 看看后续是否可以用传入上一次数据来做优化，因为 trend/up/dn 都是累积的
-function calculateLatestSuperTrend(data, period = 15, multiplier = 6, useATR = true, inertiaRatio = 0) {
+function calculateLatestSuperTrend(data, period = 15, multiplier = 6, useATR = true, inertiaRatio = 0, trend = 1) {
     // === 计算 TR（与 Pine Script 的 ta.tr 完全一致）===
     // Pine Script: ta.tr = max(high - low, abs(high - close[1]), abs(low - close[1]))
     // 或者根据 ta.atr 的定义：
@@ -280,9 +281,6 @@ function calculateLatestSuperTrend(data, period = 15, multiplier = 6, useATR = t
     const lowerBandList = []; // 上升趋势的下轨（支撑线）
     const upperBandList = []; // 下降趋势的上轨（阻力线）
     const trendList = [];
-    
-    // 初始化趋势为 1（上升趋势）
-    let trend = 1;
 
     // i = period 开始，因为atr[period - 1] = null
     for (let i = period; i < data.length; i++) {

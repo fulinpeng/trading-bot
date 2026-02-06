@@ -81,7 +81,7 @@ const config = {
         // ========== SSL55 + Squeeze Box 入场配置 ==========
         enableSSL55Squeeze: true,           // 启用 SSL55 + Squeeze Box 入场，默认关闭
         ssl55_Length: 55,                    // SSL55 计算周期，默认55
-        squeeze_box_Period: 24,              // Squeeze Box 采样周期，默认24
+        squeeze_box_Period: 12,              // Squeeze Box 采样周期，默认24
         squeeze_box_Deviation: 2,             // Squeeze Box 标准差倍数，默认2
         squeeze_box_Threshold: 50,           // Squeeze Box 挤压阈值百分比，默认50
         squeeze_box_Source: 'hl2',          // Squeeze Box 数据源，默认 'hl2' (可选: 'close', 'open', 'high', 'low', 'hlc3', 'hl2')
@@ -89,16 +89,20 @@ const config = {
         
         // ========== 风险管理配置 ==========
         // 固定止盈
-        riskRewardRatio: 1,                // 固定止盈倍数
-        priceTolerance: 0.0006,              // 判断平仓时的价格容差
+        riskRewardRatio: 1.5,                // 固定止盈倍数
+        priceTolerance: 0.0005,              // 判断平仓时的价格容差
         
         // 移动止损
         enableTrailingStop: false,            // 启用移动止损
-        qqeTrailingThresholdLong: 40.0,      // 做多移动止损QQE阈值
-        qqeTrailingThresholdShort: -40.0,    // 做空移动止损QQE阈值
+        qqeTrailingThresholdLong: 30.0,      // 做多移动止损QQE阈值
+        qqeTrailingThresholdShort: -30.0,    // 做空移动止损QQE阈值
         
-        // 指标止损 目前的指标止损并不好用
-        enableIndicatorStopLoss: false,       // 启用指标止损（当前低点低于前低/当前高点高于前高）
+        // 指标止损配置
+        enableIndicatorStopLoss: false,        // 启用指标止损
+        indicatorStopLossCheckPeriod: 50,     // 在开仓后第N根K线时检测一次，如果满足高风险条件则标记为风险单
+        indicatorStopLossRiskRatio: 0.8,      // 高风险判断阈值，从开仓到第N根K线区间内80%的K线满足条件则标记为高风险
+        indicatorStopLossQQEModThresholdLong: 10,   // 做多指标止损QQE MOD阈值，高风险单等待qqemod > 此阈值时触发止损
+        indicatorStopLossQQEModThresholdShort: -10, // 做空指标止损QQE MOD阈值，高风险单等待qqemod < 此阈值时触发止损
 
         // 连续亏损保护 目前的代码是反转后100根k线开单所以不用这个保护，不会在趋势末端开单的
         maxConsecutiveLoss: 0,               // 连续亏损次数阈值，达到后停止开单，等待价格突破Fibonacci上下沿后恢复（0表示不启用）
@@ -110,19 +114,26 @@ const config = {
         enableProfitPercentTakeProfit: true, // 启用盈利百分比止盈
 
         // 百分比止盈阈值
-        profitPercentTakeProfit: 0.03,       // 盈利百分比止盈阈值，默认2%（0.02）
+        profitPercentTakeProfit: 0.04,       // 盈利百分比止盈阈值，默认2%（0.02）
 
-        // 指标止盈计数
-        indicatorTPCountThreshold: 3,        // 指标止盈计数阈值
-        indicatorTPPartialCount: 2,          // 首次指标止盈计数阈值，用于判断是否执行部分平仓
-        indicatorTPPartialRatio: 0.6,        // 首次指标止盈平仓比例，默认60%
+        // 指标止盈分批平仓配置
+        indicatorTPFirstCloseCount: 1,        // 第一次平仓计数阈值，达到此计数时执行第一次平仓
+        indicatorTPSecondCloseCount: 2,       // 第二次平仓计数阈值，达到此计数时执行第二次平仓
+        indicatorTPFinalCloseCount: 3,        // 最终平仓计数阈值，达到此计数时平仓剩余所有仓位
+        indicatorTPFirstCloseRatio: 0.7,      // 第一次平仓比例，平仓初始仓位的40%
+        indicatorTPSecondCloseRatio: 0.2,     // 第二次平仓比例，平仓初始仓位的40%
+        indicatorTPCoolingPeriod: 20,          // 指标止盈冷静期（K线数量），触发指标止盈后在此时间内不再触发
+
+        // 保本止损配置
+        enableBreakEvenStopLoss: false,        // 启用保本止损，当 第一次指标止盈 后，设置保本止损，如果已经存在移动止损，取更有利的那个（多单时取较大值，空单时取较小值）
+        breakEvenStopLossRatio: 0.001,        // 保本止损比例，多单：开仓价 * (1 + ratio)，空单：开仓价 * (1 - ratio)
 
         // 指标止盈 QQE MOD拐头止盈
         qqeModTakeProfitThresholdLong: 30,   // 做多QQE MOD拐头止盈阈值，默认30
         qqeModTakeProfitThresholdShort: -30,  // 做空QQE MOD拐头止盈阈值，默认30
 
         // QQE MOD趋势反转入场配置
-        qqeModTrendReversalThreshold: 10,     // QQE MOD趋势反转入场阈值，默认0（多：中间QQE MOD < 阈值，空：中间QQE MOD > 阈值）
+        qqeModTrendReversalThreshold: 15,     // QQE MOD趋势反转入场阈值，默认0（多：中间QQE MOD < 阈值，空：中间QQE MOD > 阈值）
     },
 };
 

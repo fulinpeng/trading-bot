@@ -38,6 +38,7 @@ let openHistory = [];
 let closeHistory = [];
 let openPriceHistory = [];
 let closePriceHistory = [];
+let orderPriceForCloseHistory = [];
 let initialStopLossHistory = [];
 let orderAmountHistory = [];
 let trendHistory = [];
@@ -72,6 +73,7 @@ function reloadData() {
             closeHistory = logData.closeHistory || [];
             openPriceHistory = logData.openPriceHistory || [];
             closePriceHistory = logData.closePriceHistory || [];
+            orderPriceForCloseHistory = logData.orderPriceForCloseHistory || [];
             initialStopLossHistory = logData.initialStopLossHistory || [];
             orderAmountHistory = logData.orderAmountHistory || [];
             trendHistory = logData.trendHistory || [];
@@ -96,6 +98,7 @@ function reloadData() {
             closeHistory = [];
             openPriceHistory = [];
             closePriceHistory = [];
+            orderPriceForCloseHistory = [];
             initialStopLossHistory = [];
             orderAmountHistory = [];
             trendHistory = [];
@@ -153,6 +156,7 @@ app.get("/", (req, res) => {
         .replace("{{closeHistory}}", jsonString(closeHistory))
         .replace("{{openPriceHistory}}", jsonString(openPriceHistory))
         .replace("{{closePriceHistory}}", jsonString(closePriceHistory))
+        .replace("{{orderPriceForCloseHistory}}", jsonString(orderPriceForCloseHistory))
         .replace("{{initialStopLossHistory}}", jsonString(initialStopLossHistory))
         .replace("{{orderAmountHistory}}", jsonString(orderAmountHistory))
         .replace("{{trendHistory}}", jsonString(trendHistory))

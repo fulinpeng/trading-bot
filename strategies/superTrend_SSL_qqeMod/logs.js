@@ -27,6 +27,7 @@ class LogCollector {
             trendHistory: [],       // 交易方向（'up'/'down'）
             openPriceHistory: [],   // 开仓价格
             closePriceHistory: [],  // 平仓价格
+            orderPriceForCloseHistory: [], // 平仓时的开仓价格
             initialStopLossHistory: [], // 初始止损价格
             orderAmountHistory: [], // 订单金额
             curTestMoneyHistory: [], // 当前测试资金历史
@@ -119,13 +120,15 @@ class LogCollector {
      * @param {string} time - 平仓时间
      * @param {number} price - 平仓价格
      * @param {number} testMoney - 当前测试资金
+     * @param {number} orderPrice - 开仓价格
      */
-    recordClose(time, price, testMoney) {
+    recordClose(time, price, testMoney, orderPrice) {
         if (!this.enabled) return;
         
         this.data.closeHistory.push(time);
         this.data.closePriceHistory.push(price);
         this.data.curTestMoneyHistory.push(testMoney);
+        this.data.orderPriceForCloseHistory.push(orderPrice);
     }
 
     /**
@@ -167,6 +170,7 @@ class LogCollector {
         var trendHistory = ${JSON.stringify(this.data.trendHistory, null, 8)}
         var openPriceHistory = ${JSON.stringify(this.data.openPriceHistory, null, 8)}
         var closePriceHistory = ${JSON.stringify(this.data.closePriceHistory, null, 8)}
+        var orderPriceForCloseHistory = ${JSON.stringify(this.data.orderPriceForCloseHistory, null, 8)}
         var initialStopLossHistory = ${JSON.stringify(this.data.initialStopLossHistory, null, 8)}
         var orderAmountHistory = ${JSON.stringify(this.data.orderAmountHistory, null, 8)}
         var curTestMoneyHistory = ${JSON.stringify(this.data.curTestMoneyHistory, null, 8)}
@@ -188,6 +192,7 @@ class LogCollector {
             trendHistory,
             openPriceHistory,
             closePriceHistory,
+            orderPriceForCloseHistory,
             initialStopLossHistory,
             orderAmountHistory,
             curTestMoneyHistory,
@@ -230,6 +235,7 @@ class LogCollector {
             trendHistory: [],
             openPriceHistory: [],
             closePriceHistory: [],
+            orderPriceForCloseHistory: [],
             initialStopLossHistory: [],
             orderAmountHistory: [],
             curTestMoneyHistory: [],

@@ -132,11 +132,11 @@
         const closeHistory = {{closeHistory}};
         const openPriceHistory = {{openPriceHistory}};
         const closePriceHistory = {{closePriceHistory}};
+        const orderPriceForCloseHistory = {{orderPriceForCloseHistory}};
         const initialStopLossHistory = {{initialStopLossHistory}} || [];
         const orderAmountHistory = {{orderAmountHistory}};
         const trendHistory = {{trendHistory}};
         const curTestMoneyHistory = {{curTestMoneyHistory}};
-        
         // 从指标数组中提取数据
         const superTrendArr = indicators.superTrendArr || [];
         // console.log('superTrendArr:', superTrendArr);
@@ -178,7 +178,7 @@
             const tradeProfits = []; // 每笔交易的盈亏金额（正数表示盈利，负数表示亏损）
             
             for (let i = 0; i < totalTrades; i++) {
-                const openPrice = openPriceHistory[i];
+                const openPrice = orderPriceForCloseHistory[i];
                 const closePrice = closePriceHistory[i];
                 const trend = trendHistory[i];
                 
@@ -336,7 +336,6 @@
         // PreHighLow
         const preHigh = extractValue(alignedPreHighLowArr, 'preHigh');
         const preLow = extractValue(alignedPreHighLowArr, 'preLow');
-        console.log("@@@@@🚀 ~ preHigh, preLow:", preHigh, preLow)
 
         // Range Filter (swimingFree)
         const swimingFilt = extractValue(alignedSwimingFreeArr, 'filt');
@@ -364,42 +363,20 @@
         const markPointData = [];
         const markLineData = [];
 
+        // 先遍历开仓记录，显示开仓点
         for (let i = 0; i < openHistory.length; i++) {
             const openTime = openHistory[i];
-            const closeTime = closeHistory[i] || (kLineData.length > 0 ? kLineData[kLineData.length - 1].openTime : null);
             const openPrice = openPriceHistory[i];
-            const closePrice = closePriceHistory[i] || (kLineData.length > 0 ? parseFloat(kLineData[kLineData.length - 1].close) : null);
             const trend = trendHistory[i];
-
-            if (openTime && closeTime) {
+            
+            if (openTime && openPrice) {
                 const openIdx = data0.categoryData.indexOf(openTime);
-                const closeIdx = data0.categoryData.indexOf(closeTime);
-
-                if (openIdx >= 0 && closeIdx >= 0) {
-                    // 标记区域
-                    markArea.push([
-                        {
-                            coord: [openIdx, openPrice],
-                            itemStyle: {
-                                color: trend === 'up' ? 'rgba(0, 255, 0, 0.1)' : 'rgba(255, 0, 0, 0.1)',
-                            },
-                        },
-                        {
-                            coord: [closeIdx, closePrice],
-                        },
-                    ]);
-
-                    // 标记点
-                    const profit = trend === 'up' 
-                        ? (closePrice - openPrice) 
-                        : (openPrice - closePrice);
-                    // 多单用蓝色，空单用红色
+                if (openIdx >= 0) {
                     const markColor = trend === 'up' ? '#00ff00' : '#ff0000';
-                    // 多单用向上箭头，空单用向下箭头
                     markPointData.push({
                         name: "开仓",
                         coord: [openIdx, openPrice],
-                        value: profit.toFixed(2),
+                        value: "",
                         itemStyle: {
                             color: markColor,
                         },
@@ -407,8 +384,50 @@
                         symbolSize: 15,
                         symbolRotate: trend === 'up' ? 0 : 180,  // 多单向上，空单向下
                     });
+                }
+            }
+        }
 
-                    if (closePrice) {
+        // 遍历所有平仓记录，显示每个平仓点（包括部分平仓）
+        // 使用 orderPriceForCloseHistory 来获取每个平仓对应的开仓价格
+        // 找到每个平仓对应的开仓记录（用于获取 trend 和 openTime）
+        let openIndex = 0; // 当前对应的开仓索引
+        for (let i = 0; i < closeHistory.length; i++) {
+            const closeTime = closeHistory[i];
+            const closePrice = closePriceHistory[i];
+            const orderPrice = orderPriceForCloseHistory[i]; // 每个平仓对应的开仓价格
+            
+            if (!closeTime || closePrice === null || closePrice === undefined || orderPrice === null || orderPrice === undefined) continue;
+            
+            // 找到对应的开仓记录（用于获取 trend 和 openTime）
+            let matchedOpenIndex = openIndex;
+            
+            // 如果当前平仓索引小于开仓索引，说明这是部分平仓，使用当前开仓索引
+            if (i < openHistory.length) {
+                matchedOpenIndex = Math.min(i, openHistory.length - 1);
+            } else {
+                // 如果平仓记录多于开仓记录，说明有多次部分平仓
+                // 找到时间上最近的开仓（最后一个开仓）
+                matchedOpenIndex = openHistory.length - 1;
+            }
+            
+            // 确保索引有效
+            if (matchedOpenIndex >= 0 && matchedOpenIndex < openHistory.length) {
+                const openTime = openHistory[matchedOpenIndex];
+                const trend = trendHistory[matchedOpenIndex];
+                
+                if (openTime) {
+                    const openIdx = data0.categoryData.indexOf(openTime);
+                    const closeIdx = data0.categoryData.indexOf(closeTime);
+                    
+                    if (openIdx >= 0 && closeIdx >= 0) {
+                        // 使用 orderPriceForCloseHistory 中的开仓价格计算盈亏
+                        const profit = trend === 'up' 
+                            ? (closePrice - orderPrice) 
+                            : (orderPrice - closePrice);
+                        const markColor = trend === 'up' ? '#00ff00' : '#ff0000';
+                        
+                        // 显示平仓点（每次平仓都显示）
                         markPointData.push({
                             name: "平仓",
                             coord: [closeIdx, closePrice],
@@ -419,8 +438,28 @@
                             symbol: 'pin',
                             symbolSize: 10,
                         });
+                        
+                        // 如果是第一次平仓这个开仓（i === matchedOpenIndex），显示标记区域
+                        if (i === matchedOpenIndex) {
+                            markArea.push([
+                                {
+                                    coord: [openIdx, orderPrice],
+                                    itemStyle: {
+                                        color: trend === 'up' ? 'rgba(0, 255, 0, 0.1)' : 'rgba(255, 0, 0, 0.1)',
+                                    },
+                                },
+                                {
+                                    coord: [closeIdx, closePrice],
+                                },
+                            ]);
+                        }
                     }
                 }
+            }
+            
+            // 如果这是最后一次平仓这个开仓，移动到下一个开仓
+            if (i === openIndex && openIndex < openHistory.length - 1) {
+                openIndex++;
             }
         }
 
@@ -998,8 +1037,8 @@
         const lossPercentTimes = [];
         
         // 计算每笔交易的百分比
-        for (let i = 0; i < openPriceHistory.length; i++) {
-            const openPrice = openPriceHistory[i];
+        for (let i = 0; i < orderPriceForCloseHistory.length; i++) {
+            const openPrice = orderPriceForCloseHistory[i];
             const closePrice = closePriceHistory[i];
             
             if (openPrice && closePrice && openPrice > 0) {
@@ -1083,8 +1122,8 @@
                     const index = profitPercentTimes[dataIndex]; // 获取原始单子索引
                     
                     const closeTime = closeHistory[index] || 'N/A';
-                    const openPrice = openPriceHistory[index] !== null && openPriceHistory[index] !== undefined 
-                        ? openPriceHistory[index].toFixed(4) 
+                    const openPrice = orderPriceForCloseHistory[index] !== null && orderPriceForCloseHistory[index] !== undefined 
+                        ? orderPriceForCloseHistory[index].toFixed(4) 
                         : 'N/A';
                     const closePrice = closePriceHistory[index] !== null && closePriceHistory[index] !== undefined 
                         ? closePriceHistory[index].toFixed(4) 
@@ -1233,8 +1272,8 @@
                     const index = lossPercentTimes[dataIndex]; // 获取原始单子索引
                     
                     const closeTime = closeHistory[index] || 'N/A';
-                    const openPrice = openPriceHistory[index] !== null && openPriceHistory[index] !== undefined 
-                        ? openPriceHistory[index].toFixed(4) 
+                    const openPrice = orderPriceForCloseHistory[index] !== null && orderPriceForCloseHistory[index] !== undefined 
+                        ? orderPriceForCloseHistory[index].toFixed(4) 
                         : 'N/A';
                     const closePrice = closePriceHistory[index] !== null && closePriceHistory[index] !== undefined 
                         ? closePriceHistory[index].toFixed(4) 
@@ -1480,8 +1519,8 @@
                 formatter: function (params) {
                     const index = params[0].dataIndex;
                     const openTime = openHistory[index] || 'N/A';
-                    const openPrice = openPriceHistory[index] !== null && openPriceHistory[index] !== undefined 
-                        ? openPriceHistory[index].toFixed(4) 
+                    const openPrice = orderPriceForCloseHistory[index] !== null && orderPriceForCloseHistory[index] !== undefined 
+                        ? orderPriceForCloseHistory[index].toFixed(4) 
                         : 'N/A';
                     const orderAmount = orderAmountHistory[index] !== null && orderAmountHistory[index] !== undefined 
                         ? orderAmountHistory[index].toFixed(2) 
