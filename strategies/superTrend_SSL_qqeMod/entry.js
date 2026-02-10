@@ -37,7 +37,7 @@ function judgeTradingDirection(state, config) {
     const section3Up4 = enableSSL55Squeeze ? judgeSSL55SqueezeLongEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) : false;
     const section3Up5 = judgeTrendReversalLongEntry(qqeModArr, superTrendArr, config);
     const section3Up6 = judgeSuperTrendReversalLongEntry(superTrendArr);
-    const section3Up = section3Up3 || section3Up4 || section3Up5 || section3Up6;
+    const section3Up = section3Up4 || section3Up5 || section3Up6;
 
     // 判断做空条件
     const section3Down1 = judgeSSL1ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
@@ -46,7 +46,7 @@ function judgeTradingDirection(state, config) {
     const section3Down4 = enableSSL55Squeeze ? judgeSSL55SqueezeShortEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) : false;
     const section3Down5 = judgeTrendReversalShortEntry(qqeModArr, superTrendArr, config);
     const section3Down6 = judgeSuperTrendReversalShortEntry(superTrendArr);
-    const section3Down = section3Down3 || section3Down4 || section3Down5 || section3Down6;
+    const section3Down = section3Down4 || section3Down5 || section3Down6;
         
     // 打印所有指标值
     const [superTrend3] = getLastFromArr(state.superTrendArr, 1);

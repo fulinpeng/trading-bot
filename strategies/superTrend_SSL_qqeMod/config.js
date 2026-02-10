@@ -5,7 +5,7 @@ const config = {
         strategyType: "superTrend_ssl_qqemod",
         SYMBOL: "ethUSDT".toLowerCase(),     // 交易对
         base: "USDT",
-        klineStage: "5m",                    // K线级别
+        klineStage: "30m",                    // K线级别
         isUpOpen: true,                       // 是否允许开多
         isDownOpen: true,                     // 是否允许开空
         isTest: true,                         // 是否为测试环境
@@ -81,7 +81,7 @@ const config = {
         // ========== SSL55 + Squeeze Box 入场配置 ==========
         enableSSL55Squeeze: true,           // 启用 SSL55 + Squeeze Box 入场，默认关闭
         ssl55_Length: 55,                    // SSL55 计算周期，默认55
-        squeeze_box_Period: 12,              // Squeeze Box 采样周期，默认24
+        squeeze_box_Period: 24,              // Squeeze Box 采样周期，默认24
         squeeze_box_Deviation: 2,             // Squeeze Box 标准差倍数，默认2
         squeeze_box_Threshold: 50,           // Squeeze Box 挤压阈值百分比，默认50
         squeeze_box_Source: 'hl2',          // Squeeze Box 数据源，默认 'hl2' (可选: 'close', 'open', 'high', 'low', 'hlc3', 'hl2')
@@ -89,8 +89,8 @@ const config = {
         
         // ========== 风险管理配置 ==========
         // 固定止盈
-        riskRewardRatio: 1.5,                // 固定止盈倍数
-        priceTolerance: 0.0005,              // 判断平仓时的价格容差
+        riskRewardRatio: 1,                // 固定止盈倍数
+        priceTolerance: 0.001,              // 判断平仓时的价格容差
         
         // 移动止损
         enableTrailingStop: false,            // 启用移动止损
@@ -109,19 +109,19 @@ const config = {
         
         // 分批止盈 类型控制开关
         enableSupertrendTakeProfit: true,    // 启用SuperTrend指标止盈
-        enableFibonacciTakeProfit: true,     // 启用Fibonacci指标止盈
-        enableQQEModTakeProfit: true,        // 启用QQE MOD拐头止盈
-        enableProfitPercentTakeProfit: true, // 启用盈利百分比止盈
+        enableFibonacciTakeProfit: false,     // 启用Fibonacci指标止盈
+        enableQQEModTakeProfit: false,        // 启用QQE MOD拐头止盈
+        enableProfitPercentTakeProfit: false, // 启用盈利百分比止盈
 
         // 百分比止盈阈值
-        profitPercentTakeProfit: 0.04,       // 盈利百分比止盈阈值，默认2%（0.02）
+        profitPercentTakeProfit: 0.05,       // 盈利百分比止盈阈值，默认2%（0.02）
 
         // 指标止盈分批平仓配置
         indicatorTPFirstCloseCount: 1,        // 第一次平仓计数阈值，达到此计数时执行第一次平仓
         indicatorTPSecondCloseCount: 2,       // 第二次平仓计数阈值，达到此计数时执行第二次平仓
         indicatorTPFinalCloseCount: 3,        // 最终平仓计数阈值，达到此计数时平仓剩余所有仓位
-        indicatorTPFirstCloseRatio: 0.7,      // 第一次平仓比例，平仓初始仓位的40%
-        indicatorTPSecondCloseRatio: 0.2,     // 第二次平仓比例，平仓初始仓位的40%
+        indicatorTPFirstCloseRatio: 0.2,      // 第一次平仓比例，平仓初始仓位的40%
+        indicatorTPSecondCloseRatio: 0.4,     // 第二次平仓比例，平仓初始仓位的40%
         indicatorTPCoolingPeriod: 20,          // 指标止盈冷静期（K线数量），触发指标止盈后在此时间内不再触发
 
         // 保本止损配置
