@@ -1029,7 +1029,10 @@ const startWebSocket = async () => {
         } = realData;
 
         if (isTestLocal && (realData.error || !openTime)) {
-            console.log('end data');
+            console.log('end data', {
+                longTrendUpperReachCountMap: state.longTrendUpperReachCountMap,
+                shortTrendLowerReachCountMap: state.shortTrendLowerReachCountMap,
+            });
             // 程序结束前保存可视化日志
             if (enableVisualizationLogs) {
                 const collector = getLogCollector();

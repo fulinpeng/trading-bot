@@ -100,7 +100,7 @@ function setSperTrendArr(klines, state, config) {
     // SuperTrend 需要至少 atrPeriod 根K线来计算 ATR
     // 但为了确保上下轨计算的准确性，需要更多历史数据来稳定 ATR 和上下轨
     const minRequired = 1000;
-    superTrendArr.length >= 100 && superTrendArr.shift();
+    superTrendArr.length >= 300 && superTrendArr.shift();
     // 与 Pine Script 保持一致：
     // - changeATR = true (默认) 使用 RMA (Wilder's smoothing)，对应 useATR = true
     // - 使用标准 TR 计算，对应 inertiaRatio = 0

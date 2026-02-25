@@ -822,12 +822,12 @@ async function handleIndicatorTakeProfitPartialClose(params) {
     let action = '';
 
     if (tpCount === indicatorTPFirstCloseCount) {
-        // 第一次平仓：平仓初始仓位的40%
-        closeQuantity = absInitialSize * indicatorTPFirstCloseRatio;
+        // 第一次平仓：如果是反转入场，则平仓初始仓位的100%，否则按比例部分平仓
+        closeQuantity = absInitialSize * (state.isReversalEntry ? 1 : indicatorTPFirstCloseRatio);
         action = '第一次平仓';
         
     } else if (tpCount === indicatorTPSecondCloseCount) {
-        // 第二次平仓：平仓初始仓位的40%
+        // 第二次平仓：按比例部分平仓
         closeQuantity = absInitialSize * indicatorTPSecondCloseRatio;
         action = '第二次平仓';
     } else if (tpCount >= indicatorTPFinalCloseCount) {

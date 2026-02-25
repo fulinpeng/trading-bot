@@ -320,6 +320,7 @@
         // SuperTrend
         const superTrendUp = extractValue(alignedSuperTrendArr, 'up');
         const superTrendDown = extractValue(alignedSuperTrendArr, 'dn');
+        const superTrendATR = extractValue(alignedSuperTrendArr, 'atr');
 
         // SSL
         const sslUp = extractValue(alignedSslArr, 'sslUp');
@@ -357,6 +358,12 @@
 
         // SSL55
         const ssl55Value = extractValue(alignedSsl55Arr, 'ssl55');
+
+        // 计算ATR平均值
+        const validATRValues = superTrendATR.filter(val => val !== null && val !== undefined);
+        const avgATR = validATRValues.length > 0 
+            ? validATRValues.reduce((a, b) => a + b, 0) / validATRValues.length 
+            : null;
 
         // 创建开仓/平仓标记
         const markArea = [];
@@ -519,6 +526,9 @@
                             if (superTrend.dn !== null && superTrend.dn !== undefined) {
                                 result += `SuperTrend DN: ${superTrend.dn.toFixed(4)}<br>`;
                             }
+                            if (superTrend.atr !== null && superTrend.atr !== undefined) {
+                                result += `SuperTrend ATR: ${superTrend.atr.toFixed(4)}<br>`;
+                            }
                         }
                         if (ssl) {
                             result += `SSL: ${ssl.hlv === 1 ? 'UP' : 'DOWN'}<br>`;
@@ -582,6 +592,7 @@
                     "Squeeze Box 上轨",
                     "Squeeze Box 下轨",
                     "QQE MOD",
+                    "ATR",
                 ],
                 textStyle: {
                     color: '#fff',
@@ -592,14 +603,21 @@
                     left: "3%",
                     right: "4%",
                     top: "10%",
-                    bottom: "25%",  // 为底部柱状图留出空间
+                    bottom: "40%",  // 为底部两个图表留出空间
                 },
                 {
                     left: "3%",
                     right: "4%",
-                    top: "75%",  // 柱状图在底部
-                    bottom: "15%",
+                    top: "60%",  // QQE MOD 柱状图
+                    bottom: "25%",
                     height: "15%",  // 柱状图高度
+                },
+                {
+                    left: "3%",
+                    right: "4%",
+                    top: "75%",  // ATR 图表在底部
+                    bottom: "15%",
+                    height: "10%",  // ATR 图表高度
                 }
             ],
             xAxis: [
@@ -626,9 +644,23 @@
                     max: "dataMax",
                     axisLabel: {
                         color: '#999',
-                        show: false,  // 底部x轴不显示标签，避免重复
+                        show: false,  // 中间x轴不显示标签，避免重复
                     },
                     gridIndex: 1,
+                },
+                {
+                    type: "category",
+                    data: data0.categoryData,
+                    boundaryGap: false,
+                    axisLine: { onZero: false },
+                    splitLine: { show: false },
+                    min: "dataMin",
+                    max: "dataMax",
+                    axisLabel: {
+                        color: '#999',
+                        show: false,  // 底部x轴不显示标签，避免重复
+                    },
+                    gridIndex: 2,
                 }
             ],
             yAxis: [
@@ -667,6 +699,23 @@
                         },
                     },
                     gridIndex: 1,
+                },
+                {
+                    type: "value",
+                    scale: true,
+                    axisLabel: {
+                        color: '#999',
+                    },
+                    axisLine: {
+                        show: false,
+                    },
+                    splitLine: {
+                        show: true,
+                        lineStyle: {
+                            color: '#34384980',
+                        },
+                    },
+                    gridIndex: 2,
                 }
             ],
             dataZoom: [
@@ -674,18 +723,18 @@
                     type: "inside",
                     start: 50,
                     end: 100,
-                    xAxisIndex: [0, 1],  // 同时控制两个x轴
+                    xAxisIndex: [0, 1, 2],  // 同时控制三个x轴
                 },
                 {
                     show: true,
                     type: "slider",
-                    top: "90%",  // 调整位置，因为底部有柱状图
+                    top: "85%",  // 调整位置，因为底部有两个图表
                     start: 50,
                     end: 100,
                     textStyle: {
                         color: '#999',
                     },
-                    xAxisIndex: [0, 1],  // 同时控制两个x轴
+                    xAxisIndex: [0, 1, 2],  // 同时控制三个x轴
                 },
             ],
             series: [
@@ -879,6 +928,32 @@
                         },
                     },
                     barWidth: '60%',
+                },
+                {
+                    name: "ATR",
+                    type: "line",
+                    data: superTrendATR,
+                    xAxisIndex: 2,
+                    yAxisIndex: 2,
+                    smooth: false,
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#ffff00",
+                        width: 1,
+                    },
+                    markLine: avgATR ? {
+                        data: [
+                            { 
+                                yAxis: avgATR, 
+                                lineStyle: { color: '#00ff00', type: 'dashed', width: 2 },
+                                label: {
+                                    formatter: `ATR平均值: ${avgATR.toFixed(4)}`,
+                                    position: 'middle',
+                                    color: '#00ff00'
+                                }
+                            }
+                        ]
+                    } : null,
                 },
                 // {
                 //     name: "PreHigh",

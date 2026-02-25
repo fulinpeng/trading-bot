@@ -34,8 +34,9 @@ const config = {
         enableVisualizationLogs: true,       // 是否启用可视化日志收集
         
         // ========== SuperTrend 指标配置 ==========
-        atrPeriod: 48,                       // SuperTrend ATR 周期
+        atrPeriod: 50,                       // SuperTrend ATR 周期
         multiplier: 25,                      // SuperTrend ATR 乘数
+        atrEntryThreshold: 15,           // ATR入场阈值，连续20根K线的ATR都小于此值时才允许入场（顺势开单的atr条件）
         
         // ========== SSL 指标配置 ==========
         sslPeriod: 200,                      // SSL 周期
@@ -67,6 +68,10 @@ const config = {
         adx_len: 12,                         // ADX周期
         adx_threshold_low: 20.0,             // ADX入场阈值下限
         adx_threshold_high: 40.0,            // ADX入场阈值上限
+        // ADX趋势反转计数配置：根据ATR值动态设置计数阈值
+        adxReachCountAtrThreshold: 20,       // ATR阈值，当ATR < 此值时使用adxReachCountWhenLow，否则使用adxReachCountWhenHigh
+        adxReachCountWhenLow: 1,             // ATR < 阈值时的计数阈值（计数 < 此值）
+        adxReachCountWhenHigh: 3,            // ATR >= 阈值时的计数阈值（计数 < 此值）
         
         // ========== Fibonacci Bollinger Bands 配置 ==========
         // 注意：fbbLength 和 fbb_mult 在 utils/fib.js 中硬编码为 200 和 3.0
@@ -89,7 +94,7 @@ const config = {
         
         // ========== 风险管理配置 ==========
         // 固定止盈
-        riskRewardRatio: 1,                // 固定止盈倍数
+        riskRewardRatio: 2,                // 固定止盈倍数
         priceTolerance: 0.001,              // 判断平仓时的价格容差
         
         // 移动止损
@@ -120,8 +125,8 @@ const config = {
         indicatorTPFirstCloseCount: 1,        // 第一次平仓计数阈值，达到此计数时执行第一次平仓
         indicatorTPSecondCloseCount: 2,       // 第二次平仓计数阈值，达到此计数时执行第二次平仓
         indicatorTPFinalCloseCount: 3,        // 最终平仓计数阈值，达到此计数时平仓剩余所有仓位
-        indicatorTPFirstCloseRatio: 0.2,      // 第一次平仓比例，平仓初始仓位的40%
-        indicatorTPSecondCloseRatio: 0.4,     // 第二次平仓比例，平仓初始仓位的40%
+        indicatorTPFirstCloseRatio: 0,      // 第一次平仓比例，平仓初始仓位的40%
+        indicatorTPSecondCloseRatio: 0.5,     // 第二次平仓比例，平仓初始仓位的40%
         indicatorTPCoolingPeriod: 20,          // 指标止盈冷静期（K线数量），触发指标止盈后在此时间内不再触发
 
         // 保本止损配置
@@ -134,6 +139,8 @@ const config = {
 
         // QQE MOD趋势反转入场配置
         qqeModTrendReversalThreshold: 15,     // QQE MOD趋势反转入场阈值，默认0（多：中间QQE MOD < 阈值，空：中间QQE MOD > 阈值）
+        qqeModTrendReversalThreshold2: 30,   // QQE MOD趋势反转入场阈值2
+        qqeModTrendReversalCount: 3           // QQE MOD趋势反转需要出现的拐头次数，默认3
     },
 };
 
