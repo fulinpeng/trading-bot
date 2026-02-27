@@ -19,7 +19,7 @@ const config = require("./config.js");
 
 // 策略模块
 const { initEveryIndex, setEveryIndex } = require("./indicators.js");
-const { judgeTradingDirection, calculateTradingSignal } = require("./entry.js");
+const { judgeTradingDirection, calculateTradingSignal, updateLongTrendUpperReachCount, updateShortTrendLowerReachCount } = require("./entry.js");
 const { gridPointClearTrading } = require("./exit.js");
 
 // 日志收集模块（可选，通过配置开关控制）
@@ -289,6 +289,24 @@ const refreshKLineAndIndex = async (curKLine) => {
     setKLinesTemp(curKLine);
     await setEveryIndex(state.historyClosePrices, state.kLineData, state, configEth);
 
+    // 检测和管理 穿过边界 相关的计数
+    updateLongTrendUpperReachCount(state.kLineData, state.superTrendArr, state);
+    updateShortTrendLowerReachCount(state.kLineData, state.superTrendArr, state);
+    
+    // 测试代码，用于统计穿过边界计数
+    !state.longTrendUpperReachCountMap && (state.longTrendUpperReachCountMap = {});
+    if (!state.longTrendUpperReachCountMap?.[state.longTrendUpperReachCount]) {
+        state.longTrendUpperReachCountMap[state.longTrendUpperReachCount] = 1;
+    } else {
+        state.longTrendUpperReachCountMap[state.longTrendUpperReachCount]++;
+    }
+    !state.shortTrendLowerReachCountMap && (state.shortTrendLowerReachCountMap = {});
+    if (!state.shortTrendLowerReachCountMap?.[state.shortTrendLowerReachCount]) {
+        state.shortTrendLowerReachCountMap[state.shortTrendLowerReachCount] = 1;
+    } else {
+        state.shortTrendLowerReachCountMap[state.shortTrendLowerReachCount]++;
+    }
+    
     // 检测Fibonacci突破，用于重置连续亏损计数
     if (maxConsecutiveLoss > 0 && state.lossCount >= maxConsecutiveLoss) {
         const [fib3] = getLastFromArr(state.fibArr, 1);
@@ -469,8 +487,8 @@ const getQuantity = (entryPrice, stopLossPrice) => {
             _DefaultAvailableMoney,
             RiskBasedRiskPercent
         );
-        // 限制最大仓位不超过可用资金
-        const maxQty = _DefaultAvailableMoney / _entryPrice;
+        // 限制最大仓位不超过可用资金的2倍
+        const maxQty = _DefaultAvailableMoney * 2 / _entryPrice;
         const q = Math.min(riskBasedQty, maxQty);
         state.availableMoney = q * _entryPrice;
         return Math.round(q * 10000) / 10000;
@@ -599,6 +617,11 @@ const closeOrder = async (side, quantity, cb) => {
                 state.longTakeProfit = null;
                 state.shortTakeProfit = null;
                 state.isHighRisk = false;
+                // 重置趋势反转相关变量
+                state.reversalLongCount = 0;
+                state.lastReversalLongBreakthroughKLine = -1;
+                state.reversalShortCount = 0;
+                state.lastReversalShortBreakthroughKLine = -1;
 
                 saveGlobalVariables();
             }
@@ -696,7 +719,7 @@ const closeUp = async (quantity, stopPrice) => {
         const [kLine3] = getLastFromArr(state.kLineData, 1);
         const kLineDate = kLine3 ? (isTestLocal ? kLine3.openTime : getDate(kLine3.openTime)) : 'N/A';
         
-        console.log(isPartialClose ? "部分平多完成" : "平多完成");
+        console.log(isPartialClose ? "部分平多完成" : "平多完成", curTestMoney > 0 ? "盈利" : "亏损", kLine3.close);
 
         // 记录平仓日志（如果启用）
         if (enableVisualizationLogs) {
@@ -729,7 +752,7 @@ const closeDown = async (quantity, stopPrice) => {
         const [kLine3] = getLastFromArr(state.kLineData, 1);
         const kLineDate = kLine3 ? (isTestLocal ? kLine3.openTime : getDate(kLine3.openTime)) : 'N/A';
         
-        console.log(isPartialClose ? "部分平空完成" : "平空完成");
+        console.log(isPartialClose ? "部分平空完成" : "平空完成", curTestMoney > 0 ? "盈利" : "亏损", kLine3.close);
 
         // 记录平仓日志（如果启用）
         if (enableVisualizationLogs) {

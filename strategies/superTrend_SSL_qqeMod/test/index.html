@@ -530,12 +530,12 @@
                                 result += `SuperTrend ATR: ${superTrend.atr.toFixed(4)}<br>`;
                             }
                         }
-                        if (ssl) {
-                            result += `SSL: ${ssl.hlv === 1 ? 'UP' : 'DOWN'}<br>`;
-                        }
-                        if (swimingFree) {
-                            result += `Range Filter: ${swimingFree.trend || 'N/A'}<br>`;
-                        }
+                        // if (ssl) {
+                        //     result += `SSL: ${ssl.hlv === 1 ? 'UP' : 'DOWN'}<br>`;
+                        // }
+                        // if (swimingFree) {
+                        //     result += `Range Filter: ${swimingFree.trend || 'N/A'}<br>`;
+                        // }
                         if (qqeMod) {
                             result += `QQE MOD: ${qqeMod.qqeModBar0?.toFixed(2) || 'N/A'}<br>`;
                         }
@@ -546,15 +546,15 @@
                         if (fib) {
                             result += `Fib Upper: ${fib.upper_7?.toFixed(2) || 'N/A'}, Lower: ${fib.lower_7?.toFixed(2) || 'N/A'}<br>`;
                         }
-                        if (ssl55) {
-                            result += `SSL55: ${ssl55.ssl55 !== null && ssl55.ssl55 !== undefined ? ssl55.ssl55.toFixed(4) : 'N/A'}<br>`;
-                            if (ssl55.hh !== null && ssl55.hh !== undefined) {
-                                result += `SSL55 HH: ${ssl55.hh.toFixed(4)}<br>`;
-                            }
-                            if (ssl55.ll !== null && ssl55.ll !== undefined) {
-                                result += `SSL55 LL: ${ssl55.ll.toFixed(4)}<br>`;
-                            }
-                        }
+                        // if (ssl55) {
+                        //     result += `SSL55: ${ssl55.ssl55 !== null && ssl55.ssl55 !== undefined ? ssl55.ssl55.toFixed(4) : 'N/A'}<br>`;
+                        //     if (ssl55.hh !== null && ssl55.hh !== undefined) {
+                        //         result += `SSL55 HH: ${ssl55.hh.toFixed(4)}<br>`;
+                        //     }
+                        //     if (ssl55.ll !== null && ssl55.ll !== undefined) {
+                        //         result += `SSL55 LL: ${ssl55.ll.toFixed(4)}<br>`;
+                        //     }
+                        // }
                         if (squeezeBox) {
                             result += `Squeeze Box 上轨: ${squeezeBox.bh !== null && squeezeBox.bh !== undefined ? squeezeBox.bh.toFixed(4) : 'N/A'}<br>`;
                             result += `Squeeze Box 下轨: ${squeezeBox.bl !== null && squeezeBox.bl !== undefined ? squeezeBox.bl.toFixed(4) : 'N/A'}<br>`;

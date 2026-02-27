@@ -31,28 +31,11 @@ function judgeTradingDirection(state, config) {
         atrEntryThreshold,
     } = config;
 
-    // 检测和管理 穿过边界 相关的计数
-    updateLongTrendUpperReachCount(kLineData, superTrendArr, state);
-    updateShortTrendLowerReachCount(kLineData, superTrendArr, state);
-
-    // reachUpperCount >= 4 或 reachLowerCount >= 4 时，不进行入场
-    
-    !state.longTrendUpperReachCountMap && (state.longTrendUpperReachCountMap = {});
-    if (!state.longTrendUpperReachCountMap?.[state.longTrendUpperReachCount]) {
-        state.longTrendUpperReachCountMap[state.longTrendUpperReachCount] = 1;
-    } else {
-        state.longTrendUpperReachCountMap[state.longTrendUpperReachCount]++;
-    }
-    !state.shortTrendLowerReachCountMap && (state.shortTrendLowerReachCountMap = {});
-    if (!state.shortTrendLowerReachCountMap?.[state.shortTrendLowerReachCount]) {
-        state.shortTrendLowerReachCountMap[state.shortTrendLowerReachCount] = 1;
-    } else {
-        state.shortTrendLowerReachCountMap[state.shortTrendLowerReachCount]++;
-    }
-    if (state.longTrendUpperReachCount >= 5 || state.shortTrendLowerReachCount >= 5) {
-        state.readyTradingDirection = "hold";
-        return;
-    }
+    // reachUpperCount >= 5 或 reachLowerCount >= 5 时，不进行入场
+    // if (state.longTrendUpperReachCount >= 8 || state.shortTrendLowerReachCount >= 8) {
+    //     state.readyTradingDirection = "hold";
+    //     return;
+    // }
 
     // 获取当前趋势
     const [superTrend3] = getLastFromArr(superTrendArr, 1);
@@ -70,7 +53,7 @@ function judgeTradingDirection(state, config) {
     let section3Up7 = false;
     let section3Down7 = false;
 
-    // 检查连续20根K线的ATR都小于atrEntryThreshold
+    // 检查连续100根K线的ATR都小于atrEntryThreshold
     let allAtrLessThanTarget = false;
     if (superTrendArr.length >= 100) {
         allAtrLessThanTarget = true;
@@ -83,8 +66,8 @@ function judgeTradingDirection(state, config) {
         }
     }
 
-    // 反转入场： atr < 15 或 reachUpperCount >= 5 或 reachLowerCount >= 5
-    if (allAtrLessThanTarget || state.longTrendUpperReachCount >= 5 || state.shortTrendLowerReachCount >= 5) {
+    // 反转入场： atr < 15 或 reachUpperCount >= 9 或 reachLowerCount >= 9
+    if (allAtrLessThanTarget || state.longTrendUpperReachCount >= 6 || state.shortTrendLowerReachCount >= 6) {
         // 多头趋势反转入场做空
         if (currentTrend == 1) {
             // 趋势反转入场
@@ -95,59 +78,74 @@ function judgeTradingDirection(state, config) {
             // 趋势反转入场
             section3Up7 = judgeTrendReversalLongEntry2(kLineData, qqeModArr, superTrendArr, state, config);
         }
-        
-        if (isUpOpen && (section3Up7)) {
-            console.log("@@@ ~ judgeTradingDirection 空头趋势反转入场做多", {
-                reversalLongCount: state.reversalLongCount,
-                lastReversalLongBreakthroughKLine: state.lastReversalLongBreakthroughKLine
+
+        if (isDownOpen && (section3Down7)) {
+            console.log("@@@ ~ judgeTradingDirection 多头趋势反转入场做空", {
+                allAtrLessThanTarget,
+                atr: superTrend3?.atr,
+                longTrendUpperReachCount: state.longTrendUpperReachCount,
+                reversalShortCount: state.reversalShortCount,
             })
-            state.readyTradingDirection = "up";
+            state.readyTradingDirection = "down";
             state.isReversalEntry = true;
             return;
         }
-        
-        if (isDownOpen && (section3Down7)) {
-            // 这里reversalShortCount怎么可能是3啊？
-            console.log("@@@ ~ judgeTradingDirection 多头趋势反转入场做空", {
-                reversalShortCount: state.reversalShortCount,
-                lastReversalShortBreakthroughKLine: state.lastReversalShortBreakthroughKLine
+
+        if (isUpOpen && (section3Up7)) {
+            console.log("@@@ ~ judgeTradingDirection 空头趋势反转入场做多", {
+                allAtrLessThanTarget,
+                atr: superTrend3?.atr,
+                shortTrendLowerReachCount: state.shortTrendLowerReachCount,
+                reversalLongCount: state.reversalLongCount,
             })
-            state.readyTradingDirection = "down";
+            state.readyTradingDirection = "up";
             state.isReversalEntry = true;
             return;
         }
     }
     // 顺势入场
     else {
+        if (state.longTrendUpperReachCount >= 6 || state.shortTrendLowerReachCount >= 6) {
+            state.readyTradingDirection = "hold";
+            return;
+        }
         // 如果当前趋势为1（多头），只判断做多条件
         if (currentTrend == 1) {
-            const section3Up1 = judgeSSL1LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
-            const section3Up2 = judgeSSL2LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
+            // const section3Up1 = judgeSSL1LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
+            // const section3Up2 = judgeSSL2LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
             section3Up3 = judgeADXLongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, state, config);
             section3Up4 = enableSSL55Squeeze ? judgeSSL55SqueezeLongEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) : false;
-            section3Up5 = judgeTrendReversalLongEntry(qqeModArr, superTrendArr, config);
-            const section3Up6 = judgeSuperTrendReversalLongEntry(superTrendArr);
+            // section3Up5 = judgeTrendReversalLongEntry(qqeModArr, superTrendArr, config);
+            // const section3Up6 = judgeSuperTrendReversalLongEntry(superTrendArr);
             section3Up = section3Up3 || section3Up4;
         }
         // 如果当前趋势为-1（空头），只判断做空条件
         else if (currentTrend == -1) {
-            const section3Down1 = judgeSSL1ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
-            const section3Down2 = judgeSSL2ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
+            // const section3Down1 = judgeSSL1ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
+            // const section3Down2 = judgeSSL2ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, config);
             section3Down3 = judgeADXShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, state, config);
             section3Down4 = enableSSL55Squeeze ? judgeSSL55SqueezeShortEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) : false;
-            section3Down5 = judgeTrendReversalShortEntry(qqeModArr, superTrendArr, config);
-            const section3Down6 = judgeSuperTrendReversalShortEntry(superTrendArr);
+            // section3Down5 = judgeTrendReversalShortEntry(qqeModArr, superTrendArr, config);
+            // const section3Down6 = judgeSuperTrendReversalShortEntry(superTrendArr);
             section3Down = section3Down3 || section3Down4;
         }
 
         if (isUpOpen && (section3Up)) {
-            console.log("@@@ ~ judgeTradingDirection ~ section3Up3 || section3Up4 || section3Up7:", {section3Up3, section3Up4, section3Up5})
+            console.log("@@@ ~ judgeTradingDirection ~ section3Up3 || section3Up4 || section3Up7:", {
+                section3Up3, section3Up4,
+                atr: superTrend3?.atr,
+                longTrendUpperReachCount: state.longTrendUpperReachCount,
+            })
             state.readyTradingDirection = "up";
             return;
         }
 
         if (isDownOpen && (section3Down)) {
-            console.log("@@@ ~ judgeTradingDirection ~ section3Down3 || section3Down4 || section3Down7:", {section3Down3, section3Down4, section3Down5})
+            console.log("@@@ ~ judgeTradingDirection ~ section3Down3 || section3Down4 || section3Down7:", {
+                section3Down3, section3Down4,
+                atr: superTrend3?.atr,
+                shortTrendLowerReachCount: state.shortTrendLowerReachCount,
+            })
             state.readyTradingDirection = "down";
             return;
         }
@@ -197,7 +195,7 @@ function calculateTradingSignal(state, config) {
         return {
             trend: "up",
             stopLoss: stopLoss, // 止损（(superTrend下轨 + fib下轨 + SSL下轨 + SSL2下轨) / 4），开仓时保存为initialLongStopLoss
-            stopProfit: close + (close - stopLoss) * riskRewardRatio, // 固定止盈，使用当前close（即entryPrice）和stopLoss（即initialLongStopLoss）
+            stopProfit: close + (close - stopLoss) * (state.isReversalEntry ? riskRewardRatio * 2 : riskRewardRatio), // 固定止盈，使用当前close（即entryPrice）和stopLoss（即initialLongStopLoss）
         };
     }
 
@@ -219,7 +217,7 @@ function calculateTradingSignal(state, config) {
         return {
             trend: "down",
             stopLoss: stopLoss, // 止损（(superTrend上轨 + fib上轨 + SSL上轨 + SSL2上轨) / 4），开仓时保存为initialShortStopLoss
-            stopProfit: close - (stopLoss - close) * riskRewardRatio, // 固定止盈，使用当前close（即entryPrice）和stopLoss（即initialShortStopLoss）
+            stopProfit: close - (stopLoss - close) * (state.isReversalEntry ? riskRewardRatio * 2 : riskRewardRatio), // 固定止盈，使用当前close（即entryPrice）和stopLoss（即initialShortStopLoss）
         };
     }
     
@@ -255,44 +253,54 @@ function updateLongTrendUpperReachCount(kLineData, superTrendArr, state) {
     if (superTrend2.trend == -1 && superTrend3.trend == 1) {
         state.longTrendReversalCountActive = true;
         state.longTrendUpperReachCount = 0;
-        state.lastLongTrendUpperReachKLine = -1;
+        state.lastLongTrendUpperReachKLine = state.currentKLineCount;
+
+        // 重置趋势反转相关变量
+        state.reversalLongCount = 0;
+        state.lastReversalLongBreakthroughKLine = state.currentKLineCount;
+        state.reversalShortCount = 0;
+        state.lastReversalShortBreakthroughKLine = state.currentKLineCount;
+        return;
     }
     
     // 检测trend反转（1 ==> -1）：重置计数
     if (superTrend2.trend == 1 && superTrend3.trend == -1) {
         state.longTrendReversalCountActive = false;
         state.longTrendUpperReachCount = 0;
-        state.lastLongTrendUpperReachKLine = -1;
+        state.lastLongTrendUpperReachKLine = state.currentKLineCount;
+
+        // 重置趋势反转相关变量
+        state.reversalLongCount = 0;
+        state.lastReversalLongBreakthroughKLine = state.currentKLineCount;
+        state.reversalShortCount = 0;
+        state.lastReversalShortBreakthroughKLine = state.currentKLineCount;
+        return;
     }
     
     // 检测达到trend上轨并增加计数
     if (state.longTrendReversalCountActive) {
-        const [kLineCurrent] = getLastFromArr(kLineData, 1);
-        const [kLinePrev] = getLastFromArr(kLineData, 2);
+        const [kLinePrev, kLineCurrent] = getLastFromArr(kLineData, 2);
         if (!kLineCurrent || !kLinePrev) return;
         
-        const { close } = kLineCurrent;
-        const prevClose = kLinePrev.close;
         const superTrendUpper = Math.max(superTrend3.up, superTrend3.dn);
         
         // 检测达到trend上轨：当前K线突破上轨（close > 上轨），且上一根K线未突破
-        const reachUpper = prevClose <= superTrendUpper && close > superTrendUpper;
+        const reachUpper = kLinePrev.low < superTrendUpper && kLineCurrent.high > superTrendUpper;
         
         // 检查前10根K线（不包括当前这根）是否都没有突破上轨
         let noBreakthroughInLast10 = true;
         if (reachUpper) {
             // 检查前10根K线（从上一根开始往前数10根，不包括当前这根）
-            for (let i = 1; i <= 10 && i < kLineData.length; i++) {
+            for (let i = 1; i <= 20 && i < kLineData.length; i++) {
                 const kLine = kLineData[kLineData.length - 1 - i];
                 const superTrend = superTrendArr[superTrendArr.length - 1 - i];
                 if (kLine && superTrend) {
-                    const kLineClose = kLine.close;
                     // 获取这根K线的上一根K线
                     const kLinePrevIndex = kLineData.length - 1 - i - 1;
-                    const kLinePrevClose = kLinePrevIndex >= 0 ? kLineData[kLinePrevIndex].close : kLineClose;
+                    const kLinePrev = kLinePrevIndex >= 0 ? kLineData[kLinePrevIndex] : kLine;
                     const kLineSuperTrendUpper = Math.max(superTrend.up, superTrend.dn);
                     // 如果前10根中有任何一根突破了上轨，则不算再次突破
-                    if (kLinePrevClose <= kLineSuperTrendUpper && kLineClose > kLineSuperTrendUpper) {
+                    if (kLinePrev.low < kLineSuperTrendUpper && kLine.high > kLineSuperTrendUpper) {
                         noBreakthroughInLast10 = false;
                         break;
                     }
@@ -303,7 +311,14 @@ function updateLongTrendUpperReachCount(kLineData, superTrendArr, state) {
         // 如果达到上轨且前10根K线都没有突破，增加计数（避免同一根K线重复计数）
         if (reachUpper && noBreakthroughInLast10 && state.currentKLineCount !== state.lastLongTrendUpperReachKLine) {
             state.longTrendUpperReachCount++;
+            console.log("🚀 ~ updateLongTrendUpperReachCount ~ state.longTrendUpperReachCount:", state.longTrendUpperReachCount)
             state.lastLongTrendUpperReachKLine = state.currentKLineCount;
+
+            // 重置趋势反转相关变量
+            state.reversalLongCount = 0;
+            state.lastReversalLongBreakthroughKLine = state.currentKLineCount;
+            state.reversalShortCount = 0;
+            state.lastReversalShortBreakthroughKLine = state.currentKLineCount;
         }
     }
 }
@@ -333,44 +348,54 @@ function updateShortTrendLowerReachCount(kLineData, superTrendArr, state) {
     if (superTrend2.trend == 1 && superTrend3.trend == -1) {
         state.shortTrendReversalCountActive = true;
         state.shortTrendLowerReachCount = 0;
-        state.lastShortTrendLowerReachKLine = -1;
+        state.lastShortTrendLowerReachKLine = state.currentKLineCount;
+
+        // 重置趋势反转相关变量
+        state.reversalLongCount = 0;
+        state.lastReversalLongBreakthroughKLine = state.currentKLineCount;
+        state.reversalShortCount = 0;
+        state.lastReversalShortBreakthroughKLine = state.currentKLineCount;
+        return;
     }
     
     // 检测trend反转（-1 ==> 1）：重置计数
     if (superTrend2.trend == -1 && superTrend3.trend == 1) {
         state.shortTrendReversalCountActive = false;
         state.shortTrendLowerReachCount = 0;
-        state.lastShortTrendLowerReachKLine = -1;
+        state.lastShortTrendLowerReachKLine = state.currentKLineCount;
+
+        // 重置趋势反转相关变量
+        state.reversalLongCount = 0;
+        state.lastReversalLongBreakthroughKLine = state.currentKLineCount;
+        state.reversalShortCount = 0;
+        state.lastReversalShortBreakthroughKLine = state.currentKLineCount;
+        return;
     }
     
     // 检测达到trend下轨并增加计数
     if (state.shortTrendReversalCountActive) {
-        const [kLineCurrent] = getLastFromArr(kLineData, 1);
-        const [kLinePrev] = getLastFromArr(kLineData, 2);
+        const [kLinePrev, kLineCurrent] = getLastFromArr(kLineData, 2);
         if (!kLineCurrent || !kLinePrev) return;
         
-        const { close } = kLineCurrent;
-        const prevClose = kLinePrev.close;
         const superTrendLower = Math.min(superTrend3.up, superTrend3.dn);
         
         // 检测达到trend下轨：当前K线突破下轨（close < 下轨），且上一根K线未突破
-        const reachLower = prevClose >= superTrendLower && close < superTrendLower;
+        const reachLower = kLinePrev.high >= superTrendLower && kLineCurrent.low <= superTrendLower;
         
         // 检查前10根K线（不包括当前这根）是否都没有突破下轨
         let noBreakthroughInLast10 = true;
         if (reachLower) {
             // 检查前10根K线（从上一根开始往前数10根，不包括当前这根）
-            for (let i = 1; i <= 10 && i < kLineData.length; i++) {
+            for (let i = 1; i <= 20 && i < kLineData.length; i++) {
                 const kLine = kLineData[kLineData.length - 1 - i];
                 const superTrend = superTrendArr[superTrendArr.length - 1 - i];
                 if (kLine && superTrend) {
-                    const kLineClose = kLine.close;
                     // 获取这根K线的上一根K线
                     const kLinePrevIndex = kLineData.length - 1 - i - 1;
-                    const kLinePrevClose = kLinePrevIndex >= 0 ? kLineData[kLinePrevIndex].close : kLineClose;
+                    const kLinePrev = kLinePrevIndex >= 0 ? kLineData[kLinePrevIndex] : kLine;
                     const kLineSuperTrendLower = Math.min(superTrend.up, superTrend.dn);
                     // 如果前10根中有任何一根突破了下轨，则不算再次突破
-                    if (kLinePrevClose >= kLineSuperTrendLower && kLineClose < kLineSuperTrendLower) {
+                    if (kLinePrev.high >= kLineSuperTrendLower && kLine.low <= kLineSuperTrendLower) {
                         noBreakthroughInLast10 = false;
                         break;
                     }
@@ -381,7 +406,14 @@ function updateShortTrendLowerReachCount(kLineData, superTrendArr, state) {
         // 如果达到下轨且前10根K线都没有突破，增加计数（避免同一根K线重复计数）
         if (reachLower && noBreakthroughInLast10 && state.currentKLineCount !== state.lastShortTrendLowerReachKLine) {
             state.shortTrendLowerReachCount++;
+            console.log("🚀 ~ updateShortTrendLowerReachCount ~ state.shortTrendLowerReachCount:", state.shortTrendLowerReachCount)
             state.lastShortTrendLowerReachKLine = state.currentKLineCount;
+            
+            // 重置趋势反转相关变量
+            state.reversalLongCount = 0;
+            state.lastReversalLongBreakthroughKLine = state.currentKLineCount;
+            state.reversalShortCount = 0;
+            state.lastReversalShortBreakthroughKLine = state.currentKLineCount;
         }
     }
 }
@@ -864,7 +896,7 @@ function judgeSSL55SqueezeShortEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr
 /**
  * 判断QQE MOD趋势反转入场条件（做多）
  * 条件：QQE MOD拐头向上 && 中间那个QQE MOD < 阈值（默认0）&& SuperTrend趋势为1
- * 拐头向上：qqeModBar[2] < qqeModBar[1] < qqeModBar[0]
+ * 拐头向上：qqeModBar[2] > qqeModBar[1] < qqeModBar[0]
  */
 function judgeTrendReversalLongEntry(qqeModArr, superTrendArr, config) {
     if (!qqeModArr || qqeModArr.length < 3) return false;
@@ -881,8 +913,8 @@ function judgeTrendReversalLongEntry(qqeModArr, superTrendArr, config) {
     const qqeModBar1 = qqeMod1.qqeModBar0 || 0;
     const qqeModBar2 = qqeMod2.qqeModBar0 || 0;
     
-    // 拐头向上：qqeModBar[2] < qqeModBar[1] < qqeModBar[0]
-    const turnUp = qqeModBar2 < qqeModBar1 && qqeModBar1 < qqeModBar0;
+    // 拐头向上：qqeModBar[2] > qqeModBar[1] < qqeModBar[0]
+    const turnUp = qqeModBar2 > qqeModBar1 && qqeModBar1 < qqeModBar0;
     // 中间那个QQE MOD < 阈值
     const middleBelowThreshold = qqeModBar1 < -qqeModTrendReversalThreshold;
     const condition0 = turnUp && middleBelowThreshold;
@@ -913,35 +945,6 @@ function judgeTrendReversalLongEntry2(kLineData, qqeModArr, superTrendArr, state
     
     if (!kLineCurrent || !kLinePrev || !superTrendCurrent || !superTrendPrev) return false;
     
-    const currentTrend = superTrendCurrent.trend;
-    const currentClose = kLineCurrent.close;
-    const prevClose = kLinePrev.close;
-    const superTrendLower = Math.min(superTrendCurrent.up, superTrendCurrent.dn);
-    const superTrendUpper = Math.max(superTrendCurrent.up, superTrendCurrent.dn);
-    const prevSuperTrendLower = Math.min(superTrendPrev.up, superTrendPrev.dn);
-    const prevSuperTrendUpper = Math.max(superTrendPrev.up, superTrendPrev.dn);
-    
-    // 检测突破下轨：当前K线突破下轨（close < 下轨），且上一根K线未突破
-    const breakthroughLower = prevClose >= prevSuperTrendLower && currentClose < superTrendLower;
-    
-    // 检测突破上轨：当前K线突破上轨（close > 上轨），且上一根K线未突破
-    const breakthroughUpper = prevClose <= prevSuperTrendUpper && currentClose > superTrendUpper;
-    
-    // 任何突破上下轨，不管当前trend是否和上一次的trend不同，都需要重置
-    if (breakthroughLower || breakthroughUpper) {
-        // 重新开始记录
-        if (breakthroughLower && state.currentKLineCount !== state.lastReversalLongBreakthroughKLine) {
-            state.reversalLongCount = 0;
-            state.lastReversalLongBreakthroughKLine = state.currentKLineCount;
-            state.reversalShortCount = 0;
-            state.lastReversalShortBreakthroughKLine = state.currentKLineCount;
-        }
-        if (kLineCurrent.closeTime == '2025-04-23_05-30-00') {
-            console.log("@@@ ~ reversalShortCount:", state.reversalShortCount)
-            console.log("@@@ ~ reversalShortCount:", state.reversalShortCount)
-        }
-    }
-    
     // 获取最近三根K线的QQE MOD数据
     const [qqeMod2, qqeMod1, qqeMod0] = getLastFromArr(qqeModArr, 3);
     if (!qqeMod2 || !qqeMod1 || !qqeMod0) return false;
@@ -950,7 +953,7 @@ function judgeTrendReversalLongEntry2(kLineData, qqeModArr, superTrendArr, state
     const qqeModBar1 = qqeMod1.qqeModBar0 || 0;
     const qqeModBar2 = qqeMod2.qqeModBar0 || 0;
     
-    // 拐头向上：qqeModBar[2] < qqeModBar[1] < qqeModBar[0]
+    // 拐头向上：qqeModBar[2] > qqeModBar[1] < qqeModBar[0]
     const turnUp = qqeModBar2 < qqeModBar1 && qqeModBar1 < qqeModBar0;
     // 中间那个QQE MOD < 阈值
     const middleBelowThreshold = qqeModBar1 < -qqeModTrendReversalThreshold2;
@@ -969,7 +972,7 @@ function judgeTrendReversalLongEntry2(kLineData, qqeModArr, superTrendArr, state
 /**
  * 判断QQE MOD趋势反转入场条件（做空）
  * 条件：QQE MOD拐头向下 && 中间那个QQE MOD > 阈值（默认0）&& SuperTrend趋势为1
- * 拐头向下：qqeModBar[2] > qqeModBar[1] > qqeModBar[0]
+ * 拐头向下：qqeModBar[2] < qqeModBar[1] > qqeModBar[0]
  */
 function judgeTrendReversalShortEntry(qqeModArr, superTrendArr, config) {
     if (!qqeModArr || qqeModArr.length < 3) return false;
@@ -986,8 +989,8 @@ function judgeTrendReversalShortEntry(qqeModArr, superTrendArr, config) {
     const qqeModBar1 = qqeMod1.qqeModBar0 || 0;
     const qqeModBar2 = qqeMod2.qqeModBar0 || 0;
     
-    // 拐头向下：qqeModBar[2] > qqeModBar[1] > qqeModBar[0]
-    const turnDown = qqeModBar2 > qqeModBar1 && qqeModBar1 > qqeModBar0;
+    // 拐头向下：qqeModBar[2] < qqeModBar[1] > qqeModBar[0]
+    const turnDown = qqeModBar2 < qqeModBar1 && qqeModBar1 > qqeModBar0;
     // 中间那个QQE MOD > 阈值
     const middleAboveThreshold = qqeModBar1 > qqeModTrendReversalThreshold;
     const condition0 = turnDown && middleAboveThreshold;
@@ -1017,38 +1020,7 @@ function judgeTrendReversalShortEntry2(kLineData, qqeModArr, superTrendArr, stat
     const [superTrendPrev] = getLastFromArr(superTrendArr, 2);
     
     if (!kLineCurrent || !kLinePrev || !superTrendCurrent || !superTrendPrev) return false;
-    
-    const currentTrend = superTrendCurrent.trend;
-    const currentClose = kLineCurrent.close;
-    const prevClose = kLinePrev.close;
-    const superTrendLower = Math.min(superTrendCurrent.up, superTrendCurrent.dn);
-    const superTrendUpper = Math.max(superTrendCurrent.up, superTrendCurrent.dn);
-    const prevSuperTrendLower = Math.min(superTrendPrev.up, superTrendPrev.dn);
-    const prevSuperTrendUpper = Math.max(superTrendPrev.up, superTrendPrev.dn);
-    
-    // 检测突破上轨：当前K线突破上轨（close > 上轨），且上一根K线未突破
-    const breakthroughUpper = prevClose <= prevSuperTrendUpper && currentClose > superTrendUpper;
-    
-    // 检测突破下轨：当前K线突破下轨（close < 下轨），且上一根K线未突破
-    const breakthroughLower = prevClose >= prevSuperTrendLower && currentClose < superTrendLower;
-    
-    // 任何突破上下轨，不管当前trend是否和上一次的trend不同，都需要重置
-    if (breakthroughUpper || breakthroughLower) {
-        // 重新开始记录
-        if (state.currentKLineCount !== state.lastReversalShortBreakthroughKLine) {
-            state.reversalLongCount = 0;
-            state.lastReversalLongBreakthroughKLine = state.currentKLineCount;
-            state.reversalShortCount = 0;
-            state.lastReversalShortBreakthroughKLine = state.currentKLineCount;
-        }
-        if (kLineCurrent.closeTime == '2025-04-23_05-30-00') {
-            console.log("@@@ ~ reversalShortCount:", state.reversalShortCount)
-            console.log("@@@ ~ reversalShortCount:", state.reversalShortCount)
-        }
-    }
-    
-    console.log("@@@ ~ state.reversalShortCount:", state.reversalShortCount)
-    
+
     // 获取最近三根K线的QQE MOD数据
     const [qqeMod2, qqeMod1, qqeMod0] = getLastFromArr(qqeModArr, 3);
     if (!qqeMod2 || !qqeMod1 || !qqeMod0) return false;
@@ -1057,7 +1029,7 @@ function judgeTrendReversalShortEntry2(kLineData, qqeModArr, superTrendArr, stat
     const qqeModBar1 = qqeMod1.qqeModBar0 || 0;
     const qqeModBar2 = qqeMod2.qqeModBar0 || 0;
     
-    // 拐头向下：qqeModBar[2] > qqeModBar[1] > qqeModBar[0]
+    // 拐头向下：qqeModBar[2] < qqeModBar[1] > qqeModBar[0]
     const turnDown = qqeModBar2 > qqeModBar1 && qqeModBar1 > qqeModBar0;
     // 中间那个QQE MOD > 阈值
     const middleAboveThreshold = qqeModBar1 > qqeModTrendReversalThreshold2;
@@ -1066,6 +1038,9 @@ function judgeTrendReversalShortEntry2(kLineData, qqeModArr, superTrendArr, stat
     // 如果出现拐头，增加计数（避免同一根K线重复计数）
     if (isTurnDown && state.lastReversalShortTurnDownKLine !== state.currentKLineCount) {
         state.reversalShortCount++;
+        console.log("🚀 ~ judgeTrendReversalShortEntry2 ~ state.reversalShortCount:", state.reversalShortCount, {
+            qqeModBar2, qqeModBar1, qqeModBar0
+        })
         state.lastReversalShortTurnDownKLine = state.currentKLineCount;
     }
     
@@ -1106,4 +1081,6 @@ function judgeSuperTrendReversalShortEntry(superTrendArr) {
 module.exports = {
     judgeTradingDirection,
     calculateTradingSignal,
+    updateLongTrendUpperReachCount,
+    updateShortTrendLowerReachCount,
 };

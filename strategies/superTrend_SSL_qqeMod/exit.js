@@ -86,13 +86,13 @@ function judgeFixedTakeProfitShort(kLineData, state, config) {
 }
 
 /**
- * 判断QQE MOD拐头止盈（做多）
- * 条件：qqeMode向下拐头 && 中间最大的qqemod > 阈值 && close > 开仓价
- * 向下拐头：qqeModBar[2] < qqeModBar[1] > qqeModBar[0]
+ * 判断QQE MOD止盈（做多）
+ * 条件：qqeMode向上 && 最大的qqemod > 阈值 && close > 开仓价
+ * 向上：qqeModBar[2] < qqeModBar[1] < qqeModBar[0]
  * @param {Array} kLineData - K线数据数组
  * @param {Object} state - 策略状态对象
  * @param {Object} config - 配置对象
- * @returns {Boolean} 是否触发QQE MOD拐头止盈
+ * @returns {Boolean} 是否触发QQE MOD止盈
  */
 function judgeQQEModTakeProfitLong(kLineData, state, config) {
     const { enableQQEModTakeProfit, qqeModTakeProfitThresholdLong } = config;
@@ -115,24 +115,24 @@ function judgeQQEModTakeProfitLong(kLineData, state, config) {
     const qqeModBar1 = qqeMod1.qqeModBar0 || 0;
     const qqeModBar2 = qqeMod2.qqeModBar0 || 0;
     
-    // 条件2: 向下拐头：qqeModBar[2] < qqeModBar[1] > qqeModBar[0]
-    const turnDown = qqeModBar2 < qqeModBar1 && qqeModBar1 > qqeModBar0;
+    // 条件2: 向上：qqeModBar[2] < qqeModBar[1] < qqeModBar[0]
+    const turnDown = qqeModBar2 < qqeModBar1 && qqeModBar1 < qqeModBar0;
     if (!turnDown) return false;
     
-    // 条件3: 中间最大的qqemod > 阈值（检查中间值 qqeModBar1）
-    if (qqeModBar1 < qqeModTakeProfitThresholdLong) return false;
+    // 条件3: 最大的qqemod > 阈值（检查最大值 qqeModBar0）
+    if (qqeModBar0 < qqeModTakeProfitThresholdLong) return false;
     
     return true;
 }
 
 /**
- * 判断QQE MOD拐头止盈（做空）
- * 条件：qqeMode向上拐头 && 中间最小的qqemod < -阈值 && close < 开仓价
- * 向上拐头：qqeModBar[2] > qqeModBar[1] < qqeModBar[0]
+ * 判断QQE MOD止盈（做空）
+ * 条件：qqeMode向下 && 最小的qqemod < -阈值 && close < 开仓价
+ * 向下：qqeModBar[2] > qqeModBar[1] > qqeModBar[0]
  * @param {Array} kLineData - K线数据数组
  * @param {Object} state - 策略状态对象
  * @param {Object} config - 配置对象
- * @returns {Boolean} 是否触发QQE MOD拐头止盈
+ * @returns {Boolean} 是否触发QQE MOD止盈
  */
 function judgeQQEModTakeProfitShort(kLineData, state, config) {
     const { enableQQEModTakeProfit, qqeModTakeProfitThresholdShort } = config;
@@ -155,12 +155,12 @@ function judgeQQEModTakeProfitShort(kLineData, state, config) {
     const qqeModBar1 = qqeMod1.qqeModBar0 || 0;
     const qqeModBar2 = qqeMod2.qqeModBar0 || 0;
     
-    // 条件2: 向上拐头：qqeModBar[2] > qqeModBar[1] < qqeModBar[0]
-    const turnUp = qqeModBar2 > qqeModBar1 && qqeModBar1 < qqeModBar0;
+    // 条件2: 向上拐头：qqeModBar[2] > qqeModBar[1] > qqeModBar[0]
+    const turnUp = qqeModBar2 > qqeModBar1 && qqeModBar1 > qqeModBar0;
     if (!turnUp) return false;
     
-    // 条件3: 中间最小的qqemod < -阈值（检查中间值 qqeModBar1）
-    if (qqeModBar1 > qqeModTakeProfitThresholdShort) return false;
+    // 条件3: 最小的qqemod < -阈值
+    if (qqeModBar0 > qqeModTakeProfitThresholdShort) return false;
     
     return true;
 }
@@ -200,7 +200,7 @@ function judgeIndicatorTakeProfitLong(kLineData, superTrendArr, fibArr, state, c
         }
     }
 
-    // QQE MOD拐头止盈
+    // QQE MOD止盈
     if (!triggered && judgeQQEModTakeProfitLong(kLineData, state, config)) {
         triggered = true;
     }
@@ -251,7 +251,7 @@ function judgeIndicatorTakeProfitShort(kLineData, superTrendArr, fibArr, state, 
         }
     }
 
-    // QQE MOD拐头止盈
+    // QQE MOD止盈
     if (!triggered && judgeQQEModTakeProfitShort(kLineData, state, config)) {
         triggered = true;
     }
@@ -328,7 +328,7 @@ async function judgeStopLossInProfitRun(state, config, closeUp, closeDown) {
         // 1. 止损判断 - 立即市价平仓
         const stopLossHit = judgeStopLossLong(kLineData, effectiveStopLoss);
         if (stopLossHit) {
-            console.log(`@@@[做多止损] ${kLineDate}, currentPrice=${state.currentPrice}, effectiveStopLoss=${effectiveStopLoss}`);
+            console.log(`@@@[做多 市价平仓] ${kLineDate}, currentPrice=${state.currentPrice}, effectiveStopLoss=${effectiveStopLoss}`);
             await closeUp();
             return true;
         }
@@ -362,7 +362,7 @@ async function judgeStopLossInProfitRun(state, config, closeUp, closeDown) {
         // 1. 止损判断 - 立即市价平仓
         const stopLossHit = judgeStopLossShort(kLineData, effectiveStopLoss);
         if (stopLossHit) {
-            console.log(`@@@[做空止损] ${kLineDate}, currentPrice=${state.currentPrice}, effectiveStopLoss=${effectiveStopLoss}`);
+            console.log(`@@@[做空 市价平仓] ${kLineDate}, currentPrice=${state.currentPrice}, effectiveStopLoss=${effectiveStopLoss}`);
             await closeDown();
             return true;
         }
@@ -635,41 +635,59 @@ function updateTrailingStopLoss(params) {
     
     const isLong = trend === 'up';
     
-    // 获取QQE MOD值
-    const [qqeMod3] = getLastFromArr(qqeModArr, 1);
-    if (!qqeMod3 || !qqeMod3.current) {
-        // 如果没有QQE MOD数据，使用当前止损或已有移动止损
+    // 获取最近3根K线的QQE MOD数据，用于判断拐头
+    const [qqeMod2, qqeMod1, qqeMod0] = getLastFromArr(qqeModArr, 3);
+    if (!qqeMod2 || !qqeMod1 || !qqeMod0) {
+        // 如果没有足够的QQE MOD数据，使用当前止损或已有移动止损
         if (state.trailActive && state.trailStop !== null) {
             return state.trailStop;
         }
         return currentStopLoss;
     }
     
-    const qqeModBar = qqeMod3.current.qqeModBar;
+    const qqeModBar0 = qqeMod0.qqeModBar0 || 0;
+    const qqeModBar1 = qqeMod1.qqeModBar0 || 0;
+    const qqeModBar2 = qqeMod2.qqeModBar0 || 0;
     
     // 检查触发条件
     let trigger = false;
     if (isLong) {
-        // 多单：QQE柱子值 > 阈值时触发
-        trigger = qqeModBar > qqeTrailingThresholdLong;
+        // 多单：QQE 拐头向上并且中间的qqe < qqeTrailingThresholdLong
+        // 拐头向上：qqeModBar[2] < qqeModBar[1] < qqeModBar[0]
+        const turnUp = qqeModBar2 > qqeModBar1 && qqeModBar1 < qqeModBar0;
+        const middleBelowThreshold = qqeModBar1 < qqeTrailingThresholdLong;
+        trigger = turnUp && middleBelowThreshold;
     } else {
-        // 空单：QQE柱子值 < 阈值时触发
-        trigger = qqeModBar < qqeTrailingThresholdShort;
+        // 空单：QQE 拐头向下并且中间的qqe > qqeTrailingThresholdShort
+        // 拐头向下：qqeModBar[2] > qqeModBar[1] > qqeModBar[0]
+        const turnDown = qqeModBar2 < qqeModBar1 && qqeModBar1 > qqeModBar0;
+        const middleAboveThreshold = qqeModBar1 > qqeTrailingThresholdShort;
+        trigger = turnDown && middleAboveThreshold;
     }
     
     if (trigger) {
+        // 获取K线数据用于计算移动止损价格
+        const { kLineData } = state;
+        if (!kLineData || kLineData.length < 5) {
+            // 如果K线数据不足，使用当前止损或已有移动止损
+            if (state.trailActive && state.trailStop !== null) {
+                return state.trailStop;
+            }
+            return currentStopLoss;
+        }
+        
         // 计算移动止损价格
         let trailingStopPrice;
         if (isLong) {
-            // 多单：max(squeeze_box下轨, superTrend下轨)
-            const squeezeBoxLower = squeezeBoxArr[squeezeBoxArr.length - 1]?.bl;
-            const superTrendLower = currentStopLoss; // superTrend下轨就是currentStopLoss
-            trailingStopPrice = Math.max(squeezeBoxLower || currentStopLoss, superTrendLower);
+            // 多单：当前最近5根k线的low最小值
+            const recent5KLines = getLastFromArr(kLineData, 5);
+            const lows = recent5KLines.map(k => k.low).filter(low => low !== null && low !== undefined);
+            trailingStopPrice = lows.length > 0 ? Math.min(...lows) : currentStopLoss;
         } else {
-            // 空单：min(squeeze_box上轨, superTrend上轨)
-            const squeezeBoxUpper = squeezeBoxArr[squeezeBoxArr.length - 1]?.bh;
-            const superTrendUpper = currentStopLoss; // superTrend上轨就是currentStopLoss
-            trailingStopPrice = Math.min(squeezeBoxUpper || currentStopLoss, superTrendUpper);
+            // 空单：当前最近5根k线的high最大值
+            const recent5KLines = getLastFromArr(kLineData, 5);
+            const highs = recent5KLines.map(k => k.high).filter(high => high !== null && high !== undefined);
+            trailingStopPrice = highs.length > 0 ? Math.max(...highs) : currentStopLoss;
         }
         
         // 如果已经有移动止损或保本止损，取更有利的那个
@@ -721,7 +739,7 @@ function isInCoolingPeriod(lastBarCount, state, config) {
  */
 function setBreakEvenStopLoss(params) {
     const { trend, state, config, currentStopLoss } = params;
-    const { enableBreakEvenStopLoss, breakEvenStopLossRatio, indicatorTPFirstCloseCount } = config;
+    const { enableBreakEvenStopLoss, breakEvenStopLossRatio, tpCountForStopLoss } = config;
     
     // 检查是否启用保本止损
     if (!enableBreakEvenStopLoss) return false;
@@ -730,7 +748,7 @@ function setBreakEvenStopLoss(params) {
     if (!state.entryPrice) return false;
     
     // 检查是否已经触发过第一次指标止盈（保本止损应该在第一次指标止盈后才运行）
-    if (state.indicatorTPCount !== indicatorTPFirstCloseCount) {
+    if (state.indicatorTPCount < tpCountForStopLoss) {
         return false;
     }
     
@@ -823,7 +841,7 @@ async function handleIndicatorTakeProfitPartialClose(params) {
 
     if (tpCount === indicatorTPFirstCloseCount) {
         // 第一次平仓：如果是反转入场，则平仓初始仓位的100%，否则按比例部分平仓
-        closeQuantity = absInitialSize * (state.isReversalEntry ? 1 : indicatorTPFirstCloseRatio);
+        closeQuantity = absInitialSize * indicatorTPFirstCloseRatio;
         action = '第一次平仓';
         
     } else if (tpCount === indicatorTPSecondCloseCount) {
@@ -845,9 +863,22 @@ async function handleIndicatorTakeProfitPartialClose(params) {
             `${closeQuantity !== null ? `partialQty=${closeQuantity}, ` : ''}` +
             `initialSize=${initialPositionSize}, remainingQty=${remainingQty}`);
 
-        if (action === '第一次平仓' && (isLong ? close < state.tradingInfo.orderPrice : close > state.tradingInfo.orderPrice)) {
-            await closePosition(); // 全部平仓
-            return true;
+        if (action === '第一次平仓') {
+            // 第一次指标达到 但是却亏损了，则全部平仓
+            if ((isLong ? close < state.tradingInfo.orderPrice : close > state.tradingInfo.orderPrice)) {
+                await closePosition(); // 全部平仓
+                return true;
+            }
+            // 如果是反转入场，则立即平仓
+            if (state.isReversalEntry) {
+                // await closePosition(); // 全部平仓
+                // return true;
+                await closePosition(closeQuantity);
+                return false;
+            } else {
+                await closePosition(closeQuantity);
+                return false; // 部分平仓，继续持有
+            }
         } else if (closeQuantity !== null) {
             await closePosition(closeQuantity);
             return false; // 部分平仓，继续持有

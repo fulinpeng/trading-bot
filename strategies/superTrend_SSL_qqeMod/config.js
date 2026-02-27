@@ -13,7 +13,7 @@ const config = {
         maxKLinelen: 1000,
         
         // ========== 资金管理 ==========
-        availableMoney: 100,                 // 可用的USDT数量
+        availableMoney: 10000,                 // 可用的USDT数量
         invariableBalance: true,             // 是否使用固定金额建仓，为true时，availableMoney为必填
         priorityFee: 0.0007,                 // 手续费率
         slippage: 0,                         // 滑点
@@ -99,8 +99,8 @@ const config = {
         
         // 移动止损
         enableTrailingStop: false,            // 启用移动止损
-        qqeTrailingThresholdLong: 30.0,      // 做多移动止损QQE阈值
-        qqeTrailingThresholdShort: -30.0,    // 做空移动止损QQE阈值
+        qqeTrailingThresholdLong: -30.0,      // 做多移动止损QQE阈值
+        qqeTrailingThresholdShort: 30.0,    // 做空移动止损QQE阈值
         
         // 指标止损配置
         enableIndicatorStopLoss: false,        // 启用指标止损
@@ -115,7 +115,7 @@ const config = {
         // 分批止盈 类型控制开关
         enableSupertrendTakeProfit: true,    // 启用SuperTrend指标止盈
         enableFibonacciTakeProfit: false,     // 启用Fibonacci指标止盈
-        enableQQEModTakeProfit: false,        // 启用QQE MOD拐头止盈
+        enableQQEModTakeProfit: false,        // 启用QQE MOD止盈
         enableProfitPercentTakeProfit: false, // 启用盈利百分比止盈
 
         // 百分比止盈阈值
@@ -130,12 +130,13 @@ const config = {
         indicatorTPCoolingPeriod: 20,          // 指标止盈冷静期（K线数量），触发指标止盈后在此时间内不再触发
 
         // 保本止损配置
-        enableBreakEvenStopLoss: false,        // 启用保本止损，当 第一次指标止盈 后，设置保本止损，如果已经存在移动止损，取更有利的那个（多单时取较大值，空单时取较小值）
+        enableBreakEvenStopLoss: true,        // 启用保本止损，当 第一次指标止盈 后，设置保本止损，如果已经存在移动止损，取更有利的那个（多单时取较大值，空单时取较小值）
         breakEvenStopLossRatio: 0.001,        // 保本止损比例，多单：开仓价 * (1 + ratio)，空单：开仓价 * (1 - ratio)
+        tpCountForStopLoss: 2,                 // 指标止盈计数关键字，用于判断是否达到平仓条件
 
-        // 指标止盈 QQE MOD拐头止盈
-        qqeModTakeProfitThresholdLong: 30,   // 做多QQE MOD拐头止盈阈值，默认30
-        qqeModTakeProfitThresholdShort: -30,  // 做空QQE MOD拐头止盈阈值，默认30
+        // 指标止盈 QQE MOD止盈
+        qqeModTakeProfitThresholdLong: 30,   // 做多QQE MOD拐止盈阈值，默认30
+        qqeModTakeProfitThresholdShort: -30,  // 做空QQE MOD止盈阈值，默认30
 
         // QQE MOD趋势反转入场配置
         qqeModTrendReversalThreshold: 15,     // QQE MOD趋势反转入场阈值，默认0（多：中间QQE MOD < 阈值，空：中间QQE MOD > 阈值）
