@@ -369,13 +369,6 @@ const kaiDanDaJi = async () => {
 const judgeAndTrading = async () => {
     state.loadingTrading = true;
 
-    // 检查连续亏损保护：如果达到阈值，阻止开仓
-    if (maxConsecutiveLoss > 0 && state.lossCount >= maxConsecutiveLoss) {
-        console.log(`[连续亏损保护] 连续亏损次数已达到阈值(${state.lossCount}/${maxConsecutiveLoss})，暂停开单，等待价格突破Fibonacci上下沿`);
-        state.loadingTrading = false;
-        return;
-    }
-
     const { trend, stopLoss, stopProfit } = calculateTradingSignal(state, configEth);
     console.log("预备开仓信息： Trading trend, stopLoss, stopProfit:", trend, stopLoss, stopProfit);
 
@@ -637,7 +630,12 @@ const closeOrder = async (side, quantity, cb) => {
 
 const teadeBuy = async (stopLoss) => {
     try {
-        const quantity = getQuantity(state.currentPrice, stopLoss);
+        let quantity = getQuantity(state.currentPrice, stopLoss);
+        const { reachCountForPositionReduction, positionReductionRatio, maxConsecutiveLoss } = configEth;
+        // 检查reachCountForPositionReduction：如果达到阈值，减少仓位
+        // 检查连续亏损保护：如果达到阈值，减少仓位
+        const needReducePosition = state.longTrendUpperReachCount >= reachCountForPositionReduction || (maxConsecutiveLoss > 0 && state.lossCount >= maxConsecutiveLoss);
+        quantity = needReducePosition ? quantity * positionReductionRatio : quantity;
         await placeOrder("BUY", quantity);
 
         // 记录开仓日志（如果启用）
@@ -658,7 +656,12 @@ const teadeBuy = async (stopLoss) => {
 
 const teadeSell = async (stopLoss) => {
     try {
-        const quantity = getQuantity(state.currentPrice, stopLoss);
+        let quantity = getQuantity(state.currentPrice, stopLoss);
+        const { reachCountForPositionReduction, positionReductionRatio, maxConsecutiveLoss} = configEth;
+        // 检查reachCountForPositionReduction：如果达到阈值，减少仓位
+        // 检查连续亏损保护：如果达到阈值
+        const needReducePosition = state.shortTrendLowerReachCount >= reachCountForPositionReduction || (maxConsecutiveLoss > 0 && state.lossCount >= maxConsecutiveLoss);
+        quantity = needReducePosition ? quantity * positionReductionRatio : quantity;
         await placeOrder("SELL", quantity);
 
         // 记录开仓日志（如果启用）

@@ -103,14 +103,18 @@ const config = {
         qqeTrailingThresholdShort: 30.0,    // 做空移动止损QQE阈值
         
         // 指标止损配置
-        enableIndicatorStopLoss: false,        // 启用指标止损
+        enableIndicatorStopLoss: true,        // 启用指标止损
         indicatorStopLossCheckPeriod: 50,     // 在开仓后第N根K线时检测一次，如果满足高风险条件则标记为风险单
         indicatorStopLossRiskRatio: 0.8,      // 高风险判断阈值，从开仓到第N根K线区间内80%的K线满足条件则标记为高风险
         indicatorStopLossQQEModThresholdLong: 10,   // 做多指标止损QQE MOD阈值，高风险单等待qqemod > 此阈值时触发止损
         indicatorStopLossQQEModThresholdShort: -10, // 做空指标止损QQE MOD阈值，高风险单等待qqemod < 此阈值时触发止损
 
         // 连续亏损保护 目前的代码是反转后100根k线开单所以不用这个保护，不会在趋势末端开单的
-        maxConsecutiveLoss: 0,               // 连续亏损次数阈值，达到后停止开单，等待价格突破Fibonacci上下沿后恢复（0表示不启用）
+        maxConsecutiveLoss: 3,               // 连续亏损次数阈值，达到后停止开单，等待价格突破Fibonacci上下沿后恢复（0表示不启用）
+        
+        // 动态仓位调整配置
+        reachCountForPositionReduction: 3,   // 当reachCount达到此值时，减少仓位
+        positionReductionRatio: 0.5,         // 仓位减少比例，当reachCount达到阈值时，仓位 = 原仓位 * 此比例
         
         // 分批止盈 类型控制开关
         enableSupertrendTakeProfit: true,    // 启用SuperTrend指标止盈
@@ -125,7 +129,7 @@ const config = {
         indicatorTPFirstCloseCount: 1,        // 第一次平仓计数阈值，达到此计数时执行第一次平仓
         indicatorTPSecondCloseCount: 2,       // 第二次平仓计数阈值，达到此计数时执行第二次平仓
         indicatorTPFinalCloseCount: 3,        // 最终平仓计数阈值，达到此计数时平仓剩余所有仓位
-        indicatorTPFirstCloseRatio: 0,      // 第一次平仓比例，平仓初始仓位的40%
+        indicatorTPFirstCloseRatio: 0.25,      // 第一次平仓比例，平仓初始仓位的40%
         indicatorTPSecondCloseRatio: 0.5,     // 第二次平仓比例，平仓初始仓位的40%
         indicatorTPCoolingPeriod: 20,          // 指标止盈冷静期（K线数量），触发指标止盈后在此时间内不再触发
 

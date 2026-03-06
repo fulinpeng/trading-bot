@@ -34,7 +34,7 @@ async function judgeStopLoss(_currentPrice, state, config, closeUp, closeDown) {
     if (trend === "up") {
         const initialStopLoss = state.initialLongStopLoss;
         if (initialStopLoss !== null && initialStopLoss !== undefined) {
-            if (close <= initialStopLoss || low <= initialStopLoss) {
+            if (close <= initialStopLoss) {// || low <= initialStopLoss
                 await closeUp();
                 state.isJudgeStopLoss = false;
                 return;
@@ -46,7 +46,7 @@ async function judgeStopLoss(_currentPrice, state, config, closeUp, closeDown) {
     if (trend === "down") {
         const initialStopLoss = state.initialShortStopLoss;
         if (initialStopLoss !== null && initialStopLoss !== undefined) {
-            if (close >= initialStopLoss || high >= initialStopLoss) {
+            if (close >= initialStopLoss) { //  || high >= initialStopLoss
                 await closeDown();
                 state.isJudgeStopLoss = false;
                 return;
