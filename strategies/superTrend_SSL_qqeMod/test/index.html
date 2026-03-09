@@ -106,6 +106,10 @@
     
     <div id="chart"></div>
     <div id="profitChart"></div>
+    <div id="configPanel" style="margin: 20px 0; padding: 20px; background-color: #2a2a2a; border-radius: 8px;">
+        <h3 style="color: #fff; margin-bottom: 15px;">策略配置 (config.js)</h3>
+        <pre id="configContent" style="color: #98f0b0; background-color: #1a1a1a; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px; line-height: 1.5; margin: 0;"></pre>
+    </div>
     <div id="profitPercentChart"></div>
     <div id="lossPercentChart"></div>
     <div id="consecutiveLossChart"></div>
@@ -137,6 +141,7 @@
         const orderAmountHistory = {{orderAmountHistory}};
         const trendHistory = {{trendHistory}};
         const curTestMoneyHistory = {{curTestMoneyHistory}};
+        const configData = {{configData}} || {};
         // 从指标数组中提取数据
         const superTrendArr = indicators.superTrendArr || [];
         // console.log('superTrendArr:', superTrendArr);
@@ -1048,6 +1053,7 @@
             },
             yAxis: {
                 type: "value",
+                max: 40000,  // 设置Y轴最大值
                 splitArea: {
                     show: false,  // 去掉背景区域
                 },
@@ -1104,6 +1110,126 @@
         };
 
         profitChart.setOption(profitOption);
+
+        // 格式化并显示配置
+        function formatConfig(config) {
+            if (!config || typeof config !== 'object' || Object.keys(config).length === 0) {
+                return '// 配置数据未提供';
+            }
+            
+            // 获取 eth 配置（或其他配置）
+            const ethConfig = config.eth || config;
+            
+            // 格式化配置为可读的字符串
+            let formatted = 'const config = {\n';
+            formatted += '    \'eth\': {\n';
+            
+            // 按分类组织配置
+            const categories = {
+                '基础配置': [
+                    'strategyType', 'SYMBOL', 'base', 'klineStage', 'isUpOpen', 'isDownOpen', 
+                    'isTest', 'isTestLocal', 'maxKLinelen'
+                ],
+                '资金管理': [
+                    'availableMoney', 'invariableBalance', 'priorityFee', 'slippage', 
+                    'sizingMode', 'rolling', 'martingaleInitialPercent', 'martingaleIncrementPercent', 
+                    'martingaleMaxPercent', 'RiskBasedRiskPercent'
+                ],
+                '日志配置': [
+                    'logsFolder', 'errorsFolder', 'enableVisualizationLogs'
+                ],
+                'SuperTrend 指标配置': [
+                    'atrPeriod', 'multiplier', 'atrEntryThreshold'
+                ],
+                'SSL 指标配置': [
+                    'sslPeriod', 'sslSlopeLookback', 'sslRateUp', 'sslRateDown'
+                ],
+                'SSL2 指标配置': [
+                    'ssl2SlopeLookback', 'ssl2RateUp', 'ssl2RateDown'
+                ],
+                'QQE MOD 指标配置': [
+                    'qqe_rsiLengthPrimary', 'qqe_rsiSmoothingPrimary', 'qqe_qqeFactorPrimary', 
+                    'qqe_thresholdPrimary', 'qqe_rsiLengthSecondary', 'qqe_rsiSmoothingSecondary', 
+                    'qqe_qqeFactorSecondary', 'qqe_thresholdSecondary', 'qqe_entryThreshold1', 'qqe_entryThreshold2'
+                ],
+                'ADX 指标配置': [
+                    'adx_len', 'adx_threshold_low', 'adx_threshold_high', 
+                    'adxReachCountAtrThreshold', 'adxReachCountWhenLow', 'adxReachCountWhenHigh'
+                ],
+                'Range Filter 配置': [
+                    'swimingFreePeriod'
+                ],
+                'Swing High/Low 配置': [
+                    'swingLength'
+                ],
+                'SSL55 + Squeeze Box 入场配置': [
+                    'enableSSL55Squeeze', 'ssl55_Length', 'squeeze_box_Period', 
+                    'squeeze_box_Deviation', 'squeeze_box_Threshold', 'squeeze_box_Source', 'squeeze_box_MA_Type'
+                ],
+                '风险管理配置': [
+                    'riskRewardRatio', 'priceTolerance', 'enableTrailingStop', 
+                    'qqeTrailingThresholdLong', 'qqeTrailingThresholdShort', 
+                    'enableIndicatorStopLoss', 'indicatorStopLossCheckPeriod', 
+                    'indicatorStopLossRiskRatio', 'indicatorStopLossQQEModThresholdLong', 
+                    'indicatorStopLossQQEModThresholdShort', 'maxConsecutiveLoss', 
+                    'reachCountForPositionReduction', 'positionReductionRatio'
+                ],
+                '分批止盈配置': [
+                    'enableSupertrendTakeProfit', 'enableFibonacciTakeProfit', 
+                    'enableQQEModTakeProfit', 'enableProfitPercentTakeProfit', 
+                    'profitPercentTakeProfit', 'indicatorTPFirstCloseCount', 
+                    'indicatorTPSecondCloseCount', 'indicatorTPFinalCloseCount', 
+                    'indicatorTPFirstCloseRatio', 'indicatorTPSecondCloseRatio', 
+                    'indicatorTPCoolingPeriod', 'enableBreakEvenStopLoss', 
+                    'breakEvenStopLossRatio', 'tpCountForStopLoss', 
+                    'qqeModTakeProfitThresholdLong', 'qqeModTakeProfitThresholdShort'
+                ],
+                'QQE MOD趋势反转入场配置': [
+                    'qqeModTrendReversalThreshold', 'qqeModTrendReversalThreshold2', 
+                    'qqeModTrendReversalCount'
+                ]
+            };
+            
+            // 格式化每个分类
+            Object.keys(categories).forEach((categoryName, catIndex) => {
+                if (catIndex > 0) {
+                    formatted += '\n';
+                }
+                formatted += `        // ========== ${categoryName} ==========\n`;
+                
+                categories[categoryName].forEach(key => {
+                    if (ethConfig.hasOwnProperty(key)) {
+                        const value = ethConfig[key];
+                        let valueStr;
+                        if (typeof value === 'string') {
+                            valueStr = `"${value}"`;
+                        } else if (typeof value === 'boolean') {
+                            valueStr = value.toString();
+                        } else if (typeof value === 'number') {
+                            valueStr = value.toString();
+                        } else if (value === null) {
+                            valueStr = 'null';
+                        } else if (value === undefined) {
+                            valueStr = 'undefined';
+                        } else {
+                            valueStr = JSON.stringify(value);
+                        }
+                        formatted += `        ${key}: ${valueStr},\n`;
+                    }
+                });
+            });
+            
+            formatted += '    },\n';
+            formatted += '};';
+            
+            return formatted;
+        }
+        
+        // 显示配置
+        const configContent = document.getElementById('configContent');
+        if (configContent) {
+            configContent.textContent = formatConfig(configData);
+        }
 
         // 计算盈利百分比和亏损百分比数据
         const profitPercentData = [];

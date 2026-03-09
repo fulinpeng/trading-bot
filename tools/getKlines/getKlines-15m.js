@@ -1,8 +1,9 @@
 // https://fapi.binance.com/fapi/v1/klines?symbol=zkUSDT&interval=15m&limit=1440&startTime=1721836800000
 
 const axios = require("axios"); // HTTP请求库
-const { getDate } = require("./utils/functions.js");
+const { getDate } = require("../../utils/functions.js");
 const fs = require("fs");
+const path = require("path");
 const fapi = "https://fapi.binance.com/fapi";
 const { HttpsProxyAgent } = require("https-proxy-agent");
 const { SocksProxyAgent } = require("socks-proxy-agent");
@@ -28,7 +29,7 @@ if (!num) {
     process.exit(1);
 }
 // mac 小地球仪
-let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
+let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:15715");
 // 创建公用的 Axios 实例
 const axiosInstance = axios.create({
     // headers: {
@@ -62,7 +63,7 @@ const getKLineData = async (symbol, interval, limit, startTime) => {
             takerBuyQuoteAssetVolume: parseFloat(item[10]), // 主动买入成交额
         }));
     } catch (error) {
-        console.log("🚀 ~ file: getKlines.js:33 ~ getKLineData ~ error:", error);
+        console.log("🚀 ~ file: getKlines-15m.js ~ getKLineData ~ error:", error);
         return;
     }
 };
@@ -78,12 +79,13 @@ const getDatas = async (symbol, startTime, num) => {
         if (resItem) {
             result = result.concat(resItem);
         } else {
-            console.log("🚀 ~ file: getKlines.js:46 ~ getDatas ~ resItem:", resItem);
+            console.log("🚀 ~ file: getKlines-15m.js ~ getDatas ~ resItem:", resItem);
             // getKLineData 返回没有数据，说明api次数被用完了
             break;
         }
     }
-    writeInFile(`./tests/source/${symbol}-15m.js`, {
+    const filePath = path.resolve(__dirname, "../../tests/source", `${symbol}-15m.js`);
+    writeInFile(filePath, {
         kLineData: result,
     });
 };

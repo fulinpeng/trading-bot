@@ -755,7 +755,7 @@ const closeDown = async (quantity, stopPrice) => {
         const [kLine3] = getLastFromArr(state.kLineData, 1);
         const kLineDate = kLine3 ? (isTestLocal ? kLine3.openTime : getDate(kLine3.openTime)) : 'N/A';
         
-        console.log(isPartialClose ? "部分平空完成" : "平空完成", curTestMoney > 0 ? "盈利" : "亏损", kLine3.close);
+        console.log(isPartialClose ? "部分平空完成" : "平空完成", curTestMoney > 0 ? "止盈" : "止损", kLine3.close);
 
         // 记录平仓日志（如果启用）
         if (enableVisualizationLogs) {

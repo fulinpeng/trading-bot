@@ -676,8 +676,9 @@ function judgeADXLongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fi
     }
     const maxCount = allATRBelowThreshold ? adxReachCountWhenLow : adxReachCountWhenHigh;
     const condition8 = state.longTrendUpperReachCount < maxCount;
+    const condition9 = close < (superTrend3.minSuper + superTrend3.maxSuper) / 2;
 
-    return condition1 && condition2 && condition3 && condition4 && condition5 && condition6 && condition7 && condition8;
+    return condition1 && condition2 && condition3 && condition4 && condition5 && condition6 && condition7 && condition8// && condition9;
 }
 
 /**
@@ -805,8 +806,9 @@ function judgeADXShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, f
     }
     const maxCount = allATRBelowThreshold ? adxReachCountWhenLow : adxReachCountWhenHigh;
     const condition8 = state.shortTrendLowerReachCount < maxCount;
+    const condition9 = close > (superTrend3.minSuper + superTrend3.maxSuper) / 2;
 
-    return condition1 && condition2 && condition3 && condition4 && condition5 && condition6 && condition7 && condition8;
+    return condition1 && condition2 && condition3 && condition4 && condition5 && condition6 && condition7 && condition8// && condition9;
 }
 
 /**

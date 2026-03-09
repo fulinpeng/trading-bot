@@ -1,8 +1,9 @@
 // https://fapi.binance.com/fapi/v1/klines?symbol=zkUSDT&interval=15m&limit=1440&startTime=1721836800000
 
 const axios = require("axios"); // HTTP请求库
-const { getDate } = require("./utils/functions.js");
+const { getDate } = require("../../utils/functions.js");
 const fs = require("fs");
+const path = require("path");
 const dayjs = require("dayjs");
 const fapi = "https://fapi.binance.com/fapi";
 const { HttpsProxyAgent } = require("https-proxy-agent");
@@ -16,10 +17,12 @@ if (!symbol) {
     console.error("请提供symbol");
     process.exit(1);
 }
-const data1 = require(`./tests/source/${symbol}-15m.js`);
+// 读取已有的15m级别历史数据文件（位于项目根目录的 tests/source 下）
+const dataFilePath = path.resolve(__dirname, "../../tests/source", `${symbol}-15m.js`);
+const data1 = require(dataFilePath);
 
-// mac 小地球仪
-let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
+// 如需使用本地代理，可在此处配置（示例为 http 代理）
+let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:15715");
 // 创建公用的 Axios 实例
 const axiosInstance = axios.create({
     // headers: {
@@ -106,7 +109,9 @@ const getDatas = async (symbol) => {
             // getKLineData 返回没有数据，说明api次数被用完了
         }
     }
-    writeInFile(`./tests/source/${symbol}-15m.js`, {
+    // 将最新合并后的数据写回项目根目录下的 tests/source 目录
+    const filePath = path.resolve(__dirname, "../../tests/source", `${symbol}-15m.js`);
+    writeInFile(filePath, {
         kLineData: result,
     });
 };

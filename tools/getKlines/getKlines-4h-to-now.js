@@ -3,6 +3,7 @@
 const axios = require("axios"); // HTTP请求库
 const { getDate } = require("../../utils/functions.js");
 const fs = require("fs");
+const path = require("path");
 const dayjs = require("dayjs");
 const fapi = "https://fapi.binance.com/fapi";
 const { HttpsProxyAgent } = require("https-proxy-agent");
@@ -16,7 +17,8 @@ if (!symbol) {
     console.error("请提供symbol");
     process.exit(1);
 }
-const data1 = require(`../../tests/source/${symbol}-4h.js`);
+const dataFilePath = path.resolve(__dirname, "../../tests/source", `${symbol}-4h.js`);
+const data1 = require(dataFilePath);
 
 // mac 小地球仪
 let httpProxyAgent = new HttpsProxyAgent("http://127.0.0.1:31550");
@@ -53,7 +55,7 @@ const getKLineData = async (symbol, interval, limit, startTime) => {
             takerBuyQuoteAssetVolume: parseFloat(item[10]), // 主动买入成交额
         }));
     } catch (error) {
-        console.log("🚀 ~ file: getKlines.js:33 ~ getKLineData ~ error:", error);
+        console.log("🚀 ~ file: getKlines-4h-to-now.js ~ getKLineData ~ error:", error);
         return;
     }
 };
@@ -88,7 +90,7 @@ const getDatas = async (symbol) => {
         if (resItem) {
             result = result.concat(resItem);
         } else {
-            console.log("🚀 ~ file: getKlines.js:46 ~ getDatas ~ resItem:", resItem);
+            console.log("🚀 ~ file: getKlines-4h-to-now.js ~ getDatas ~ resItem:", resItem);
             // getKLineData 返回没有数据，说明api次数被用完了
             isErro = true;
             break;
@@ -101,11 +103,12 @@ const getDatas = async (symbol) => {
         if (resItem) {
             result = result.concat(resItem);
         } else {
-            console.log("🚀 ~ file: getKlines.js:46 ~ getDatas ~ resItem:", resItem);
+            console.log("🚀 ~ file: getKlines-4h-to-now.js ~ getDatas ~ resItem:", resItem);
             // getKLineData 返回没有数据，说明api次数被用完了
         }
     }
-    writeInFile(`./tests/source/${symbol}-4h.js`, {
+    const filePath = path.resolve(__dirname, "../../tests/source", `${symbol}-4h.js`);
+    writeInFile(filePath, {
         kLineData: result,
     });
 };

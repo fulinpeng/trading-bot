@@ -3,6 +3,7 @@
 const axios = require("axios"); // HTTP请求库
 const { getDate } = require("../../utils/functions.js");
 const fs = require("fs");
+const path = require("path");
 const fapi = "https://fapi.binance.com/fapi";
 const { HttpsProxyAgent } = require("https-proxy-agent");
 const { SocksProxyAgent } = require("socks-proxy-agent");
@@ -62,7 +63,7 @@ const getKLineData = async (symbol, interval, limit, startTime) => {
             takerBuyQuoteAssetVolume: parseFloat(item[10]), // 主动买入成交额
         }));
     } catch (error) {
-        console.log("🚀 ~ file: getKlines.js:33 ~ getKLineData ~ error:", error);
+        console.log("🚀 ~ file: getKlines-30m.js ~ getKLineData ~ error:", error);
         return;
     }
 };
@@ -78,12 +79,13 @@ const getDatas = async (symbol, startTime, num) => {
         if (resItem) {
             result = result.concat(resItem);
         } else {
-            console.log("🚀 ~ file: getKlines.js:46 ~ getDatas ~ resItem:", resItem);
+            console.log("🚀 ~ file: getKlines-30m.js ~ getDatas ~ resItem:", resItem);
             // getKLineData 返回没有数据，说明api次数被用完了
             break;
         }
     }
-    writeInFile(`./tests/source/${symbol}-30m.js`, {
+    const filePath = path.resolve(__dirname, "../../tests/source", `${symbol}-30m.js`);
+    writeInFile(filePath, {
         kLineData: result,
     });
 };

@@ -43,6 +43,7 @@ let initialStopLossHistory = [];
 let orderAmountHistory = [];
 let trendHistory = [];
 let curTestMoneyHistory = [];
+let configData = {};
 
 // 序列化函数
 function jsonString(obj) {
@@ -90,6 +91,7 @@ function reloadData() {
                 ssl55Arr: logData.ssl55Arr || [],
                 squeezeBoxArr: logData.squeezeBoxArr || [],
             };
+            configData = logData.config || {};
             console.log(`可视化日志数据加载成功: K线数据 ${kLineData.length} 根, 开仓 ${openHistory.length} 次, 指标数组长度 ${indicators.superTrendArr.length}`);
         } else {
             // 可视化日志数据文件不存在是正常的（需要先运行策略并启用日志收集）
@@ -115,6 +117,7 @@ function reloadData() {
                 ssl55Arr: [],
                 squeezeBoxArr: [],
             };
+            configData = {};
         }
     } catch (error) {
         console.error("加载数据失败:", error);
@@ -161,6 +164,7 @@ app.get("/", (req, res) => {
         .replace("{{orderAmountHistory}}", jsonString(orderAmountHistory))
         .replace("{{trendHistory}}", jsonString(trendHistory))
         .replace("{{curTestMoneyHistory}}", jsonString(curTestMoneyHistory))
+        .replace("{{configData}}", jsonString(configData))
         .replace("{{title}}", `${symbol}-${strategy}`)
         .replace("{{symbol}}", `${symbol}`)
         .replace("{{timeLevel}}", `${timeLevel}`);

@@ -34,7 +34,7 @@ async function judgeStopLoss(_currentPrice, state, config, closeUp, closeDown) {
     if (trend === "up") {
         const initialStopLoss = state.initialLongStopLoss;
         if (initialStopLoss !== null && initialStopLoss !== undefined) {
-            if (close <= initialStopLoss) {// || low <= initialStopLoss
+            if (close <= initialStopLoss) { //  || low <= initialStopLoss
                 await closeUp();
                 state.isJudgeStopLoss = false;
                 return;
@@ -338,7 +338,7 @@ async function judgeStopLossInProfitRun(state, config, closeUp, closeDown) {
         if (enableIndicatorStopLoss) {
             const indicatorStopLossHit = judgeIndicatorStopLossLong(kLineData, qqeModArr, state, config);
             if (indicatorStopLossHit) {
-                console.log(`@@@[做多指标止损] ${kLineDate}, isHighRisk=${state.isHighRisk}, currentKLineCount=${state.currentKLineCount}`);
+                console.log(`@@@[做多高风险止损] ${kLineDate}, qqeModBar0=${qqeModArr[qqeModArr.length - 1].qqeModBar0}`);
                 await closeUp();
                 return true;
             }
@@ -372,7 +372,7 @@ async function judgeStopLossInProfitRun(state, config, closeUp, closeDown) {
         if (enableIndicatorStopLoss) {
             const indicatorStopLossHit = judgeIndicatorStopLossShort(kLineData, qqeModArr, state, config);
             if (indicatorStopLossHit) {
-                console.log(`@@@[做空指标止损] ${kLineDate}, isHighRisk=${state.isHighRisk}, currentKLineCount=${state.currentKLineCount}`);
+                console.log(`@@@[做空高风险止损] ${kLineDate},qqeModBar0=${qqeModArr[qqeModArr.length - 1].qqeModBar0}`);
                 await closeDown();
                 return true;
             }
@@ -408,7 +408,7 @@ function checkHighRiskLong(kLineData, entryKLineCount, currentKLineCount, state,
     if (state.isHighRisk) return true;
     
     // 只在第N根K线时检测一次
-    if (currentKLineCount !== checkKLineCount) return false;
+    if ((currentKLineCount - entryKLineCount) % indicatorStopLossCheckPeriod !== 0) return false;
     
     // 计算从开仓到第N根K线的区间内收盘价小于开盘价的K线数量
     let bearishCount = 0;
@@ -433,6 +433,7 @@ function checkHighRiskLong(kLineData, entryKLineCount, currentKLineCount, state,
     // 如果区间内80%的K线收盘价小于开盘价，标记为高风险
     if (totalCount > 0) {
         const bearishRatio = bearishCount / totalCount;
+        console.log(`@@@[做多高风险检测], bearishRatio=${bearishRatio}, totalCount=${totalCount}, bearishCount=${bearishCount}`);
         return bearishRatio >= indicatorStopLossRiskRatio;
     }
     
@@ -457,7 +458,7 @@ function checkHighRiskShort(kLineData, entryKLineCount, currentKLineCount, state
     
     // 计算检测点：开仓后第N根K线
     const checkKLineCount = entryKLineCount + indicatorStopLossCheckPeriod;
-    
+
     // 如果当前K线计数还没到检测点，返回false
     if (currentKLineCount < checkKLineCount) return false;
     
@@ -465,8 +466,8 @@ function checkHighRiskShort(kLineData, entryKLineCount, currentKLineCount, state
     if (state.isHighRisk) return true;
     
     // 只在第N根K线时检测一次
-    if (currentKLineCount !== checkKLineCount) return false;
-    
+    if ((currentKLineCount - entryKLineCount) % indicatorStopLossCheckPeriod !== 0) return false;
+
     // 计算从开仓到第N根K线的区间内收盘价大于开盘价的K线数量
     let bullishCount = 0;
     let totalCount = 0;
@@ -490,6 +491,7 @@ function checkHighRiskShort(kLineData, entryKLineCount, currentKLineCount, state
     // 如果区间内80%的K线收盘价大于开盘价，标记为高风险
     if (totalCount > 0) {
         const bullishRatio = bullishCount / totalCount;
+        console.log(`@@@[做空高风险检测], bullishRatio=${bullishRatio}, totalCount=${totalCount}, bullishCount=${bullishCount}`);
         return bullishRatio >= indicatorStopLossRiskRatio;
     }
     
@@ -617,10 +619,14 @@ function calculateTolerancePrice(targetPrice, priceTolerance, direction) {
  */
 function updateTrailingStopLoss(params) {
     const { trend, state, config, currentStopLoss, qqeModArr, squeezeBoxArr } = params;
-    const { enableTrailingStop, qqeTrailingThresholdLong, qqeTrailingThresholdShort, indicatorTPFirstCloseCount } = config;
+    const { enableTrailingStop, qqeTrailingThresholdLong, qqeTrailingThresholdShort, indicatorTPFirstCloseCount, enableBreakEvenStopLoss } = config;
     
     // 检查是否启用移动止损
-    if (!enableTrailingStop || state.entryPrice === null) {
+    if (!enableTrailingStop) {
+        // 检查是否启用保本止损，他们公用的 trailStop
+        if (enableBreakEvenStopLoss && state.trailActive) {
+            return state.trailStop || currentStopLoss;
+        }
         return currentStopLoss;
     }
     
@@ -748,7 +754,7 @@ function setBreakEvenStopLoss(params) {
     if (!state.entryPrice) return false;
     
     // 检查是否已经触发过第一次指标止盈（保本止损应该在第一次指标止盈后才运行）
-    if (state.indicatorTPCount < tpCountForStopLoss) {
+    if (state.indicatorTPCount < tpCountForStopLoss || tpCountForStopLoss === 0) {
         return false;
     }
     
@@ -888,7 +894,7 @@ async function handleIndicatorTakeProfitPartialClose(params) {
         }
     }
 
-    // 第一次平仓后，设置保本止损
+    // 第一/二次平仓后，设置保本止损
     setBreakEvenStopLoss({
         trend,
         state,
@@ -1037,9 +1043,6 @@ async function gridPointClearTrading(currentPrice, state, config, closeUp, close
 
     // 止盈 | 移动止盈
     await judgeProfitRunOrProfit(currentPrice, state, config, closeUp, closeDown);
-
-    // 首次亏损保护
-    // await judgeFirstLossProtect(currentPrice);
 
     state.onGridPoint = false;
 }

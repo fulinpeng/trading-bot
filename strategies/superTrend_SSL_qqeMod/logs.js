@@ -184,6 +184,7 @@ class LogCollector {
         var preHighLowArr = ${JSON.stringify(this.data.preHighLowArr, null, 8)}
         var ssl55Arr = ${JSON.stringify(this.data.ssl55Arr, null, 8)}
         var squeezeBoxArr = ${JSON.stringify(this.data.squeezeBoxArr, null, 8)}
+        var config = ${JSON.stringify(this.config, null, 8)}
         
         module.exports={
             kLineData,
@@ -206,6 +207,7 @@ class LogCollector {
             preHighLowArr,
             ssl55Arr,
             squeezeBoxArr,
+            config,
         }
     `;
             
