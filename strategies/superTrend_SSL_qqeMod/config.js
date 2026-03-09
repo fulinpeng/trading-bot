@@ -94,7 +94,7 @@ const config = {
         
         // ========== 风险管理配置 ==========
         // 固定止盈
-        riskRewardRatio: 2,                // 固定止盈倍数
+        riskRewardRatio: 2.5,                // 固定止盈倍数
         priceTolerance: 0.001,              // 判断平仓时的价格容差
         
         // 移动止损
@@ -134,7 +134,7 @@ const config = {
         indicatorTPCoolingPeriod: 20,          // 指标止盈冷静期（K线数量），触发指标止盈后在此时间内不再触发
 
         // 保本止损配置
-        enableBreakEvenStopLoss: true,        // 启用保本止损，当 第一次指标止盈 后，设置保本止损，如果已经存在移动止损，取更有利的那个（多单时取较大值，空单时取较小值）
+        enableBreakEvenStopLoss: false,        // 启用保本止损，当 第一次指标止盈 后，设置保本止损，如果已经存在移动止损，取更有利的那个（多单时取较大值，空单时取较小值）
         breakEvenStopLossRatio: 0.001,        // 保本止损比例，多单：开仓价 * (1 + ratio)，空单：开仓价 * (1 - ratio)
         tpCountForStopLoss: 2,                 // 指标止盈计数关键字，用于判断是否达到平仓条件
 
