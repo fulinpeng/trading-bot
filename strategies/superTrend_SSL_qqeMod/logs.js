@@ -14,7 +14,7 @@ class LogCollector {
         this.enabled = config?.enableVisualizationLogs || false; // 默认关闭
         this.symbol = config?.SYMBOL || '';
         this.strategyType = config?.strategyType || '';
-        
+
         // 调试信息
         if (this.enabled) {
             console.log(`[日志收集器] 已启用 - Symbol: ${this.symbol}, Strategy: ${this.strategyType}`);
@@ -52,33 +52,33 @@ class LogCollector {
      */
     collectIndicatorArrays(state) {
         if (!this.enabled) return;
-        
+
         // 收集K线数据的最后一个值（与指标数据一一对应）
-        const lastKLine = state.kLineData && state.kLineData.length > 0 
+        const lastKLine = state.kLineData && state.kLineData.length > 0
             ? state.kLineData[state.kLineData.length - 1] : null;
-        
+
         // 收集各个指标数组的最后一个值
-        const lastSuperTrend = state.superTrendArr && state.superTrendArr.length > 0 
+        const lastSuperTrend = state.superTrendArr && state.superTrendArr.length > 0
             ? state.superTrendArr[state.superTrendArr.length - 1] : null;
-        const lastSsl = state.sslArr && state.sslArr.length > 0 
+        const lastSsl = state.sslArr && state.sslArr.length > 0
             ? state.sslArr[state.sslArr.length - 1] : null;
-        const lastSsl2 = state.ssl2Arr && state.ssl2Arr.length > 0 
+        const lastSsl2 = state.ssl2Arr && state.ssl2Arr.length > 0
             ? state.ssl2Arr[state.ssl2Arr.length - 1] : null;
-        const lastFib = state.fibArr && state.fibArr.length > 0 
+        const lastFib = state.fibArr && state.fibArr.length > 0
             ? state.fibArr[state.fibArr.length - 1] : null;
-        const lastSwimingFree = state.swimingFreeArr && state.swimingFreeArr.length > 0 
+        const lastSwimingFree = state.swimingFreeArr && state.swimingFreeArr.length > 0
             ? state.swimingFreeArr[state.swimingFreeArr.length - 1] : null;
-        const lastQqeMod = state.qqeModArr && state.qqeModArr.length > 0 
+        const lastQqeMod = state.qqeModArr && state.qqeModArr.length > 0
             ? state.qqeModArr[state.qqeModArr.length - 1] : null;
-        const lastAdx = state.adxArr && state.adxArr.length > 0 
+        const lastAdx = state.adxArr && state.adxArr.length > 0
             ? state.adxArr[state.adxArr.length - 1] : null;
-        const lastPreHighLow = state.preHighLowArr && state.preHighLowArr.length > 0 
+        const lastPreHighLow = state.preHighLowArr && state.preHighLowArr.length > 0
             ? state.preHighLowArr[state.preHighLowArr.length - 1] : null;
-        const lastSsl55 = state.ssl55Arr && state.ssl55Arr.length > 0 
+        const lastSsl55 = state.ssl55Arr && state.ssl55Arr.length > 0
             ? state.ssl55Arr[state.ssl55Arr.length - 1] : null;
-        const lastSqueezeBox = state.squeezeBoxArr && state.squeezeBoxArr.length > 0 
+        const lastSqueezeBox = state.squeezeBoxArr && state.squeezeBoxArr.length > 0
             ? state.squeezeBoxArr[state.squeezeBoxArr.length - 1] : null;
-        
+
         // 追加到数组（保持历史记录，确保K线数据和指标数据一一对应）
         this.data.kLineData.push(lastKLine);
         this.data.superTrendArr.push(lastSuperTrend);
@@ -104,10 +104,10 @@ class LogCollector {
      */
     recordOpen(time, price, trend, testMoney, quantity, stopLoss) {
         if (!this.enabled) return;
-        
+
         // 计算订单金额 = 开仓价格 × 订单数量
         const orderAmount = (price || 0) * (quantity || 0);
-        
+
         this.data.openHistory.push(time);
         this.data.openPriceHistory.push(price);
         this.data.trendHistory.push(trend);
@@ -124,7 +124,7 @@ class LogCollector {
      */
     recordClose(time, price, testMoney, orderPrice) {
         if (!this.enabled) return;
-        
+
         this.data.closeHistory.push(time);
         this.data.closePriceHistory.push(price);
         this.data.curTestMoneyHistory.push(testMoney);
@@ -147,21 +147,21 @@ class LogCollector {
             console.log(`[日志收集器] 保存被跳过 - enabled=${this.enabled}`);
             return;
         }
-        
+
         try {
             const testDataPath = path.join(__dirname, 'test', 'data');
             console.log(`[日志收集器] 准备保存到: ${testDataPath}`);
-            
+
             if (!fs.existsSync(testDataPath)) {
                 fs.mkdirSync(testDataPath, { recursive: true });
                 console.log(`[日志收集器] 创建目录: ${testDataPath}`);
             }
-            
+
             // 保持symbol的原始大小写（通常是小写，如 ethUSDT）
             const fileName = `${this.symbol}-${this.strategyType}.js`;
             const filePath = path.join(testDataPath, fileName);
             console.log(`[日志收集器] 文件路径: ${filePath}`);
-            
+
             // 参考 test-superTrend_swim_free.js 的格式
             const content = `
         var kLineData = ${JSON.stringify(this.data.kLineData, null, 8)}
@@ -210,14 +210,14 @@ class LogCollector {
             config,
         }
     `;
-            
+
             // 检查是否有数据需要保存
             const hasData = this.data.superTrendArr.length > 0 || this.data.openHistory.length > 0;
             if (!hasData) {
                 console.log(`[日志收集器] 跳过保存 - 没有数据（指标数组长度=${this.data.superTrendArr.length}, 开仓记录=${this.data.openHistory.length}）`);
                 return;
             }
-            
+
             fs.writeFileSync(filePath, content, "utf-8");
             console.log(`[日志收集器] ✅ 数据已保存: ${filePath}`);
             console.log(`[日志收集器]   K线数据长度: ${this.data.kLineData.length}, 指标数组长度: SuperTrend=${this.data.superTrendArr.length}, SSL=${this.data.sslArr.length}, 开仓记录=${this.data.openHistory.length}`);
