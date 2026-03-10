@@ -1,62 +1,3 @@
-2-12 的结论，待验证：
-
-12点之前的逻辑是，当前 atr<15 就不开单
-    本次优化，让原来98次交易降低到75次交易，收益减少，但是收益曲线没有明显回调和长时间横着
-    优化参数后，结论还是可行
-
-adxReachCountWhenLow / adxReachCountWhenHigh 这个参数控制adx开单是有效的，测试通过的??????????
-
-反转入场的固定止盈需要双倍 (state.isReversalEntry ? riskRewardRatio * 2 : riskRewardRatio)
-
-如果是反转入场，则第一次达到指标止盈立即平仓100%
-待验证？？？？
-
-测试 tpCountForStopLoss=1 ???????
-
-高风险检测配置 enableIndicatorStopLoss 是否有效？，一般情况下达不到 80%
-
-if (close <= initialStopLoss) { //  || low <= initialStopLoss 
-是否去掉low <= initialStopLoss 要好些，是的，是要好一些的
-
-第一次指标达到 但是却亏损了，则全部平仓???????
-
-reachUpperCount >= 5 或 reachLowerCount >= 5 时，不进行入场,
-    不可行，reachUpperCount / reachLowerCount 可以是 8 ，9 ， 甚至更大
-
-反转入场原本的bug，原来bug代码把拐头搞成了递增/递减，好像原来的效果要好些哦
-    我改回去试试，经过验证确实如此
-    也可能是年前故意改成这样的，但是没有做笔记，所以做笔记很重要啊
-
-qqemod止盈，改为向上/向下 ，不要用拐头
-
-保本止损，开启后还行，有一些增幅
-
-以该策略为底仓，还可以做手动开单，手动开单注意：
-一定要等关键位置：15m是否实体突破前高/低
-原本的双向开单策略一定要小仓，又小仓才行
-顺趋势的 bos/choch 必须要关注，逆势的可以放弃
-没有找到合适的点位，开单位置不好，就赚不到大钱反而亏大钱
-
-
-
-
-
-### 回测结果
-
-![开三个条件 & 2 3 4 盈利](img/20260227.png)
-![ethusdt-superTrend_ssl_qqemod-30-一个条件0.5.js](img/Snipaste_2026-03-06_17-44-23.png)
-
-
-
-
-
-
-
-
-
-
-
-
 
 ### ====== 做多规则 ======
 
@@ -107,6 +48,7 @@ qqemod止盈，改为向上/向下 ，不要用拐头
 **开仓条件**：
 - 当前无持仓（`!hasOrder`）
 - `section3Up = true` 且 `readyTradingDirection === "up"`
+- **ATR入场条件**（顺势开单）：连续100根K线的ATR都小于`atrEntryThreshold`（默认15，可配置），如果不满足此条件，则只能通过反转入场
 - **注意**：与Pine Script保持一致，只要满足`section3Up`就开仓，不需要`close > open`的条件
 
 #### 开仓设置
@@ -122,17 +64,35 @@ qqemod止盈，改为向上/向下 ，不要用拐头
 
 #### 止损
 
-1. 使用SuperTrend下轨（`minSuper`）为动态止损位
-2. 达到任何位置都可以止损：`close < effectiveStopLoss || low < effectiveStopLoss` 立即平仓全部仓位
-    - `effectiveStopLoss`：当前SuperTrend下轨或移动止损位（如果已激活）
+1. **基础止损**：使用SuperTrend下轨（`minSuper`）为动态止损位
+2. **止损判断**：`close <= effectiveStopLoss` 立即平仓全部仓位（只使用收盘价判断，不使用low）
+    - `effectiveStopLoss`：当前SuperTrend下轨或移动止损位/保本止损位（如果已激活）
+3. **指标止损**（可配置，默认开启 `enableIndicatorStopLoss`）：
+    - **高风险检测**：在开仓后第`indicatorStopLossCheckPeriod`根K线时检测一次（默认50，可配置）
+        - 从开仓到第N根K线区间内，计算收盘价小于开盘价的K线比例
+        - 如果比例 >= `indicatorStopLossRiskRatio`（默认0.8即80%，可配置），标记为高风险单
+    - **高风险止损触发**：高风险单等待QQE MOD值满足条件时触发止损
+        - 做多：`qqeModBar0 > indicatorStopLossQQEModThresholdLong`（默认10，可配置）
+        - 做空：`qqeModBar0 < indicatorStopLossQQEModThresholdShort`（默认-10，可配置）
+    - 触发后立即市价平仓全部仓位
 
 #### 移动止损（默认关闭移动止损，多空使用同一个开关 `enableTrailingStop`）
 
-1. 触发条件：QQE柱子值（`qqeModBar`）> `qqeTrailingThresholdLong`（默认40.0，可配置）
-2. 第一次触发时：移动一次止损位置到 `max(订单的当前限价止损价, BOX_bl)`
-    - `订单的当前限价止损价`：当前SuperTrend下轨（`minSuper`）
-    - `BOX_bl`：Squeeze Box下轨（当前K线的`bl`值）
-3. 移动止损激活后，止损位固定为移动后的值，不再更新
+1. **激活条件**：需要在第一次指标止盈后才运行（`indicatorTPCount >= indicatorTPFirstCloseCount`）
+2. **触发条件**：
+    - 做多：QQE拐头向上并且中间的qqe < `qqeTrailingThresholdLong`（默认-30.0，可配置）
+        - 拐头向上：`qqeModBar[2] > qqeModBar[1] < qqeModBar[0]`（先下降后上升）
+        - 中间QQE值：`qqeModBar[1] < qqeTrailingThresholdLong`
+    - 做空：QQE拐头向下并且中间的qqe > `qqeTrailingThresholdShort`（默认30.0，可配置）
+        - 拐头向下：`qqeModBar[2] < qqeModBar[1] > qqeModBar[0]`（先上升后下降）
+        - 中间QQE值：`qqeModBar[1] > qqeTrailingThresholdShort`
+3. **移动止损价格计算**：
+    - 做多：最近5根K线的`low`最小值
+    - 做空：最近5根K线的`high`最大值
+4. **移动止损更新逻辑**：
+    - 第一次触发时：设置移动止损价格为计算值
+    - 如果已经存在移动止损或保本止损，取更有利的值（做多取较大值，做空取较小值）
+    - 移动止损激活后，如果再次触发，会更新为更有利的值
 
 #### 止盈
 
@@ -145,18 +105,22 @@ qqemod止盈，改为向上/向下 ，不要用拐头
     - 达到任何位置都可以止盈：`close >= longTakeProfit || high >= longTakeProfit` 立即平仓全部仓位
 
 3. **指标止盈**（可配置，默认开启 `enableSupertrendTakeProfit` / `enableFibonacciTakeProfit`）
-    - 到达一次指标止盈位计数加1，随后5根K线之内如果再次满足该条件不计数，超过5根K线再次到达的需要增加一次计数
-    - 冷却期：5根K线（使用`currentKLineCount`跟踪）
-    - 容差机制：目标价格 * (1 - `priceTolerance`)（`priceTolerance`默认0.0005，可配置）
+    - 到达一次指标止盈位计数加1，随后`indicatorTPCoolingPeriod`根K线之内如果再次满足该条件不计数，超过`indicatorTPCoolingPeriod`根K线再次到达的需要增加一次计数
+    - 冷却期：`indicatorTPCoolingPeriod`根K线（默认20，可配置，使用`currentKLineCount`跟踪）
+    - 容差机制：目标价格 * (1 - `priceTolerance`)（`priceTolerance`默认0.001，可配置）
     - 触发条件（满足任一即可）：
         - `close > SuperTrend上轨 * (1 - priceTolerance) || high > SuperTrend上轨 * (1 - priceTolerance)`（需开启`enableSupertrendTakeProfit`）
         - `close > Fibonacci上轨(upper_7) * (1 - priceTolerance) || high > Fibonacci上轨(upper_7) * (1 - priceTolerance)`（需开启`enableFibonacciTakeProfit`）
     - 首次达到指标止盈时：移动一次止损位置到 `max(订单的当前限价止损价, preLow)`（如果移动止损未激活）
 
-4. **指标止盈计数**：计数大于等于`indicatorTPCountThreshold`（默认4，可配置），立即全部平仓
-
-5. **首次指标止盈部分平仓**：当指标止盈计数达到`indicatorTPPartialCount`（默认2，可配置）时，平仓初始仓位的`indicatorTPPartialRatio`比例（默认0.6即60%，可配置），剩余仓位博弈更多的可能
-    - 如果`indicatorTPPartialRatio`配置为0，不执行平仓逻辑，认为是关闭了分批止盈
+4. **指标止盈分批平仓**：
+    - **第一次平仓**：当指标止盈计数达到`indicatorTPFirstCloseCount`（默认1，可配置）时
+        - 如果第一次指标达到但亏损了（`close < entryPrice`），则全部平仓
+        - 如果是反转入场（`isReversalEntry`），则按比例部分平仓初始仓位的`indicatorTPFirstCloseRatio`比例（默认0，可配置）
+        - 否则按比例部分平仓初始仓位的`indicatorTPFirstCloseRatio`比例
+    - **第二次平仓**：当指标止盈计数达到`indicatorTPSecondCloseCount`（默认2，可配置）时，平仓初始仓位的`indicatorTPSecondCloseRatio`比例（默认0，可配置）
+    - **最终平仓**：当指标止盈计数达到`indicatorTPFinalCloseCount`（默认3，可配置）时，平仓剩余所有仓位
+    - 如果`indicatorTPFirstCloseRatio`或`indicatorTPSecondCloseRatio`配置为0，不执行对应的平仓逻辑
     - 部分平仓使用市价单，平仓后不重置`hasOrder`，继续持有剩余仓位
     - 部分平仓后，如果指标止盈条件继续满足（且不在冷却期），计数会继续增加
 
@@ -216,6 +180,7 @@ qqemod止盈，改为向上/向下 ，不要用拐头
 **开仓条件**：
 - 当前无持仓（`!hasOrder`）
 - `section3Down = true` 且 `readyTradingDirection === "down"`
+- **ATR入场条件**（顺势开单）：连续100根K线的ATR都小于`atrEntryThreshold`（默认15，可配置），如果不满足此条件，则只能通过反转入场
 - **注意**：与Pine Script保持一致，只要满足`section3Down`就开仓，不需要`close < open`的条件
 
 #### 开仓设置
@@ -231,17 +196,35 @@ qqemod止盈，改为向上/向下 ，不要用拐头
 
 #### 止损
 
-1. 使用SuperTrend上轨（`maxSuper`）为动态止损位
-2. 达到任何位置都可以止损：`close > effectiveStopLoss || high > effectiveStopLoss` 立即平仓全部仓位
-    - `effectiveStopLoss`：当前SuperTrend上轨或移动止损位（如果已激活）
+1. **基础止损**：使用SuperTrend上轨（`maxSuper`）为动态止损位
+2. **止损判断**：`close >= effectiveStopLoss` 立即平仓全部仓位（只使用收盘价判断，不使用high）
+    - `effectiveStopLoss`：当前SuperTrend上轨或移动止损位/保本止损位（如果已激活）
+3. **指标止损**（可配置，默认开启 `enableIndicatorStopLoss`）：
+    - **高风险检测**：在开仓后第`indicatorStopLossCheckPeriod`根K线时检测一次（默认50，可配置）
+        - 从开仓到第N根K线区间内，计算收盘价大于开盘价的K线比例
+        - 如果比例 >= `indicatorStopLossRiskRatio`（默认0.8即80%，可配置），标记为高风险单
+    - **高风险止损触发**：高风险单等待QQE MOD值满足条件时触发止损
+        - 做多：`qqeModBar0 > indicatorStopLossQQEModThresholdLong`（默认10，可配置）
+        - 做空：`qqeModBar0 < indicatorStopLossQQEModThresholdShort`（默认-10，可配置）
+    - 触发后立即市价平仓全部仓位
 
 #### 移动止损（默认关闭移动止损，多空使用同一个开关 `enableTrailingStop`）
 
-1. 触发条件：QQE柱子值（`qqeModBar`）< `qqeTrailingThresholdShort`（默认-40.0，可配置）
-2. 第一次触发时：移动一次止损位置到 `min(订单的当前限价止损价, BOX_bh)`
-    - `订单的当前限价止损价`：当前SuperTrend上轨（`maxSuper`）
-    - `BOX_bh`：Squeeze Box上轨（当前K线的`bh`值）
-3. 移动止损激活后，止损位固定为移动后的值，不再更新
+1. **激活条件**：需要在第一次指标止盈后才运行（`indicatorTPCount >= indicatorTPFirstCloseCount`）
+2. **触发条件**：
+    - 做多：QQE拐头向上并且中间的qqe < `qqeTrailingThresholdLong`（默认-30.0，可配置）
+        - 拐头向上：`qqeModBar[2] > qqeModBar[1] < qqeModBar[0]`（先下降后上升）
+        - 中间QQE值：`qqeModBar[1] < qqeTrailingThresholdLong`
+    - 做空：QQE拐头向下并且中间的qqe > `qqeTrailingThresholdShort`（默认30.0，可配置）
+        - 拐头向下：`qqeModBar[2] < qqeModBar[1] > qqeModBar[0]`（先上升后下降）
+        - 中间QQE值：`qqeModBar[1] > qqeTrailingThresholdShort`
+3. **移动止损价格计算**：
+    - 做多：最近5根K线的`low`最小值
+    - 做空：最近5根K线的`high`最大值
+4. **移动止损更新逻辑**：
+    - 第一次触发时：设置移动止损价格为计算值
+    - 如果已经存在移动止损或保本止损，取更有利的值（做多取较大值，做空取较小值）
+    - 移动止损激活后，如果再次触发，会更新为更有利的值
 
 #### 止盈
 
@@ -254,18 +237,22 @@ qqemod止盈，改为向上/向下 ，不要用拐头
     - 达到任何位置都可以止盈：`close <= shortTakeProfit || low <= shortTakeProfit` 立即平仓全部仓位
 
 3. **指标止盈**（可配置，默认开启 `enableSupertrendTakeProfit` / `enableFibonacciTakeProfit`）
-    - 到达一次指标止盈位计数加1，随后5根K线之内如果再次满足该条件不计数，超过5根K线再次到达的需要增加一次计数
-    - 冷却期：5根K线（使用`currentKLineCount`跟踪）
-    - 容差机制：目标价格 * (1 + `priceTolerance`)（`priceTolerance`默认0.0005，可配置）
+    - 到达一次指标止盈位计数加1，随后`indicatorTPCoolingPeriod`根K线之内如果再次满足该条件不计数，超过`indicatorTPCoolingPeriod`根K线再次到达的需要增加一次计数
+    - 冷却期：`indicatorTPCoolingPeriod`根K线（默认20，可配置，使用`currentKLineCount`跟踪）
+    - 容差机制：目标价格 * (1 + `priceTolerance`)（`priceTolerance`默认0.001，可配置）
     - 触发条件（满足任一即可）：
         - `close < SuperTrend下轨 * (1 + priceTolerance) || low < SuperTrend下轨 * (1 + priceTolerance)`（需开启`enableSupertrendTakeProfit`）
         - `close < Fibonacci下轨(lower_7) * (1 + priceTolerance) || low < Fibonacci下轨(lower_7) * (1 + priceTolerance)`（需开启`enableFibonacciTakeProfit`）
     - 首次达到指标止盈时：移动一次止损位置到 `min(订单的当前限价止损价, preHigh)`（如果移动止损未激活）
 
-4. **指标止盈计数**：计数大于等于`indicatorTPCountThreshold`（默认4，可配置），立即全部平仓
-
-5. **首次指标止盈部分平仓**：当指标止盈计数达到`indicatorTPPartialCount`（默认2，可配置）时，平仓初始仓位的`indicatorTPPartialRatio`比例（默认0.6即60%，可配置），剩余仓位博弈更多的可能
-    - 如果`indicatorTPPartialRatio`配置为0，不执行平仓逻辑，认为是关闭了分批止盈
+4. **指标止盈分批平仓**：
+    - **第一次平仓**：当指标止盈计数达到`indicatorTPFirstCloseCount`（默认1，可配置）时
+        - 如果第一次指标达到但亏损了（`close > entryPrice`），则全部平仓
+        - 如果是反转入场（`isReversalEntry`），则按比例部分平仓初始仓位的`indicatorTPFirstCloseRatio`比例（默认0，可配置）
+        - 否则按比例部分平仓初始仓位的`indicatorTPFirstCloseRatio`比例
+    - **第二次平仓**：当指标止盈计数达到`indicatorTPSecondCloseCount`（默认2，可配置）时，平仓初始仓位的`indicatorTPSecondCloseRatio`比例（默认0，可配置）
+    - **最终平仓**：当指标止盈计数达到`indicatorTPFinalCloseCount`（默认3，可配置）时，平仓剩余所有仓位
+    - 如果`indicatorTPFirstCloseRatio`或`indicatorTPSecondCloseRatio`配置为0，不执行对应的平仓逻辑
     - 部分平仓使用市价单，平仓后不重置`hasOrder`，继续持有剩余仓位
     - 部分平仓后，如果指标止盈条件继续满足（且不在冷却期），计数会继续增加
 
@@ -287,7 +274,27 @@ qqemod止盈，改为向上/向下 ，不要用拐头
     - 做空：目标价格向上放宽，`目标价格 * (1 + priceTolerance)`
     - 容差范围：`[目标价格*(1-容差配置), 目标价格*(1+容差配置)]`，在容差范围内均可认为达到目标
 
-4. **移动止损参考点**：做多使用`BOX_bl`（Squeeze Box下轨），做空使用`BOX_bh`（Squeeze Box上轨），而非前高点/前低点
+4. **移动止损参考点**：做多使用最近5根K线的`low`最小值，做空使用最近5根K线的`high`最大值
+
+5. **保本止损**（可配置，默认关闭 `enableBreakEvenStopLoss`）：
+    - **激活条件**：需要在指标止盈计数达到`tpCountForStopLoss`（默认2，可配置）后才设置
+    - **保本止损价格**：
+        - 做多：`entryPrice * (1 + breakEvenStopLossRatio)`（默认0.001，可配置）
+        - 做空：`entryPrice * (1 - breakEvenStopLossRatio)`
+    - **与移动止损的关系**：保本止损与移动止损共用`trailStop`，取更有利的值（做多取较大值，做空取较小值）
+    - **设置时机**：在第一/二次指标止盈部分平仓后设置
+
+6. **反转入场条件**：
+    - **触发条件**（满足任一即可）：
+        - 连续100根K线的ATR都小于`atrEntryThreshold`（默认15，可配置）
+        - `longTrendUpperReachCount >= 6`（多头趋势上轨触及次数）
+        - `shortTrendLowerReachCount >= 6`（空头趋势下轨触及次数）
+    - **多头趋势反转入场做空**：当前SuperTrend趋势为1（上升），满足`judgeTrendReversalShortEntry2`条件
+        - QQE拐头向下（`qqeModBar[2] > qqeModBar[1] > qqeModBar[0]`，连续下降）并且中间的qqe > `qqeModTrendReversalThreshold2`（默认30，可配置）
+        - 达到指定次数（`qqeModTrendReversalCount`，默认3，可配置）后触发
+    - **空头趋势反转入场做多**：当前SuperTrend趋势为-1（下降），满足`judgeTrendReversalLongEntry2`条件
+        - QQE拐头向上（`qqeModBar[2] < qqeModBar[1] < qqeModBar[0]`，连续上升）并且中间的qqe < -`qqeModTrendReversalThreshold2`（默认-30，可配置）
+        - 达到指定次数（`qqeModTrendReversalCount`，默认3，可配置）后触发
 
 5. **指标计算周期**：
     - SSL：`sslPeriod`（默认200）
