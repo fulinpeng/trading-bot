@@ -1,0 +1,17 @@
+{
+    "name": "superTrend_SSL_qqeMod-visualization",
+    "version": "1.0.0",
+    "description": "superTrend_SSL_qqeMod strategy",
+    "main": "app.js",
+    "scripts": {
+        "start": "node app.js"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "chokidar": "^4.0.3",
+        "express": "^4.21.2"
+    }
+}
+
