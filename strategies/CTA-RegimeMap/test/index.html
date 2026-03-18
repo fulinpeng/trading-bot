@@ -161,6 +161,7 @@
         // console.log('preHighLowArr:', preHighLowArr);
         const ssl55Arr = indicators.ssl55Arr || [];
         const squeezeBoxArr = indicators.squeezeBoxArr || [];
+        const atrZArr = indicators.atrZArr || [];
 
         // 计算统计信息
         function calculateStatistics() {
@@ -312,6 +313,7 @@
         const alignedSsl55Arr = ssl55Arr;
         const alignedSqueezeBoxArr = squeezeBoxArr;
         const alignedPreHighLowArr = preHighLowArr;
+        const alignedAtrZArr = atrZArr;
 
         // 从指标数组中提取数据
         function extractValue(arr, valuePath) {
@@ -535,6 +537,18 @@
                                 result += `SuperTrend ATR: ${superTrend.atr.toFixed(4)}<br>`;
                             }
                         }
+                        if (alignedAtrZArr && alignedAtrZArr[idx] !== null && alignedAtrZArr[idx] !== undefined) {
+                            const atrZ = alignedAtrZArr[idx];
+                            let atrZStatus = '';
+                            if (atrZ < -1) {
+                                atrZStatus = '压缩行情';
+                            } else if (atrZ > 1) {
+                                atrZStatus = '极端波动';
+                            } else {
+                                atrZStatus = '正常行情';
+                            }
+                            result += `ATR Z-Score: ${atrZ.toFixed(4)} (${atrZStatus})<br>`;
+                        }
                         // if (ssl) {
                         //     result += `SSL: ${ssl.hlv === 1 ? 'UP' : 'DOWN'}<br>`;
                         // }
@@ -598,6 +612,7 @@
                     "Squeeze Box 下轨",
                     "QQE MOD",
                     "ATR",
+                    "ATR Z-Score",
                 ],
                 textStyle: {
                     color: '#fff',
@@ -608,21 +623,28 @@
                     left: "3%",
                     right: "4%",
                     top: "10%",
-                    bottom: "40%",  // 为底部两个图表留出空间
+                    bottom: "45%",  // 为底部三个图表留出空间
                 },
                 {
                     left: "3%",
                     right: "4%",
-                    top: "60%",  // QQE MOD 柱状图
-                    bottom: "25%",
+                    top: "55%",  // QQE MOD 柱状图
+                    bottom: "30%",
                     height: "15%",  // 柱状图高度
                 },
                 {
                     left: "3%",
                     right: "4%",
-                    top: "75%",  // ATR 图表在底部
+                    top: "70%",  // ATR Z-Score 图表
+                    bottom: "20%",
+                    height: "10%",  // ATR Z-Score 图表高度
+                },
+                {
+                    left: "3%",
+                    right: "4%",
+                    top: "80%",  // ATR 图表在底部
                     bottom: "15%",
-                    height: "10%",  // ATR 图表高度
+                    height: "5%",  // ATR 图表高度
                 }
             ],
             xAxis: [
@@ -663,9 +685,23 @@
                     max: "dataMax",
                     axisLabel: {
                         color: '#999',
-                        show: false,  // 底部x轴不显示标签，避免重复
+                        show: false,  // 中间x轴不显示标签，避免重复
                     },
                     gridIndex: 2,
+                },
+                {
+                    type: "category",
+                    data: data0.categoryData,
+                    boundaryGap: false,
+                    axisLine: { onZero: false },
+                    splitLine: { show: false },
+                    min: "dataMin",
+                    max: "dataMax",
+                    axisLabel: {
+                        color: '#999',
+                        show: false,  // 底部x轴不显示标签，避免重复
+                    },
+                    gridIndex: 3,
                 }
             ],
             yAxis: [
@@ -721,6 +757,23 @@
                         },
                     },
                     gridIndex: 2,
+                },
+                {
+                    type: "value",
+                    scale: true,
+                    axisLabel: {
+                        color: '#999',
+                    },
+                    axisLine: {
+                        show: false,
+                    },
+                    splitLine: {
+                        show: true,
+                        lineStyle: {
+                            color: '#34384980',
+                        },
+                    },
+                    gridIndex: 3,
                 }
             ],
             dataZoom: [
@@ -728,18 +781,18 @@
                     type: "inside",
                     start: 50,
                     end: 100,
-                    xAxisIndex: [0, 1, 2],  // 同时控制三个x轴
+                    xAxisIndex: [0, 1, 2, 3],  // 同时控制四个x轴
                 },
                 {
                     show: true,
                     type: "slider",
-                    top: "85%",  // 调整位置，因为底部有两个图表
+                    top: "85%",  // 调整位置，因为底部有三个图表
                     start: 50,
                     end: 100,
                     textStyle: {
                         color: '#999',
                     },
-                    xAxisIndex: [0, 1, 2],  // 同时控制三个x轴
+                    xAxisIndex: [0, 1, 2, 3],  // 同时控制四个x轴
                 },
             ],
             series: [
@@ -935,11 +988,46 @@
                     barWidth: '60%',
                 },
                 {
+                    name: "ATR Z-Score",
+                    type: "line",
+                    data: alignedAtrZArr,
+                    xAxisIndex: 2,
+                    yAxisIndex: 2,
+                    smooth: false,
+                    symbol: "none",
+                    lineStyle: {
+                        color: "#ff00ff",
+                        width: 2,
+                    },
+                    markLine: {
+                        data: [
+                            { 
+                                yAxis: -1, 
+                                lineStyle: { color: '#00ff00', type: 'dashed', width: 1 },
+                                label: {
+                                    formatter: '压缩行情阈值: -1',
+                                    position: 'end',
+                                    color: '#00ff00'
+                                }
+                            },
+                            { 
+                                yAxis: 1, 
+                                lineStyle: { color: '#ff0000', type: 'dashed', width: 1 },
+                                label: {
+                                    formatter: '极端波动阈值: 1',
+                                    position: 'end',
+                                    color: '#ff0000'
+                                }
+                            }
+                        ]
+                    },
+                },
+                {
                     name: "ATR",
                     type: "line",
                     data: superTrendATR,
-                    xAxisIndex: 2,
-                    yAxisIndex: 2,
+                    xAxisIndex: 3,
+                    yAxisIndex: 3,
                     smooth: false,
                     symbol: "none",
                     lineStyle: {
@@ -1053,7 +1141,7 @@
             },
             yAxis: {
                 type: "value",
-                max: 40000,  // 设置Y轴最大值
+                // max: 40000,  // 设置Y轴最大值
                 splitArea: {
                     show: false,  // 去掉背景区域
                 },
@@ -1168,8 +1256,7 @@
                 '风险管理配置': [
                     'riskRewardRatio', 'priceTolerance', 'enableTrailingStop', 
                     'qqeTrailingThresholdLong', 'qqeTrailingThresholdShort', 
-                    'enableIndicatorStopLoss', 'indicatorStopLossCheckPeriod', 
-                    'indicatorStopLossRiskRatio', 'indicatorStopLossQQEModThresholdLong', 
+                    'enableIndicatorStopLoss', 'indicatorStopLossQQEModThresholdLong', 
                     'indicatorStopLossQQEModThresholdShort', 'maxConsecutiveLoss', 
                     'reachCountForPositionReduction', 'positionReductionRatio'
                 ],
@@ -1230,79 +1317,49 @@
             configContent.textContent = formatConfig(configData);
         }
 
-        // 计算盈利百分比和亏损百分比数据
-        const profitPercentData = [];
-        const lossPercentData = [];
-        const profitPercentTimes = [];
-        const lossPercentTimes = [];
-        
-        // 计算每笔交易的百分比
-        for (let i = 0; i < orderPriceForCloseHistory.length; i++) {
-            const openPrice = orderPriceForCloseHistory[i];
-            const closePrice = closePriceHistory[i];
-            
-            if (openPrice && closePrice && openPrice > 0) {
-                const percent = Math.abs(closePrice - openPrice) / openPrice; // abs(平仓价 - 开仓价) / 开仓价
-                
-                if (closePrice > openPrice) {
-                    // 盈利：平仓价 > 开仓价
-                    profitPercentTimes.push(i);
-                    profitPercentData.push(percent);
-                } else if (closePrice < openPrice) {
-                    // 亏损：平仓价 < 开仓价
-                    lossPercentTimes.push(i);
-                    lossPercentData.push(percent);
+        // 真实盈利百分比曲线图：用 curTestMoneyHistory 判断盈亏，亏损为 null，盈利为 盈利值/原始本金(10000)
+        const profitInitialCapital = 10000;
+        const profitCloseCount = curTestMoneyHistory && curTestMoneyHistory.length ? curTestMoneyHistory.length : 0;
+        const realProfitPercentData = [];
+        const profitPercentXAxis = [];
+        for (let i = 0; i < profitCloseCount; i++) {
+            profitPercentXAxis.push(i + 1);
+            const cur = curTestMoneyHistory[i];
+            if (i === 0) {
+                // 第 0 次：相对本金 10000 真正赚了才为盈利（cur > 10000），否则为 null
+                if (cur == null || cur <= profitInitialCapital) {
+                    realProfitPercentData.push(null);
+                } else {
+                    const profitAmount = cur - profitInitialCapital;
+                    realProfitPercentData.push(profitAmount / profitInitialCapital);
                 }
-                // 平盘（closePrice === openPrice）不添加到任何图表
-            }
-        }
-        
-        // 计算初始止损百分比数据（与盈利百分比使用相同的x轴索引）
-        const initialStopLossPercentData = [];
-        // 为每个盈利单子计算对应的初始止损百分比
-        for (let i = 0; i < profitPercentTimes.length; i++) {
-            const originalIndex = profitPercentTimes[i];
-            const openPrice = openPriceHistory[originalIndex];
-            const initialStopLoss = initialStopLossHistory[originalIndex];
-            
-            if (openPrice && initialStopLoss !== null && initialStopLoss !== undefined && openPrice > 0) {
-                const stopLossPercent = Math.abs(initialStopLoss - openPrice) / openPrice; // abs(初始止损价 - 开仓价) / 开仓价
-                initialStopLossPercentData.push(stopLossPercent);
             } else {
-                initialStopLossPercentData.push(null); // 如果没有数据，使用null
+                const prev = curTestMoneyHistory[i - 1];
+                if (prev == null || cur == null) {
+                    realProfitPercentData.push(null);
+                } else if (cur <= prev) {
+                    realProfitPercentData.push(null); // 亏损或平
+                } else {
+                    const profitAmount = cur - prev;
+                    realProfitPercentData.push(profitAmount / profitInitialCapital);
+                }
             }
         }
-        
-        // 计算亏损单子对应的初始止损百分比数据（与亏损百分比使用相同的x轴索引）
-        const lossInitialStopLossPercentData = [];
-        // 为每个亏损单子计算对应的初始止损百分比
-        for (let i = 0; i < lossPercentTimes.length; i++) {
-            const originalIndex = lossPercentTimes[i];
-            const openPrice = openPriceHistory[originalIndex];
-            const initialStopLoss = initialStopLossHistory[originalIndex];
-            
-            if (openPrice && initialStopLoss !== null && initialStopLoss !== undefined && openPrice > 0) {
-                const stopLossPercent = Math.abs(initialStopLoss - openPrice) / openPrice; // abs(初始止损价 - 开仓价) / 开仓价
-                lossInitialStopLossPercentData.push(stopLossPercent);
-            } else {
-                lossInitialStopLossPercentData.push(null); // 如果没有数据，使用null
-            }
-        }
-        
-        // 计算平均盈利百分比和平均亏损百分比
-        const validProfitPercents = profitPercentData.filter(p => p !== null && p > 0);
-        const validLossPercents = lossPercentData.filter(p => p !== null && p > 0);
-        const avgProfitPercent = validProfitPercents.length > 0 
-            ? validProfitPercents.reduce((a, b) => a + b, 0) / validProfitPercents.length 
+        // 仅用非 null 值计算 Y 轴范围，并求平均值用于标线
+        const validProfitPercents = realProfitPercentData.filter(v => v != null);
+        const avgProfitPercent = validProfitPercents.length > 0
+            ? validProfitPercents.reduce((a, b) => a + b, 0) / validProfitPercents.length
             : null;
-        const avgLossPercent = validLossPercents.length > 0 
-            ? validLossPercents.reduce((a, b) => a + b, 0) / validLossPercents.length 
-            : null;
+        const profitYMin = validProfitPercents.length ? Math.min(...validProfitPercents) : 0;
+        const profitYMax = validProfitPercents.length ? Math.max(...validProfitPercents) : 0.01;
+        const profitYPadding = validProfitPercents.length > 1 ? (profitYMax - profitYMin) * 0.1 : 0.01;
+        const profitAxisMin = profitYMin - profitYPadding;
+        const profitAxisMax = profitYMax + profitYPadding;
 
         // 盈利百分比曲线图
         const profitPercentOption = {
             title: {
-                text: "盈利百分比曲线（|平仓价 - 开仓价| / 开仓价）",
+                text: "真实盈利百分比曲线（盈利值/原始本金10000，亏损为无）",
                 left: 0,
                 textStyle: {
                     color: '#fff',
@@ -1317,32 +1374,20 @@
                     },
                 },
                 formatter: function (params) {
-                    // 使用第一个参数的dataIndex作为profitPercentTimes的索引
                     const dataIndex = params[0].dataIndex;
-                    const index = profitPercentTimes[dataIndex]; // 获取原始单子索引
-                    
+                    const index = dataIndex;
                     const closeTime = closeHistory[index] || 'N/A';
-                    const openPrice = orderPriceForCloseHistory[index] !== null && orderPriceForCloseHistory[index] !== undefined 
-                        ? orderPriceForCloseHistory[index].toFixed(4) 
-                        : 'N/A';
-                    const closePrice = closePriceHistory[index] !== null && closePriceHistory[index] !== undefined 
-                        ? closePriceHistory[index].toFixed(4) 
-                        : 'N/A';
-                    const initialStopLoss = initialStopLossHistory[index] !== null && initialStopLossHistory[index] !== undefined 
-                        ? initialStopLossHistory[index].toFixed(4) 
-                        : 'N/A';
-                    
-                    let result = `<div><strong>平仓 #${index}</strong></div>`;
+                    const openPrice = orderPriceForCloseHistory[index] != null ? orderPriceForCloseHistory[index].toFixed(4) : 'N/A';
+                    const closePrice = closePriceHistory[index] != null ? closePriceHistory[index].toFixed(4) : 'N/A';
+                    let result = `<div><strong>第 ${index + 1} 笔</strong></div>`;
                     result += `<div>时间: ${closeTime}</div>`;
                     result += `<div>开仓价格: ${openPrice}</div>`;
                     result += `<div>平仓价格: ${closePrice}</div>`;
-                    result += `<div>初始止损价格: ${initialStopLoss}</div>`;
-                    
                     params.forEach(function (item) {
                         if (item.value !== null && item.value !== undefined) {
-                            const percent = (item.value * 100).toFixed(2) + '%';
-                            const color = item.seriesName === "初始止损百分比" ? "#ff69b4" : "#00ff00";
-                            result += `<div>${item.seriesName}: <span style="color: ${color}">${percent}</span></div>`;
+                            result += `<div>${item.seriesName}: <span style="color: #98f0b0">${(item.value * 100).toFixed(2)}%</span></div>`;
+                        } else {
+                            result += `<div>${item.seriesName}: <span style="color: #f19f9f">亏损</span></div>`;
                         }
                     });
                     return result;
@@ -1355,7 +1400,7 @@
             },
             xAxis: {
                 type: "category",
-                data: profitPercentTimes,
+                data: profitPercentXAxis,
                 boundaryGap: false,
                 axisLabel: {
                     color: '#999',
@@ -1364,8 +1409,8 @@
             yAxis: {
                 type: "value",
                 scale: true,
-                min: 'dataMin',
-                max: 'dataMax',
+                min: profitAxisMin,
+                max: profitAxisMax,
                 splitArea: {
                     show: false,
                 },
@@ -1404,55 +1449,79 @@
             ],
             series: [
                 {
-                    name: "盈利百分比",
+                    name: "真实盈利百分比",
                     type: "line",
-                    data: profitPercentData,
+                    data: realProfitPercentData,
                     smooth: false,
                     step: false,
                     connectNulls: false,
                     symbol: "none",
                     lineStyle: {
-                        color: "#00ff00",
+                        color: "#98f0b0",
                         width: 2,
                         type: "solid",
                     },
-                    markLine: avgProfitPercent ? {
+                    markLine: avgProfitPercent != null ? {
                         data: [
-                            { 
-                                yAxis: avgProfitPercent, 
+                            {
+                                yAxis: avgProfitPercent,
                                 lineStyle: { color: '#ffff00', type: 'dashed', width: 2 },
                                 label: {
-                                    formatter: `平均盈利百分比: ${(avgProfitPercent * 100).toFixed(2)}%`,
+                                    formatter: '平均: ' + (avgProfitPercent * 100).toFixed(2) + '%',
                                     position: 'middle',
-                                    color: '#ffff00'
-                                }
-                            }
-                        ]
+                                    color: '#ffff00',
+                                },
+                            },
+                        ],
                     } : null,
-                },
-                {
-                    name: "初始止损百分比",
-                    type: "line",
-                    data: initialStopLossPercentData,
-                    smooth: false,
-                    step: false,
-                    connectNulls: false,
-                    symbol: "none",
-                    lineStyle: {
-                        color: "#ff69b4",
-                        width: 2,
-                        type: "solid",
-                    },
                 },
             ],
         };
 
         profitPercentChart.setOption(profitPercentOption);
 
-        // 亏损百分比曲线图
+        // 真实亏损百分比曲线图：用 curTestMoneyHistory 判断盈亏，盈利为 null，亏损为 亏损值/原始本金
+        const initialCapital = 10000; // 原始本金固定为 10000
+        const closeCount = curTestMoneyHistory && curTestMoneyHistory.length ? curTestMoneyHistory.length : 0;
+        const realLossPercentData = [];
+        const lossPercentXAxis = [];
+        for (let i = 0; i < closeCount; i++) {
+            lossPercentXAxis.push(i + 1);
+            const cur = curTestMoneyHistory[i];
+            if (i === 0) {
+                // 第 0 次：curTestMoneyHistory[0] > 0 为盈利
+                if (cur == null || cur > 0) {
+                    realLossPercentData.push(null);
+                } else {
+                    const lossAmount = initialCapital - cur;
+                    realLossPercentData.push(lossAmount < 0 ? lossAmount / initialCapital : null);
+                }
+            } else {
+                const prev = curTestMoneyHistory[i - 1];
+                if (prev == null || cur == null) {
+                    realLossPercentData.push(null);
+                } else if (cur > prev) {
+                    realLossPercentData.push(null); // 盈利
+                } else {
+                    const lossAmount = prev - cur;
+                    realLossPercentData.push(lossAmount / initialCapital);
+                }
+            }
+        }
+        // 亏损图纵轴根据实际数据自适应，并求平均值用于标线
+        const validLossPercents = realLossPercentData.filter(v => v != null);
+        const avgLossPercent = validLossPercents.length > 0
+            ? validLossPercents.reduce((a, b) => a + b, 0) / validLossPercents.length
+            : null;
+        const lossYMin = validLossPercents.length ? Math.min(...validLossPercents) : 0;
+        const lossYMax = validLossPercents.length ? Math.max(...validLossPercents) : 0.01;
+        const lossYPadding = validLossPercents.length > 1 ? (lossYMax - lossYMin) * 0.1 : 0.01;
+        const lossAxisMin = Math.max(0, lossYMin - lossYPadding);
+        const lossAxisMax = lossYMax + lossYPadding;
+
         const lossPercentOption = {
             title: {
-                text: "亏损百分比曲线（|平仓价 - 开仓价| / 开仓价）",
+                text: "真实亏损百分比曲线（亏损值/原始本金，盈利为无）",
                 left: 0,
                 textStyle: {
                     color: '#fff',
@@ -1467,32 +1536,20 @@
                     },
                 },
                 formatter: function (params) {
-                    // 使用第一个参数的dataIndex作为lossPercentTimes的索引
                     const dataIndex = params[0].dataIndex;
-                    const index = lossPercentTimes[dataIndex]; // 获取原始单子索引
-                    
+                    const index = dataIndex;
                     const closeTime = closeHistory[index] || 'N/A';
-                    const openPrice = orderPriceForCloseHistory[index] !== null && orderPriceForCloseHistory[index] !== undefined 
-                        ? orderPriceForCloseHistory[index].toFixed(4) 
-                        : 'N/A';
-                    const closePrice = closePriceHistory[index] !== null && closePriceHistory[index] !== undefined 
-                        ? closePriceHistory[index].toFixed(4) 
-                        : 'N/A';
-                    const initialStopLoss = initialStopLossHistory[index] !== null && initialStopLossHistory[index] !== undefined 
-                        ? initialStopLossHistory[index].toFixed(4) 
-                        : 'N/A';
-                    
-                    let result = `<div><strong>平仓 #${index}</strong></div>`;
+                    const openPrice = orderPriceForCloseHistory[index] != null ? orderPriceForCloseHistory[index].toFixed(4) : 'N/A';
+                    const closePrice = closePriceHistory[index] != null ? closePriceHistory[index].toFixed(4) : 'N/A';
+                    let result = `<div><strong>第 ${index + 1} 笔</strong></div>`;
                     result += `<div>时间: ${closeTime}</div>`;
                     result += `<div>开仓价格: ${openPrice}</div>`;
                     result += `<div>平仓价格: ${closePrice}</div>`;
-                    result += `<div>初始止损价格: ${initialStopLoss}</div>`;
-                    
                     params.forEach(function (item) {
                         if (item.value !== null && item.value !== undefined) {
-                            const percent = (item.value * 100).toFixed(2) + '%';
-                            const color = item.seriesName === "初始止损百分比" ? "#ff69b4" : "#ff0000";
-                            result += `<div>${item.seriesName}: <span style="color: ${color}">${percent}</span></div>`;
+                            result += `<div>${item.seriesName}: <span style="color: #f19f9f">${(item.value * 100).toFixed(2)}%</span></div>`;
+                        } else {
+                            result += `<div>${item.seriesName}: <span style="color: #98f0b0">盈利</span></div>`;
                         }
                     });
                     return result;
@@ -1505,7 +1562,7 @@
             },
             xAxis: {
                 type: "category",
-                data: lossPercentTimes,
+                data: lossPercentXAxis,
                 boundaryGap: false,
                 axisLabel: {
                     color: '#999',
@@ -1514,8 +1571,8 @@
             yAxis: {
                 type: "value",
                 scale: true,
-                min: 'dataMin',
-                max: 'dataMax',
+                min: lossAxisMin,
+                max: lossAxisMax,
                 splitArea: {
                     show: false,
                 },
@@ -1554,45 +1611,31 @@
             ],
             series: [
                 {
-                    name: "亏损百分比",
+                    name: "真实亏损百分比",
                     type: "line",
-                    data: lossPercentData,
+                    data: realLossPercentData,
                     smooth: false,
                     step: false,
                     connectNulls: false,
                     symbol: "none",
                     lineStyle: {
-                        color: "#ff0000",
+                        color: "#f19f9f",
                         width: 2,
                         type: "solid",
                     },
-                    markLine: avgLossPercent ? {
+                    markLine: avgLossPercent != null ? {
                         data: [
-                            { 
-                                yAxis: avgLossPercent, 
+                            {
+                                yAxis: avgLossPercent,
                                 lineStyle: { color: '#ffff00', type: 'dashed', width: 2 },
                                 label: {
-                                    formatter: `平均亏损百分比: ${(avgLossPercent * 100).toFixed(2)}%`,
+                                    formatter: '平均: ' + (avgLossPercent * 100).toFixed(2) + '%',
                                     position: 'middle',
-                                    color: '#ffff00'
-                                }
-                            }
-                        ]
+                                    color: '#ffff00',
+                                },
+                            },
+                        ],
                     } : null,
-                },
-                {
-                    name: "初始止损百分比",
-                    type: "line",
-                    data: lossInitialStopLossPercentData,
-                    smooth: false,
-                    step: false,
-                    connectNulls: false,
-                    symbol: "none",
-                    lineStyle: {
-                        color: "#ff69b4",
-                        width: 2,
-                        type: "solid",
-                    },
                 },
             ],
         };

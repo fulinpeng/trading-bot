@@ -43,6 +43,7 @@ class LogCollector {
             preHighLowArr: [],
             ssl55Arr: [],
             squeezeBoxArr: [],
+            atrZArr: [],
         };
     }
 
@@ -78,6 +79,8 @@ class LogCollector {
             ? state.ssl55Arr[state.ssl55Arr.length - 1] : null;
         const lastSqueezeBox = state.squeezeBoxArr && state.squeezeBoxArr.length > 0
             ? state.squeezeBoxArr[state.squeezeBoxArr.length - 1] : null;
+        const lastAtrZ = state.atrZArr && state.atrZArr.length > 0
+            ? state.atrZArr[state.atrZArr.length - 1] : null;
 
         // 追加到数组（保持历史记录，确保K线数据和指标数据一一对应）
         this.data.kLineData.push(lastKLine);
@@ -91,6 +94,7 @@ class LogCollector {
         this.data.preHighLowArr.push(lastPreHighLow);
         this.data.ssl55Arr.push(lastSsl55);
         this.data.squeezeBoxArr.push(lastSqueezeBox);
+        this.data.atrZArr.push(lastAtrZ);
     }
 
     /**
@@ -184,6 +188,7 @@ class LogCollector {
         var preHighLowArr = ${JSON.stringify(this.data.preHighLowArr, null, 8)}
         var ssl55Arr = ${JSON.stringify(this.data.ssl55Arr, null, 8)}
         var squeezeBoxArr = ${JSON.stringify(this.data.squeezeBoxArr, null, 8)}
+        var atrZArr = ${JSON.stringify(this.data.atrZArr, null, 8)}
         var config = ${JSON.stringify(this.config, null, 8)}
         
         module.exports={
@@ -207,6 +212,7 @@ class LogCollector {
             preHighLowArr,
             ssl55Arr,
             squeezeBoxArr,
+            atrZArr,
             config,
         }
     `;
@@ -252,6 +258,7 @@ class LogCollector {
             preHighLowArr: [],
             ssl55Arr: [],
             squeezeBoxArr: [],
+            atrZArr: [],
         };
     }
 }

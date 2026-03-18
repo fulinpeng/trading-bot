@@ -10,6 +10,9 @@ const crypto = require("crypto");
 const WebSocket = require("ws");
 const fs = require("fs");
 const path = require("path");
+const { exec } = require("child_process");
+const os = require("os");
+const notifier = require("node-notifier");
 
 // 工具函数
 const { getDate, hasUpDownVal, getLastFromArr, calcMartingaleSize, calcRiskBasedQty } = require("../../utils/functions.js");
@@ -93,6 +96,7 @@ const state = {
     volumeSmaArr: [],
     bbKeltnerSqueezeArr: [],
     closeDemaArr: [],
+    atrZArr: [], // ATR Z-Score 数组
 
     // 策略状态
     availableMoney: DefaultAvailableMoney,
@@ -121,6 +125,11 @@ const state = {
     // DEMA 趋势信号
     demaLongSignalStartKLine: null,
     demaShortSignalStartKLine: null,
+
+    // 冷却机制相关
+    close_longTrendUpperReachCount: null,
+    close_shortTrendLowerReachCount: null,
+    close_trend: null,
 
     // 移动止损相关
     trailActive: false,               // 移动止损是否激活
@@ -179,6 +188,65 @@ ws = isTestLocal
     : new WebSocket(`wss://fstream.binance.com/ws/${SYMBOL}@kline_${klineStage}`);
 
 // ==================== 工具函数 ====================
+
+/**
+ * 显示系统级别的弹框提示和音效
+ * @param {string} title - 弹框标题
+ * @param {string} message - 弹框消息
+ */
+function showSystemNotification(title, message) {
+    const platform = os.platform();
+
+    // 优先使用 node-notifier 做系统级弹窗（跨平台）
+    try {
+        notifier.notify({
+            title: String(title),
+            message: String(message),
+            sound: true,
+            wait: false,
+        });
+        return;
+    } catch (e) {
+        console.error("node-notifier 通知失败，尝试降级方案:", e);
+    }
+
+    // 降级方案：不同平台的简单提示（仅在 notifier 不可用时才走到这里）
+    if (platform === "win32") {
+        // Windows + Git Bash: 在终端中高亮输出并响铃
+        const safeTitle = String(title).replace(/'/g, "'\"'\"'");
+        const safeMessage = String(message).replace(/'/g, "'\"'\"'");
+        const bashCmd =
+            "bash -lc " +
+            `"echo -e '\\e[31m===== ${safeTitle} =====\\e[0m'; ` +
+            `echo -e '${safeMessage.replace(/\n/g, "\\n")}'; ` +
+            `printf '\\a'"`;
+
+        exec(bashCmd, (error) => {
+            if (error) {
+                console.error("显示系统通知失败:", error);
+            }
+        });
+    } else if (platform === "darwin") {
+        exec(
+            `osascript -e 'display notification "${message.replace(/"/g, '\\"')}" with title "${title.replace(
+                /"/g,
+                '\\"'
+            )}" sound name "Glass"'`,
+            (error) => {
+                if (error) {
+                    console.error("显示系统通知失败:", error);
+                }
+            }
+        );
+    } else {
+        exec(`notify-send "${title}" "${message}"`, (error) => {
+            if (error) {
+                console.error("显示系统通知失败:", error);
+            }
+        });
+        exec(`beep -f 800 -l 500`, () => {});
+    }
+}
 
 const isLoading = () => {
     return (
@@ -358,6 +426,44 @@ const refreshKLineAndIndex = async (curKLine) => {
 };
 
 // ==================== 开仓逻辑 ====================
+
+/**
+ * 检查冷却机制
+ * 如果当前状态值与平仓时记录的状态值完全一致，则继续冷却，阻止开单
+ * @param {Object} state - 策略状态对象
+ * @param {Object} config - 配置对象
+ * @returns {Boolean} 返回 true 表示可以继续开单，false 表示需要冷却（已重置 readyTradingDirection 为 "hold"）
+ */
+function checkCoolingMechanism(state, config) {
+    const { enableCoolingMechanism } = config;
+    if (!enableCoolingMechanism) {
+        return false; // 未启用冷却机制，不需要冷却
+    }
+
+    // 获取当前状态值
+    const currentLongTrendUpperReachCount = state.longTrendUpperReachCount;
+    const currentShortTrendLowerReachCount = state.shortTrendLowerReachCount;
+    const [superTrend3] = getLastFromArr(state.superTrendArr, 1);
+    const currentTrend = superTrend3?.trend ?? null;
+    
+    // 如果当前三个值和记录的 close_ 变量完全一致，说明还需要冷静
+    if (currentLongTrendUpperReachCount === state.close_longTrendUpperReachCount &&
+        currentShortTrendLowerReachCount === state.close_shortTrendLowerReachCount &&
+        currentTrend === state.close_trend) {
+        return true; // 需要冷却
+    } else {
+        // 状态已发生变化，重置冷却记录，不需要冷却
+        if (state.close_longTrendUpperReachCount !== null || 
+            state.close_shortTrendLowerReachCount !== null || 
+            state.close_trend !== null) {
+            console.log(`[冷却机制] 状态已变化，解除冷却`);
+            state.close_longTrendUpperReachCount = null;
+            state.close_shortTrendLowerReachCount = null;
+            state.close_trend = null;
+        }
+        return false;
+    }
+}
 
 const kaiDanDaJi = async () => {
     state.isOrdering = true;
@@ -688,7 +794,9 @@ const teadeBuy = async (stopLoss) => {
         const { reachCountForPositionReduction, positionReductionRatio, maxConsecutiveLoss } = configEth;
         // 检查reachCountForPositionReduction：如果达到阈值，减少仓位
         // 检查连续亏损保护：如果达到阈值，减少仓位
-        const needReducePosition = state.longTrendUpperReachCount >= reachCountForPositionReduction || (maxConsecutiveLoss > 0 && state.lossCount >= maxConsecutiveLoss);
+        // 冷却机制检测改成了减少仓位
+        const needCooling = checkCoolingMechanism(state, configEth);
+        const needReducePosition = state.longTrendUpperReachCount >= reachCountForPositionReduction || (maxConsecutiveLoss > 0 && state.lossCount >= maxConsecutiveLoss) || needCooling;
         quantity = needReducePosition ? quantity * positionReductionRatio : quantity;
         await placeOrder("BUY", quantity);
 
@@ -714,7 +822,9 @@ const teadeSell = async (stopLoss) => {
         const { reachCountForPositionReduction, positionReductionRatio, maxConsecutiveLoss} = configEth;
         // 检查reachCountForPositionReduction：如果达到阈值，减少仓位
         // 检查连续亏损保护：如果达到阈值
-        const needReducePosition = state.shortTrendLowerReachCount >= reachCountForPositionReduction || (maxConsecutiveLoss > 0 && state.lossCount >= maxConsecutiveLoss);
+        // 冷却机制检测改成了减少仓位
+        const needCooling = checkCoolingMechanism(state, configEth);
+        const needReducePosition = state.shortTrendLowerReachCount >= reachCountForPositionReduction || (maxConsecutiveLoss > 0 && state.lossCount >= maxConsecutiveLoss) || needCooling;
         quantity = needReducePosition ? quantity * positionReductionRatio : quantity;
         await placeOrder("SELL", quantity);
 
@@ -739,9 +849,31 @@ const recordRradingInfo = async (info) => {
     console.log("Purchase Info Updated:", state.tradingInfo);
 };
 
+/**
+ * 冷却机制：记录平仓时的状态值（仅在亏损时调用）
+ * 记录 longTrendUpperReachCount / shortTrendLowerReachCount / trend
+ */
+function recordCoolingStateOnClose() {
+    const { enableCoolingMechanism } = configEth;
+    if (!enableCoolingMechanism) return;
+
+    const [superTrend3] = getLastFromArr(state.superTrendArr, 1);
+    if (!superTrend3) return;
+
+    state.close_longTrendUpperReachCount = state.longTrendUpperReachCount;
+    state.close_shortTrendLowerReachCount = state.shortTrendLowerReachCount;
+    state.close_trend = superTrend3.trend ?? null;
+    console.log(
+        `[冷却机制] 记录平仓状态: longTrendUpperReachCount=${state.close_longTrendUpperReachCount}, ` +
+        `shortTrendLowerReachCount=${state.close_shortTrendLowerReachCount}, trend=${state.close_trend}`
+    );
+}
+
 const setLossCount = (curTestMoney) => {
     // 更新连续亏损次数
     if (curTestMoney <= 0) {
+        // 冷却机制：记录平仓时的状态值
+        recordCoolingStateOnClose();
         // 亏损：增加计数
         if (sizingMode === 'Martingale') {
             state.lossCount = state.lossCount + 1 > maxLossCount ? maxLossCount : state.lossCount + 1;
@@ -1120,7 +1252,27 @@ const startWebSocket = async () => {
                     collector.saveToFile();
                 }
             }
-            process.exit(0);
+            
+            // 显示系统级别的弹框提示和音效
+            const totalTrades = state.tradingInfo.times || 0;
+            const finalMoney = DefaultAvailableMoney + (state.testMoney || 0);
+            const profit = state.testMoney || 0;
+            const profitPercent = DefaultAvailableMoney > 0 ? ((profit / DefaultAvailableMoney) * 100).toFixed(2) : '0.00';
+            
+            const notificationTitle = `✅ ${B_SYMBOL} 回测完成`;
+            const notificationMessage = `回测已完成！\n\n` +
+                `交易次数: ${totalTrades}\n` +
+                `初始资金: ${DefaultAvailableMoney.toFixed(2)} USDT\n` +
+                `最终资金: ${finalMoney.toFixed(2)} USDT\n` +
+                `盈亏: ${profit >= 0 ? '+' : ''}${profit.toFixed(2)} USDT (${profitPercent >= 0 ? '+' : ''}${profitPercent}%)\n\n` +
+                `可视化日志已保存，可在浏览器中查看。`;
+            
+            showSystemNotification(notificationTitle, notificationMessage);
+            
+            // 延迟退出，确保通知能够显示
+            setTimeout(() => {
+                process.exit(0);
+            }, 1000);
         }
 
         state.prePrice = state.currentPrice;
@@ -1166,7 +1318,31 @@ const startWebSocket = async () => {
 
     ws.on("close", (code) => {
         console.log(`WebSocket 关闭: `, code);
-        process.exit(code);
+
+        // 在本地测试环境下，WebSocket 关闭也视为回测结束，补充一次通知（避免遗漏）
+        if (isTestLocal) {
+            const totalTrades = state.tradingInfo.times || 0;
+            const finalMoney = DefaultAvailableMoney + (state.testMoney || 0);
+            const profit = state.testMoney || 0;
+            const profitPercent = DefaultAvailableMoney > 0 ? ((profit / DefaultAvailableMoney) * 100).toFixed(2) : '0.00';
+
+            const notificationTitle = `✅ ${B_SYMBOL} 回测完成（连接已关闭）`;
+            const notificationMessage = `回测已结束（WebSocket 已关闭）。\n\n` +
+                `交易次数: ${totalTrades}\n` +
+                `初始资金: ${DefaultAvailableMoney.toFixed(2)} USDT\n` +
+                `最终资金: ${finalMoney.toFixed(2)} USDT\n` +
+                `盈亏: ${profit >= 0 ? '+' : ''}${profit.toFixed(2)} USDT (${profitPercent >= 0 ? '+' : ''}${profitPercent}%)\n\n` +
+                `如果已启用可视化日志，可在浏览器中查看详细结果。`;
+
+            showSystemNotification(notificationTitle, notificationMessage);
+
+            // 延迟退出，确保通知能够显示
+            setTimeout(() => {
+                process.exit(code);
+            }, 1000);
+        } else {
+            process.exit(code);
+        }
     });
 
     ws.on("error", (error) => {

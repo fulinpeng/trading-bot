@@ -302,14 +302,14 @@ function judgeStopLossShort(kLineData, effectiveStopLoss) {
  * @returns {Promise<Boolean>} 返回 true 表示已触发止损并平仓，false 表示未触发止损
  */
 async function judgeStopLossInProfitRun(state, config, closeUp, closeDown) {
-    if (!state.hasOrder) return false;
+    if (!state.hasOrder) return;
     
     const { trend } = state.tradingInfo;
-    const { kLineData, superTrendArr, qqeModArr, preHighLowArr, squeezeBoxArr } = state;
+    const { kLineData, superTrendArr, qqeModArr, preHighLowArr, squeezeBoxArr, sslArr, ssl2Arr } = state;
     
     const [kLine3] = getLastFromArr(kLineData, 1);
     const [superTrend3] = getLastFromArr(superTrendArr, 1);
-    if (!kLine3 || !superTrend3) return false;
+    if (!kLine3 || !superTrend3) return;
 
     const kLineDate = kLine3.closeTime || kLine3.openTime || 'N/A';
 
@@ -331,17 +331,17 @@ async function judgeStopLossInProfitRun(state, config, closeUp, closeDown) {
         if (stopLossHit) {
             console.log(`@@@[做多 市价平仓] ${kLineDate}, currentPrice=${state.currentPrice}, effectiveStopLoss=${effectiveStopLoss}`);
             await closeUp();
-            return true;
+            return;
         }
 
-        // 1.5. 指标止损判断 - 立即市价平仓
+        // 1.5. 高风险止损判断 - 立即市价平仓
         const { enableIndicatorStopLoss } = config;
         if (enableIndicatorStopLoss) {
-            const indicatorStopLossHit = judgeIndicatorStopLossLong(kLineData, qqeModArr, state, config);
+            const indicatorStopLossHit = judgeIndicatorStopLossLong(kLineData, qqeModArr, sslArr, ssl2Arr, state, config);
             if (indicatorStopLossHit) {
                 console.log(`@@@[做多高风险止损] ${kLineDate}, qqeModBar0=${qqeModArr[qqeModArr.length - 1].qqeModBar0}`);
                 await closeUp();
-                return true;
+                return;
             }
         }
     }
@@ -364,22 +364,30 @@ async function judgeStopLossInProfitRun(state, config, closeUp, closeDown) {
         if (stopLossHit) {
             console.log(`@@@[做空 市价平仓] ${kLineDate}, currentPrice=${state.currentPrice}, effectiveStopLoss=${effectiveStopLoss}`);
             await closeDown();
-            return true;
+            // 需要冷却
+            state.close_longTrendUpperReachCount = state.longTrendUpperReachCount;
+            state.close_shortTrendLowerReachCount = state.shortTrendLowerReachCount;
+            state.close_trend = superTrend3.trend ?? null;
+            return;
         }
 
-        // 1.5. 指标止损判断 - 立即市价平仓
+        // 1.5. 高风险止损判断 - 立即市价平仓
         const { enableIndicatorStopLoss } = config;
         if (enableIndicatorStopLoss) {
-            const indicatorStopLossHit = judgeIndicatorStopLossShort(kLineData, qqeModArr, state, config);
+            const indicatorStopLossHit = judgeIndicatorStopLossShort(kLineData, qqeModArr, sslArr, ssl2Arr, state, config);
             if (indicatorStopLossHit) {
                 console.log(`@@@[做空高风险止损] ${kLineDate},qqeModBar0=${qqeModArr[qqeModArr.length - 1].qqeModBar0}`);
                 await closeDown();
-                return true;
+                // 需要冷却
+                state.close_longTrendUpperReachCount = state.longTrendUpperReachCount;
+                state.close_shortTrendLowerReachCount = state.shortTrendLowerReachCount;
+                state.close_trend = superTrend3.trend ?? null;
+                return;
             }
         }
     }
 
-    return false; // 未触发止损
+    return; // 未触发止损
 }
 
 /**
@@ -395,31 +403,29 @@ async function judgeStopLossInProfitRun(state, config, closeUp, closeDown) {
 function checkHighRiskLong(kLineData, entryKLineCount, currentKLineCount, state, config) {
     if (!entryKLineCount || entryKLineCount === null) return false;
     if (!kLineData || kLineData.length === 0) return false;
-    
+
     const { indicatorStopLossCheckPeriod = 50, indicatorStopLossRiskRatio = 0.8 } = config;
-    
+
     // 计算检测点：开仓后第N根K线
     const checkKLineCount = entryKLineCount + indicatorStopLossCheckPeriod;
-    
+
     // 如果当前K线计数还没到检测点，返回false
     if (currentKLineCount < checkKLineCount) return false;
-    
+
     // 如果已经标记为高风险，不再重复检测
     if (state.isHighRisk) return true;
-    
+
     // 只在第N根K线时检测一次
     if ((currentKLineCount - entryKLineCount) % indicatorStopLossCheckPeriod !== 0) return false;
-    
+
     // 计算从开仓到第N根K线的区间内收盘价小于开盘价的K线数量
     let bearishCount = 0;
     let totalCount = 0;
-    
-    // 从数组末尾往前找，找到开仓后的K线
+
     const entryArrayIndex = kLineData.length - 1 - (currentKLineCount - entryKLineCount);
-    // 从开仓后第一根K线开始（entryArrayIndex + 1）到第N根K线（当前K线）
-    const startArrayIndex = entryArrayIndex + 1; // 开仓后第一根K线
-    const endArrayIndex = kLineData.length - 1; // 当前K线（第N根）
-    
+    const startArrayIndex = entryArrayIndex + 1;
+    const endArrayIndex = kLineData.length - 1;
+
     for (let i = startArrayIndex; i <= endArrayIndex && i < kLineData.length; i++) {
         const kLine = kLineData[i];
         if (kLine && kLine.close !== undefined && kLine.open !== undefined) {
@@ -429,14 +435,13 @@ function checkHighRiskLong(kLineData, entryKLineCount, currentKLineCount, state,
             }
         }
     }
-    
-    // 如果区间内80%的K线收盘价小于开盘价，标记为高风险
+
     if (totalCount > 0) {
         const bearishRatio = bearishCount / totalCount;
         console.log(`@@@[做多高风险检测], bearishRatio=${bearishRatio}, totalCount=${totalCount}, bearishCount=${bearishCount}`);
         return bearishRatio >= indicatorStopLossRiskRatio;
     }
-    
+
     return false;
 }
 
@@ -453,31 +458,24 @@ function checkHighRiskLong(kLineData, entryKLineCount, currentKLineCount, state,
 function checkHighRiskShort(kLineData, entryKLineCount, currentKLineCount, state, config) {
     if (!entryKLineCount || entryKLineCount === null) return false;
     if (!kLineData || kLineData.length === 0) return false;
-    
+
     const { indicatorStopLossCheckPeriod = 50, indicatorStopLossRiskRatio = 0.8 } = config;
-    
-    // 计算检测点：开仓后第N根K线
+
     const checkKLineCount = entryKLineCount + indicatorStopLossCheckPeriod;
 
-    // 如果当前K线计数还没到检测点，返回false
     if (currentKLineCount < checkKLineCount) return false;
-    
-    // 如果已经标记为高风险，不再重复检测
+
     if (state.isHighRisk) return true;
-    
-    // 只在第N根K线时检测一次
+
     if ((currentKLineCount - entryKLineCount) % indicatorStopLossCheckPeriod !== 0) return false;
 
-    // 计算从开仓到第N根K线的区间内收盘价大于开盘价的K线数量
     let bullishCount = 0;
     let totalCount = 0;
-    
-    // 从数组末尾往前找，找到开仓后的K线
+
     const entryArrayIndex = kLineData.length - 1 - (currentKLineCount - entryKLineCount);
-    // 从开仓后第一根K线开始（entryArrayIndex + 1）到第N根K线（当前K线）
-    const startArrayIndex = entryArrayIndex + 1; // 开仓后第一根K线
-    const endArrayIndex = kLineData.length - 1; // 当前K线（第N根）
-    
+    const startArrayIndex = entryArrayIndex + 1;
+    const endArrayIndex = kLineData.length - 1;
+
     for (let i = startArrayIndex; i <= endArrayIndex && i < kLineData.length; i++) {
         const kLine = kLineData[i];
         if (kLine && kLine.close !== undefined && kLine.open !== undefined) {
@@ -487,14 +485,13 @@ function checkHighRiskShort(kLineData, entryKLineCount, currentKLineCount, state
             }
         }
     }
-    
-    // 如果区间内80%的K线收盘价大于开盘价，标记为高风险
+
     if (totalCount > 0) {
         const bullishRatio = bullishCount / totalCount;
         console.log(`@@@[做空高风险检测], bullishRatio=${bullishRatio}, totalCount=${totalCount}, bullishCount=${bullishCount}`);
         return bullishRatio >= indicatorStopLossRiskRatio;
     }
-    
+
     return false;
 }
 
@@ -503,33 +500,36 @@ function checkHighRiskShort(kLineData, entryKLineCount, currentKLineCount, state
  * 条件：高风险标记 && QQE MOD > 阈值
  * @param {Array} kLineData - K线数据数组
  * @param {Array} qqeModArr - QQE MOD指标数组
+ * @param {Array} sslArr - SSL指标数组
+ * @param {Array} ssl2Arr - SSL2指标数组
  * @param {Object} state - 策略状态对象
  * @param {Object} config - 配置对象
  * @returns {Boolean} 是否触发指标止损
  */
-function judgeIndicatorStopLossLong(kLineData, qqeModArr, state, config) {
+function judgeIndicatorStopLossLong(kLineData, qqeModArr, sslArr, ssl2Arr, state, config) {
     if (!kLineData || kLineData.length < 1) return false;
     if (!qqeModArr || qqeModArr.length < 1) return false;
     if (!state || !config) return false;
     
     // 如果已经标记为高风险，跳过检测
     if (!state.isHighRisk) {
-        // 检查高风险条件
         const isHighRisk = checkHighRiskLong(kLineData, state.entryKLineCount, state.currentKLineCount, state, config);
-        if (!isHighRisk) return false;
-        // 更新高风险标记
-        state.isHighRisk = true;
+        if (isHighRisk) {
+            state.isHighRisk = true;
+        }
     }
-    
-    // 获取当前K线的QQE MOD数据
-    const [qqeMod0] = getLastFromArr(qqeModArr, 1);
-    if (!qqeMod0) return false;
-    
-    const qqeModBar0 = qqeMod0.qqeModBar0 || 0;
-    
-    // 高风险 && QQE MOD > 阈值
-    const { indicatorStopLossQQEModThresholdLong = 10 } = config;
-    return qqeModBar0 > indicatorStopLossQQEModThresholdLong;
+    if (state.isHighRisk) {
+        // 获取当前K线的QQE MOD数据
+        const [qqeMod0] = getLastFromArr(qqeModArr, 1);
+        if (!qqeMod0) return false;
+        
+        const qqeModBar0 = qqeMod0.qqeModBar0 || 0;
+        
+        // 高风险 && QQE MOD > 阈值
+        const { indicatorStopLossQQEModThresholdLong = 10 } = config;
+        return qqeModBar0 > indicatorStopLossQQEModThresholdLong;
+    }
+    return false;
 }
 
 /**
@@ -537,33 +537,37 @@ function judgeIndicatorStopLossLong(kLineData, qqeModArr, state, config) {
  * 条件：高风险标记 && QQE MOD < 阈值
  * @param {Array} kLineData - K线数据数组
  * @param {Array} qqeModArr - QQE MOD指标数组
+ * @param {Array} sslArr - SSL指标数组
+ * @param {Array} ssl2Arr - SSL2指标数组
  * @param {Object} state - 策略状态对象
  * @param {Object} config - 配置对象
  * @returns {Boolean} 是否触发指标止损
  */
-function judgeIndicatorStopLossShort(kLineData, qqeModArr, state, config) {
+function judgeIndicatorStopLossShort(kLineData, qqeModArr, sslArr, ssl2Arr, state, config) {
     if (!kLineData || kLineData.length < 1) return false;
     if (!qqeModArr || qqeModArr.length < 1) return false;
     if (!state || !config) return false;
     
     // 如果已经标记为高风险，跳过检测
     if (!state.isHighRisk) {
-        // 检查高风险条件
         const isHighRisk = checkHighRiskShort(kLineData, state.entryKLineCount, state.currentKLineCount, state, config);
-        if (!isHighRisk) return false;
-        // 更新高风险标记
-        state.isHighRisk = true;
+        if (isHighRisk) {
+            state.isHighRisk = true;
+        }
     }
-    
-    // 获取当前K线的QQE MOD数据
-    const [qqeMod0] = getLastFromArr(qqeModArr, 1);
-    if (!qqeMod0) return false;
-    
-    const qqeModBar0 = qqeMod0.qqeModBar0 || 0;
-    
-    // 高风险 && QQE MOD < 阈值
-    const { indicatorStopLossQQEModThresholdShort = -10 } = config;
-    return qqeModBar0 < indicatorStopLossQQEModThresholdShort;
+
+    if (state.isHighRisk) {
+        // 获取当前K线的QQE MOD数据
+        const [qqeMod0] = getLastFromArr(qqeModArr, 1);
+        if (!qqeMod0) return false;
+        
+        const qqeModBar0 = qqeMod0.qqeModBar0 || 0;
+        
+        // 高风险 && QQE MOD < 阈值
+        const { indicatorStopLossQQEModThresholdShort = -10 } = config;
+        return qqeModBar0 < indicatorStopLossQQEModThresholdShort;
+    }
+    return false;
 }
 
 /**

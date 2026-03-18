@@ -26,6 +26,7 @@ function judgeTradingDirection(state, config) {
         isTestLocal,
         enableSSL55Squeeze,
         atrEntryThreshold,
+        enableAtrZCompressedJudge,
     } = config;
 
     // reachUpperCount >= 5 或 reachLowerCount >= 5 时，不进行入场
@@ -67,6 +68,20 @@ function judgeTradingDirection(state, config) {
         }
     }
 
+    // 使用 ATR Z-Score 判断当前波动率所处的区间（自动适应市场变化）
+    // 这里用 atrZ < -1 来替代原来的 "连续100根K线的ATR都小于atrEntryThreshold" 判断
+    let isAtrZCompressed = false; // true 表示 ATR Z-Score < -1，即压缩行情（低波动）
+    const [atrZ] = getLastFromArr(state.atrZArr, 1);
+    if (atrZ !== null && atrZ !== undefined) {
+        // atrZ < -1 视为压缩行情，用于触发反转入场逻辑
+        isAtrZCompressed = atrZ < -0.5;
+    }
+
+    if (enableAtrZCompressedJudge && allAtrLessThanTarget && isAtrZCompressed) {
+        state.readyTradingDirection = "hold";
+        return;
+    }
+    
     // 反转入场： atr < 15 或 reachUpperCount >= 9 或 reachLowerCount >= 9
     if (allAtrLessThanTarget || state.longTrendUpperReachCount >= 6 || state.shortTrendLowerReachCount >= 6) {
         // 多头趋势反转入场做空
@@ -82,7 +97,7 @@ function judgeTradingDirection(state, config) {
 
         if (isDownOpen && (section3Down7)) {
             console.log("@@@ ~ judgeTradingDirection 多头趋势反转入场做空", {
-                allAtrLessThanTarget,
+                isAtrZCompressed,
                 atr: superTrend3?.atr,
                 longTrendUpperReachCount: state.longTrendUpperReachCount,
                 reversalShortCount: state.reversalShortCount,
@@ -94,7 +109,7 @@ function judgeTradingDirection(state, config) {
 
         if (isUpOpen && (section3Up7)) {
             console.log("@@@ ~ judgeTradingDirection 空头趋势反转入场做多", {
-                allAtrLessThanTarget,
+                isAtrZCompressed,
                 atr: superTrend3?.atr,
                 shortTrendLowerReachCount: state.shortTrendLowerReachCount,
                 reversalLongCount: state.reversalLongCount,
@@ -112,29 +127,29 @@ function judgeTradingDirection(state, config) {
         }
         // 如果当前趋势为1（多头），只判断做多条件
         if (currentTrend == 1) {
-            const section3Up1 = judgeSSL1LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, state, config);
-            const section3Up2 = judgeSSL2LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, state, config);
+            // const section3Up1 = judgeSSL1LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, state, config);
+            // const section3Up2 = judgeSSL2LongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, state, config);
             // section3Up3 = judgeADXLongEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, state, config);
-            // section3Up4 = enableSSL55Squeeze ? judgeSSL55SqueezeLongEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) : false;
-            // section3Up7 = judgeLiquiditySweepLongEntry(kLineData, 20);
+            section3Up4 = enableSSL55Squeeze ? judgeSSL55SqueezeLongEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) : false;
+            section3Up7 = judgeLiquiditySweepLongEntry(kLineData, 20);
             // section3Up8 = judgeTrendExplosionLongEntry(kLineData, superTrendArr, ema50Arr, rsiArr, volumeSmaArr, bbKeltnerSqueezeArr, state, config);
             // section3Up5 = judgeTrendReversalLongEntry(qqeModArr, superTrendArr, config);
             // const section3Up6 = judgeSuperTrendReversalLongEntry(superTrendArr);
             // section3Up9 = judgeDemaLongEntry(kLineData, closeDemaArr, ema50Arr, state, config);
-            section3Up = section3Up1 || section3Up2 // section3Up3 || section3Up4 || section3Up7;
+            section3Up = section3Up4 || section3Up7;
         }
         // 如果当前趋势为-1（空头），只判断做空条件
         else if (currentTrend == -1) {
-            const section3Down1 = judgeSSL1ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, state, config);
-            const section3Down2 = judgeSSL2ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, state, config);
+            // const section3Down1 = judgeSSL1ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, state, config);
+            // const section3Down2 = judgeSSL2ShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, qqeModArr, state, config);
             // section3Down3 = judgeADXShortEntry(kLineData, superTrendArr, sslArr, ssl2Arr, adxArr, fibArr, state, config);
-            // section3Down4 = enableSSL55Squeeze ? judgeSSL55SqueezeShortEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) : false;
-            // section3Down7 = judgeLiquiditySweepShortEntry(kLineData, 20);
+            section3Down4 = enableSSL55Squeeze ? judgeSSL55SqueezeShortEntry(kLineData, superTrendArr, ssl2Arr, ssl55Arr, squeezeBoxArr, config) : false;
+            section3Down7 = judgeLiquiditySweepShortEntry(kLineData, 20);
             // section3Down8 = judgeTrendExplosionShortEntry(kLineData, superTrendArr, ema50Arr, rsiArr, volumeSmaArr, bbKeltnerSqueezeArr, state, config);
             // section3Down5 = judgeTrendReversalShortEntry(qqeModArr, superTrendArr, config);
             // const section3Down6 = judgeSuperTrendReversalShortEntry(superTrendArr);
             // section3Down9 = judgeDemaShortEntry(kLineData, closeDemaArr, ema50Arr, state, config);
-            section3Down = section3Down1 || section3Down2 // section3Down3 || section3Down4 || section3Down7;
+            section3Down = section3Down4 || section3Down7;
         }
 
         if (isUpOpen && (section3Up)) {
@@ -440,7 +455,7 @@ function judgeQQELongCondition(qqeModArr, threshold) {
     // 最近三根K线都是红色
     const qqe_threeBarsRed = qqeMod0.qqeModRed0 && qqeMod1.qqeModRed0 && qqeMod2.qqeModRed0;
     // 拐头向上：qqeModBar[2] > qqeModBar[1] < qqeModBar[0]
-    const qqe_turnUp = qqeModBar2 > qqeModBar1 && qqeModBar1 < qqeModBar0;
+    const qqe_turnUp = qqeModBar1 < qqeModBar0;
     // 最小值 < -阈值
     const qqe_minBelowTh = Math.min(qqeModBar0, qqeModBar1, qqeModBar2) < -threshold;
 
@@ -462,7 +477,7 @@ function judgeQQEShortCondition(qqeModArr, threshold) {
     // 最近三根K线都是绿色
     const qqe_threeBarsGreen = qqeMod0.qqeModGreen0 && qqeMod1.qqeModGreen0 && qqeMod2.qqeModGreen0;
     // 拐头向下：qqeModBar[2] < qqeModBar[1] > qqeModBar[0]
-    const qqe_turnDown = qqeModBar2 < qqeModBar1 && qqeModBar1 > qqeModBar0;
+    const qqe_turnDown = qqeModBar1 > qqeModBar0;
     // 最大值 > 阈值
     const qqe_maxAboveTh = Math.max(qqeModBar0, qqeModBar1, qqeModBar2) > threshold;
 

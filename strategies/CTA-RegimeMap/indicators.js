@@ -109,6 +109,10 @@ async function setEveryIndex(historyClosePrices, curKLine, state, config) {
             setVolumeSmaArr(curKLine, state, config);
             resolve();
         })),
+        new Promise(resolve => setImmediate(() => {
+            setAtrZArr(curKLine, state, config);
+            resolve();
+        })),
     ];
     
     // 等待所有指标计算完成
@@ -496,6 +500,64 @@ function setBBKeltnerSqueezeArr(klines, state, config) {
     bbKeltnerSqueezeArr.push(keltnerResult);
 }
 
+/**
+ * 计算 ATR Z-Score
+ * 使用最近100根K线的 ATR 均值和标准差：atrMean = SMA(ATR, 100), atrStd = STDEV(ATR, 100)
+ * atrZ = (当前ATR - atrMean) / atrStd
+ * 解释：atrZ 表示当前波动率偏离历史平均多少个标准差
+ * 
+ * 区间划分（参考）:
+ * atrZ < -1       => 压缩行情（低波动）
+ * -1 <= atrZ <= 1 => 正常行情
+ * atrZ > 1        => 极端波动（高波动）
+ * 
+ * @param {Array} klines - K线数据数组
+ * @param {Object} state - 策略状态对象
+ * @param {Object} config - 配置对象
+ */
+function setAtrZArr(klines, state, config) {
+    const { atrZArr, superTrendArr } = state;
+    
+    // ATR Z-Score 需要至少 100 根K线来计算均值和标准差
+    const minRequired = 100;
+    if (!superTrendArr || superTrendArr.length < minRequired) {
+        atrZArr.length >= minRequired && atrZArr.shift();
+        atrZArr.push(null);
+        return;
+    }
+    
+    // 获取最近100根K线的SuperTrend数据
+    const recentSuperTrends = superTrendArr.slice(-minRequired);
+    const atrList = recentSuperTrends
+        .map(st => st && typeof st.atr === "number" ? st.atr : null)
+        .filter(v => v !== null);
+    
+    if (atrList.length === minRequired) {
+        // 计算均值
+        const sum = atrList.reduce((acc, v) => acc + v, 0);
+        const atrMean = sum / atrList.length;
+        
+        // 计算标准差
+        const variance = atrList.reduce((acc, v) => acc + Math.pow(v - atrMean, 2), 0) / atrList.length;
+        const atrStd = Math.sqrt(variance);
+        
+        // 计算当前ATR的Z-Score
+        const latestAtr = atrList[atrList.length - 1];
+        let atrZ = null;
+        if (atrStd > 0) {
+            atrZ = (latestAtr - atrMean) / atrStd;
+        } else {
+            atrZ = 0; // 标准差为0时，认为波动率与历史一致
+        }
+        
+        atrZArr.length >= minRequired && atrZArr.shift();
+        atrZArr.push(atrZ);
+    } else {
+        atrZArr.length >= minRequired && atrZArr.shift();
+        atrZArr.push(null);
+    }
+}
+
 module.exports = {
     initEveryIndex,
     setEveryIndex,
@@ -515,4 +577,5 @@ module.exports = {
     setRsiArr,
     setVolumeSmaArr,
     setBBKeltnerSqueezeArr,
+    setAtrZArr,
 };

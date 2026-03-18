@@ -520,16 +520,18 @@ function judgeIndicatorStopLossLong(kLineData, qqeModArr, state, config) {
         // 更新高风险标记
         state.isHighRisk = true;
     }
-    
-    // 获取当前K线的QQE MOD数据
-    const [qqeMod0] = getLastFromArr(qqeModArr, 1);
-    if (!qqeMod0) return false;
-    
-    const qqeModBar0 = qqeMod0.qqeModBar0 || 0;
-    
-    // 高风险 && QQE MOD > 阈值
-    const { indicatorStopLossQQEModThresholdLong = 10 } = config;
-    return qqeModBar0 > indicatorStopLossQQEModThresholdLong;
+    if (state.isHighRisk) {
+        // 获取当前K线的QQE MOD数据
+        const [qqeMod0] = getLastFromArr(qqeModArr, 1);
+        if (!qqeMod0) return false;
+        
+        const qqeModBar0 = qqeMod0.qqeModBar0 || 0;
+        
+        // 高风险 && QQE MOD > 阈值
+        const { indicatorStopLossQQEModThresholdLong = 10 } = config;
+        return qqeModBar0 > indicatorStopLossQQEModThresholdLong;
+    }
+    return false;
 }
 
 /**
@@ -554,16 +556,18 @@ function judgeIndicatorStopLossShort(kLineData, qqeModArr, state, config) {
         // 更新高风险标记
         state.isHighRisk = true;
     }
-    
-    // 获取当前K线的QQE MOD数据
-    const [qqeMod0] = getLastFromArr(qqeModArr, 1);
-    if (!qqeMod0) return false;
-    
-    const qqeModBar0 = qqeMod0.qqeModBar0 || 0;
-    
-    // 高风险 && QQE MOD < 阈值
-    const { indicatorStopLossQQEModThresholdShort = -10 } = config;
-    return qqeModBar0 < indicatorStopLossQQEModThresholdShort;
+    if (state.isHighRisk) {
+        // 获取当前K线的QQE MOD数据
+        const [qqeMod0] = getLastFromArr(qqeModArr, 1);
+        if (!qqeMod0) return false;
+        
+        const qqeModBar0 = qqeMod0.qqeModBar0 || 0;
+        
+        // 高风险 && QQE MOD < 阈值
+        const { indicatorStopLossQQEModThresholdShort = -10 } = config;
+        return qqeModBar0 < indicatorStopLossQQEModThresholdShort;
+    }
+    return false;
 }
 
 /**
