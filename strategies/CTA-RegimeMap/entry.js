@@ -96,24 +96,27 @@ function judgeTradingDirection(state, config) {
         }
 
         if (isDownOpen && (section3Down7)) {
-            console.log("@@@ ~ judgeTradingDirection 多头趋势反转入场做空", {
-                isAtrZCompressed,
-                atr: superTrend3?.atr,
-                longTrendUpperReachCount: state.longTrendUpperReachCount,
-                reversalShortCount: state.reversalShortCount,
-            })
+            // console.log("@@@ ~ judgeTradingDirection 多头趋势反转入场做空", {
+            //     isAtrZCompressed,
+            //     atr: superTrend3?.atr,
+            //     longTrendUpperReachCount: state.longTrendUpperReachCount,
+            //     reversalShortCount: state.reversalShortCount,
+            //     hasOrder:state.hasOrder,
+
+            // })
             state.readyTradingDirection = "down";
             state.isReversalEntry = true;
             return;
         }
 
         if (isUpOpen && (section3Up7)) {
-            console.log("@@@ ~ judgeTradingDirection 空头趋势反转入场做多", {
-                isAtrZCompressed,
-                atr: superTrend3?.atr,
-                shortTrendLowerReachCount: state.shortTrendLowerReachCount,
-                reversalLongCount: state.reversalLongCount,
-            })
+            // console.log("@@@ ~ judgeTradingDirection 空头趋势反转入场做多", {
+            //     isAtrZCompressed,
+            //     atr: superTrend3?.atr,
+            //     shortTrendLowerReachCount: state.shortTrendLowerReachCount,
+            //     reversalLongCount: state.reversalLongCount,
+            //     hasOrder:state.hasOrder,
+            // })
             state.readyTradingDirection = "up";
             state.isReversalEntry = true;
             return;

@@ -293,6 +293,25 @@ function judgeStopLossShort(kLineData, effectiveStopLoss) {
 }
 
 /**
+ * 冷却机制：记录平仓时的状态值（仅在启用冷却且需要记录时调用）
+ */
+function recordCoolingStateOnClose(state, config) {
+    const { enableCoolingMechanism } = config;
+    if (!enableCoolingMechanism) return;
+
+    const [superTrend3] = getLastFromArr(state.superTrendArr, 1);
+    if (!superTrend3) return;
+
+    state.close_longTrendUpperReachCount = state.longTrendUpperReachCount;
+    state.close_shortTrendLowerReachCount = state.shortTrendLowerReachCount;
+    state.close_trend = superTrend3.trend ?? null;
+    console.log(
+        `[冷却机制] 记录平仓状态: longTrendUpperReachCount=${state.close_longTrendUpperReachCount}, ` +
+            `shortTrendLowerReachCount=${state.close_shortTrendLowerReachCount}, trend=${state.close_trend}`
+    );
+}
+
+/**
  * 判断止盈止损（在止盈函数中调用）
  * 包括：普通止损、移动止损、指标止损
  * @param {Object} state - 策略状态对象
@@ -329,7 +348,7 @@ async function judgeStopLossInProfitRun(state, config, closeUp, closeDown) {
         // 1. 止损判断 - 立即市价平仓
         const stopLossHit = judgeStopLossLong(kLineData, effectiveStopLoss);
         if (stopLossHit) {
-            console.log(`@@@[做多 市价平仓] ${kLineDate}, currentPrice=${state.currentPrice}, effectiveStopLoss=${effectiveStopLoss}`);
+            console.log(`@@@[做多止损(${state.currentPrice > state.initialLongStopLoss ? "盈利" : "亏损"}) 市价平仓] ${kLineDate}, currentPrice=${state.currentPrice}, effectiveStopLoss=${effectiveStopLoss}`);
             await closeUp();
             return;
         }
@@ -341,6 +360,8 @@ async function judgeStopLossInProfitRun(state, config, closeUp, closeDown) {
             if (indicatorStopLossHit) {
                 console.log(`@@@[做多高风险止损] ${kLineDate}, qqeModBar0=${qqeModArr[qqeModArr.length - 1].qqeModBar0}`);
                 await closeUp();
+                // 高风险平仓后续不能继续开仓
+                state.preIsHighRisk = true;
                 return;
             }
         }
@@ -362,12 +383,8 @@ async function judgeStopLossInProfitRun(state, config, closeUp, closeDown) {
         // 1. 止损判断 - 立即市价平仓
         const stopLossHit = judgeStopLossShort(kLineData, effectiveStopLoss);
         if (stopLossHit) {
-            console.log(`@@@[做空 市价平仓] ${kLineDate}, currentPrice=${state.currentPrice}, effectiveStopLoss=${effectiveStopLoss}`);
+            console.log(`@@@[做空(${state.currentPrice > state.initialLongStopLoss ? "盈利" : "亏损"}) 市价平仓] ${kLineDate}, currentPrice=${state.currentPrice}, effectiveStopLoss=${effectiveStopLoss}`);
             await closeDown();
-            // 需要冷却
-            state.close_longTrendUpperReachCount = state.longTrendUpperReachCount;
-            state.close_shortTrendLowerReachCount = state.shortTrendLowerReachCount;
-            state.close_trend = superTrend3.trend ?? null;
             return;
         }
 
@@ -378,10 +395,8 @@ async function judgeStopLossInProfitRun(state, config, closeUp, closeDown) {
             if (indicatorStopLossHit) {
                 console.log(`@@@[做空高风险止损] ${kLineDate},qqeModBar0=${qqeModArr[qqeModArr.length - 1].qqeModBar0}`);
                 await closeDown();
-                // 需要冷却
-                state.close_longTrendUpperReachCount = state.longTrendUpperReachCount;
-                state.close_shortTrendLowerReachCount = state.shortTrendLowerReachCount;
-                state.close_trend = superTrend3.trend ?? null;
+                // 高风险平仓后续不能继续开仓
+                state.preIsHighRisk = true;
                 return;
             }
         }
@@ -392,107 +407,74 @@ async function judgeStopLossInProfitRun(state, config, closeUp, closeDown) {
 
 /**
  * 检查高风险条件（做多）
- * 在开仓后第N根K线时检测一次，从开仓到第N根K线，计算区间内收盘价小于开盘价的K线比例
- * @param {Array} kLineData - K线数据数组
- * @param {Number} entryKLineCount - 开仓时的K线计数
- * @param {Number} currentKLineCount - 当前K线计数
+ * 当 ssl1上轨 < ssl2下轨 时标记为高风险
+ * @param {Array} sslArr - SSL指标数组
+ * @param {Array} ssl2Arr - SSL2指标数组
  * @param {Object} state - 策略状态对象
- * @param {Object} config - 配置对象
  * @returns {Boolean} 是否标记为高风险
  */
-function checkHighRiskLong(kLineData, entryKLineCount, currentKLineCount, state, config) {
-    if (!entryKLineCount || entryKLineCount === null) return false;
-    if (!kLineData || kLineData.length === 0) return false;
-
-    const { indicatorStopLossCheckPeriod = 50, indicatorStopLossRiskRatio = 0.8 } = config;
-
-    // 计算检测点：开仓后第N根K线
-    const checkKLineCount = entryKLineCount + indicatorStopLossCheckPeriod;
-
-    // 如果当前K线计数还没到检测点，返回false
-    if (currentKLineCount < checkKLineCount) return false;
-
+function checkHighRiskLong(sslArr, ssl2Arr, state) {
+    if (!sslArr || sslArr.length < 1) return false;
+    if (!ssl2Arr || ssl2Arr.length < 1) return false;
+    
     // 如果已经标记为高风险，不再重复检测
     if (state.isHighRisk) return true;
+    
+    // 获取最新的 SSL 和 SSL2 数据（与做空一致，取 2 个元素否则 ssl2Current 为 undefined）
+    const [sslPre, sslCurrent] = getLastFromArr(sslArr, 2);
+    const [ssl2Pre, ssl2Current] = getLastFromArr(ssl2Arr, 2);
 
-    // 只在第N根K线时检测一次
-    if ((currentKLineCount - entryKLineCount) % indicatorStopLossCheckPeriod !== 0) return false;
+    if (!sslCurrent || !ssl2Current || !sslPre || !ssl2Pre) return false;
 
-    // 计算从开仓到第N根K线的区间内收盘价小于开盘价的K线数量
-    let bearishCount = 0;
-    let totalCount = 0;
+    // SSL1 上轨 = max(sslUp, sslDown)，下轨 = min(sslUp, sslDown)
+    const ssl1Lower = Math.min(sslCurrent.sslUp, sslCurrent.sslDown);
+    const ssl1Upper = Math.max(sslCurrent.sslUp, sslCurrent.sslDown);
+    // SSL2 下轨 = min(sslUp2, sslDown2)，上轨 = max(sslUp2, sslDown2)
+    const ssl2Lower = Math.min(ssl2Current.sslUp2, ssl2Current.sslDown2);
+    const ssl2Upper = Math.max(ssl2Current.sslUp2, ssl2Current.sslDown2);
 
-    const entryArrayIndex = kLineData.length - 1 - (currentKLineCount - entryKLineCount);
-    const startArrayIndex = entryArrayIndex + 1;
-    const endArrayIndex = kLineData.length - 1;
-
-    for (let i = startArrayIndex; i <= endArrayIndex && i < kLineData.length; i++) {
-        const kLine = kLineData[i];
-        if (kLine && kLine.close !== undefined && kLine.open !== undefined) {
-            totalCount++;
-            if (kLine.close < kLine.open) {
-                bearishCount++;
-            }
-        }
+    // 当 ssl1上轨 <= ssl2下轨时标记为高风险
+    const isHighRisk = ssl1Upper <= ssl2Lower && state.currentPrice < ssl1Lower;
+    if (isHighRisk) {
+        console.log(`@@@[做多高风险检测，已确认高风险] ssl1上轨=${ssl1Upper} < ssl2下轨=${ssl2Lower}`);
     }
-
-    if (totalCount > 0) {
-        const bearishRatio = bearishCount / totalCount;
-        console.log(`@@@[做多高风险检测], bearishRatio=${bearishRatio}, totalCount=${totalCount}, bearishCount=${bearishCount}`);
-        return bearishRatio >= indicatorStopLossRiskRatio;
-    }
-
-    return false;
+    return isHighRisk;
 }
 
 /**
  * 检查高风险条件（做空）
- * 在开仓后第N根K线时检测一次，从开仓到第N根K线，计算区间内收盘价大于开盘价的K线比例
- * @param {Array} kLineData - K线数据数组
- * @param {Number} entryKLineCount - 开仓时的K线计数
- * @param {Number} currentKLineCount - 当前K线计数
+ * 当 ssl1下轨 > ssl2上轨 时标记为高风险
+ * @param {Array} sslArr - SSL指标数组
+ * @param {Array} ssl2Arr - SSL2指标数组
  * @param {Object} state - 策略状态对象
- * @param {Object} config - 配置对象
  * @returns {Boolean} 是否标记为高风险
  */
-function checkHighRiskShort(kLineData, entryKLineCount, currentKLineCount, state, config) {
-    if (!entryKLineCount || entryKLineCount === null) return false;
-    if (!kLineData || kLineData.length === 0) return false;
-
-    const { indicatorStopLossCheckPeriod = 50, indicatorStopLossRiskRatio = 0.8 } = config;
-
-    const checkKLineCount = entryKLineCount + indicatorStopLossCheckPeriod;
-
-    if (currentKLineCount < checkKLineCount) return false;
-
+function checkHighRiskShort(sslArr, ssl2Arr, state) {
+    if (!sslArr || sslArr.length < 1) return false;
+    if (!ssl2Arr || ssl2Arr.length < 1) return false;
+    
+    // 如果已经标记为高风险，不再重复检测
     if (state.isHighRisk) return true;
-
-    if ((currentKLineCount - entryKLineCount) % indicatorStopLossCheckPeriod !== 0) return false;
-
-    let bullishCount = 0;
-    let totalCount = 0;
-
-    const entryArrayIndex = kLineData.length - 1 - (currentKLineCount - entryKLineCount);
-    const startArrayIndex = entryArrayIndex + 1;
-    const endArrayIndex = kLineData.length - 1;
-
-    for (let i = startArrayIndex; i <= endArrayIndex && i < kLineData.length; i++) {
-        const kLine = kLineData[i];
-        if (kLine && kLine.close !== undefined && kLine.open !== undefined) {
-            totalCount++;
-            if (kLine.close > kLine.open) {
-                bullishCount++;
-            }
-        }
+    
+    // 获取最新的 SSL 和 SSL2 数据
+    const [sslPre, sslCurrent] = getLastFromArr(sslArr, 2);
+    const [ssl2Pre, ssl2Current] = getLastFromArr(ssl2Arr, 2);
+    
+    if (!sslPre || !sslCurrent || !ssl2Pre || !ssl2Current) return false;
+    
+    // SSL1 下轨 = min(sslUp, sslDown)
+    const ssl1Lower = Math.min(sslCurrent.sslUp, sslCurrent.sslDown);
+    const ssl1Upper = Math.max(sslCurrent.sslUp, sslCurrent.sslDown);
+    // SSL2 上轨 = max(sslUp2, sslDown2)
+    const ssl2Upper = Math.max(ssl2Current.sslUp2, ssl2Current.sslDown2);
+    const ssl2Lower = Math.min(ssl2Current.sslUp2, ssl2Current.sslDown2);
+    
+    // 当 ssl1下轨 > ssl2上轨 时标记为高风险
+    const isHighRisk = ssl1Lower >= ssl2Upper && state.currentPrice > ssl1Upper;
+    if (isHighRisk) {
+        console.log(`@@@[做空高风险检测，已确认高风险] ssl1下轨=${ssl1Lower} > ssl2上轨=${ssl2Upper}`);
     }
-
-    if (totalCount > 0) {
-        const bullishRatio = bullishCount / totalCount;
-        console.log(`@@@[做空高风险检测], bullishRatio=${bullishRatio}, totalCount=${totalCount}, bullishCount=${bullishCount}`);
-        return bullishRatio >= indicatorStopLossRiskRatio;
-    }
-
-    return false;
+    return isHighRisk;
 }
 
 /**
@@ -513,8 +495,10 @@ function judgeIndicatorStopLossLong(kLineData, qqeModArr, sslArr, ssl2Arr, state
     
     // 如果已经标记为高风险，跳过检测
     if (!state.isHighRisk) {
-        const isHighRisk = checkHighRiskLong(kLineData, state.entryKLineCount, state.currentKLineCount, state, config);
+        // 检查高风险条件：ssl1上轨 < ssl2下轨
+        const isHighRisk = checkHighRiskLong(sslArr, ssl2Arr, state);
         if (isHighRisk) {
+            // 更新高风险标记
             state.isHighRisk = true;
         }
     }
@@ -550,8 +534,10 @@ function judgeIndicatorStopLossShort(kLineData, qqeModArr, sslArr, ssl2Arr, stat
     
     // 如果已经标记为高风险，跳过检测
     if (!state.isHighRisk) {
-        const isHighRisk = checkHighRiskShort(kLineData, state.entryKLineCount, state.currentKLineCount, state, config);
+        // 检查高风险条件：ssl1下轨 > ssl2上轨
+        const isHighRisk = checkHighRiskShort(sslArr, ssl2Arr, state);
         if (isHighRisk) {
+            // 更新高风险标记
             state.isHighRisk = true;
         }
     }
@@ -688,16 +674,16 @@ function updateVolatilityTrailingStop(params) {
     const atrRatio = smaATR > 0 ? recentATR / smaATR : 1;
     
     // 根据波动率确定止损倍数
-    let stopMultiplier;
-    if (atrRatio < 0.8) {
-        stopMultiplier = 2.5;
-    } else if (atrRatio >= 0.8 && atrRatio <= 1.2) {
-        stopMultiplier = 3.0;
-    } else {
-        stopMultiplier = 3.5;
-    }
-    
-    // 获取当前价格（使用最新K线的收盘价）
+    // let stopMultiplier;
+    // if (atrRatio < 0.8) {
+    //     stopMultiplier = 2.5;
+    // } else if (atrRatio >= 0.8 && atrRatio <= 1.2) {
+    //     stopMultiplier = 3.0;
+    // } else {
+    //     stopMultiplier = 3.5;
+    // }
+
+    // 获取当前K线（用于 currentPrice 与 volume）
     const [latestKLine] = getLastFromArr(kLineData, 1);
     if (!latestKLine) {
         if (state.trailActive && state.trailStop !== null) {
@@ -705,7 +691,43 @@ function updateVolatilityTrailingStop(params) {
         }
         return currentStopLoss;
     }
-    
+
+    // 强趋势判定（你指定的计算方式）：
+    // adx > 25 && volume > volumeMA * 1.5 && atr > atrMA * 1.2
+    const [latestAdxRaw] = getLastFromArr(state.adxArr || [], 1);
+    const latestAdx =
+        typeof latestAdxRaw === 'number'
+            ? latestAdxRaw
+            : (latestAdxRaw?.adx ?? latestAdxRaw?.ADX ?? latestAdxRaw?.value ?? null);
+    const [volumeMA] = getLastFromArr(state.volumeSmaArr || [], 1);
+    const volume = latestKLine.volume;
+    const atr = recentATR;
+    const atrMA = smaATR;
+    const isTrendStrong =
+        latestAdx != null &&
+        volumeMA != null &&
+        volume != null &&
+        atrMA > 0 &&
+        latestAdx > 25 &&
+        volume > volumeMA * 1.5 &&
+        atr > atrMA * 1.2;
+
+    let stopMultiplier;
+    // if (isTrendStrong) {
+    //     stopMultiplier = 4.0;   // 强趋势 → 放飞
+    // } else if (atrRatio < 0.8) {
+    //     stopMultiplier = 3.2;   // ❗低波动反而更宽
+    // } else if (atrRatio <= 1.2) {
+    //     stopMultiplier = 3.0;
+    // } else {
+    //     stopMultiplier = 2.5;   // ❗高波动反而收紧
+    // }
+    if (isTrendStrong) {
+        stopMultiplier = 12;   // 强趋势 → 放飞
+    } else {
+        stopMultiplier = 6;
+    }
+
     const currentPrice = latestKLine.close;
     
     // 计算波动率自适应止损价格
@@ -1068,4 +1090,5 @@ module.exports = {
     // 适应极端行情close和实际止损相差很大的情况
     judgeProfitRunOrProfit,
     gridPointClearTrading,
+    recordCoolingStateOnClose,
 };

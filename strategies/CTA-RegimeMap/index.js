@@ -23,7 +23,7 @@ const config = require("./config.js");
 // 策略模块
 const { initEveryIndex, setEveryIndex } = require("./indicators.js");
 const { judgeTradingDirection, calculateTradingSignal, updateLongTrendUpperReachCount, updateShortTrendLowerReachCount, judgeVolumeFilter, judgeTrendDensity, judgeRegimeMap } = require("./entry.js");
-const { gridPointClearTrading } = require("./exit.js");
+const { gridPointClearTrading, recordCoolingStateOnClose } = require("./exit.js");
 
 // 日志收集模块（可选，通过配置开关控制）
 const { initLogCollector, getLogCollector } = require("./logs.js");
@@ -121,6 +121,7 @@ const state = {
 
     // 指标止损相关
     isHighRisk: false,                // 是否标记为高风险
+    preIsHighRisk: false,             // 上一次是否标记为高风险
 
     // DEMA 趋势信号
     demaLongSignalStartKLine: null,
@@ -384,36 +385,37 @@ const refreshKLineAndIndex = async (curKLine) => {
         state.shortTrendLowerReachCountMap[state.shortTrendLowerReachCount]++;
     }
     
-    // 检测Fibonacci突破，用于重置连续亏损计数
-    if (maxConsecutiveLoss > 0 && state.lossCount >= maxConsecutiveLoss) {
-        const [fib3] = getLastFromArr(state.fibArr, 1);
-        if (fib3 && fib3.upper_7 !== null && fib3.upper_7 !== undefined && 
-            fib3.lower_7 !== null && fib3.lower_7 !== undefined) {
-            const close = curKLine.close;
-            const fibUpper = fib3.upper_7;
-            const fibLower = fib3.lower_7;
+    // 几乎匹配不上这个逻辑， 盈利的时候重置 state.lossCount = 0
+    // // 检测Fibonacci突破，用于重置连续亏损计数
+    // if (maxConsecutiveLoss > 0 && state.lossCount >= maxConsecutiveLoss) {
+    //     const [fib3] = getLastFromArr(state.fibArr, 1);
+    //     if (fib3 && fib3.upper_7 !== null && fib3.upper_7 !== undefined && 
+    //         fib3.lower_7 !== null && fib3.lower_7 !== undefined) {
+    //         const close = curKLine.close;
+    //         const fibUpper = fib3.upper_7;
+    //         const fibLower = fib3.lower_7;
             
-            // 检查价格是否突破Fibonacci上下沿（使用最新的Fibonacci值）
-            let isBreakthrough = false;
+    //         // 检查价格是否突破Fibonacci上下沿（使用最新的Fibonacci值）
+    //         let isBreakthrough = false;
             
-            // 价格突破上沿：close > Fibonacci上沿
-            if (close > fibUpper) {
-                isBreakthrough = true;
-                console.log(`[连续亏损保护] 价格突破Fibonacci上沿，重置连续亏损计数。close: ${close}, Fibonacci上沿: ${fibUpper}`);
-            }
-            // 价格突破下沿：close < Fibonacci下沿
-            if (close < fibLower) {
-                isBreakthrough = true;
-                console.log(`[连续亏损保护] 价格突破Fibonacci下沿，重置连续亏损计数。close: ${close}, Fibonacci下沿: ${fibLower}`);
-            }
+    //         // 价格突破上沿：close > Fibonacci上沿
+    //         if (close > fibUpper) {
+    //             isBreakthrough = true;
+    //             console.log(`[连续亏损保护] 价格突破Fibonacci上沿，重置连续亏损计数。close: ${close}, Fibonacci上沿: ${fibUpper}`);
+    //         }
+    //         // 价格突破下沿：close < Fibonacci下沿
+    //         if (close < fibLower) {
+    //             isBreakthrough = true;
+    //             console.log(`[连续亏损保护] 价格突破Fibonacci下沿，重置连续亏损计数。close: ${close}, Fibonacci下沿: ${fibLower}`);
+    //         }
             
-            // 如果发生突破，重置连续亏损计数
-            if (isBreakthrough) {
-                state.lossCount = 0;
-                console.log(`[连续亏损保护] 连续亏损计数已重置，恢复开单逻辑`);
-            }
-        }
-    }
+    //         // 如果发生突破，重置连续亏损计数
+    //         if (isBreakthrough) {
+    //             state.lossCount = 0;
+    //             console.log(`[连续亏损保护] 连续亏损计数已重置，恢复开单逻辑`);
+    //         }
+    //     }
+    // }
 
     // 收集日志数据（如果启用）
     if (enableVisualizationLogs) {
@@ -466,6 +468,22 @@ function checkCoolingMechanism(state, config) {
 }
 
 const kaiDanDaJi = async () => {
+    // 高风险平仓后续不能继续开仓
+    if (configEth.enableIndicatorStopLoss && state.preIsHighRisk) {
+        // 获取当前状态值
+        const [superTrend] = getLastFromArr(state.superTrendArr, 1);
+        const currentTrend = superTrend?.trend ?? null;
+        
+        // 如果当前三个值和记录的 close_ 变量完全一致，说明还需要冷静，并且上一次为高风险平仓，那么本次信号作废
+        if (state.longTrendUpperReachCount === state.close_longTrendUpperReachCount &&
+            state.shortTrendLowerReachCount === state.close_shortTrendLowerReachCount &&
+            currentTrend === state.close_trend) {
+            state.readyTradingDirection = "hold";
+            return;
+        } else {
+            state.preIsHighRisk = false;
+        }
+    }
     state.isOrdering = true;
 
     // // 市场状态识别（Regime Map）- 在判断交易方向之前进行
@@ -746,6 +764,7 @@ const closeOrder = async (side, quantity, cb) => {
                 state.tradingInfo.quantity -= quantity;
                 saveGlobalVariables();
             } else {
+                console.log("🚀 ~ closeOrder ~ 平仓时的indicatorTPCount:", state.indicatorTPCount)
                 // 全部平仓：重置所有状态
                 state.readyTradingDirection = "hold";
                 state.hasOrder = false;
@@ -797,6 +816,7 @@ const teadeBuy = async (stopLoss) => {
         // 冷却机制检测改成了减少仓位
         const needCooling = checkCoolingMechanism(state, configEth);
         const needReducePosition = state.longTrendUpperReachCount >= reachCountForPositionReduction || (maxConsecutiveLoss > 0 && state.lossCount >= maxConsecutiveLoss) || needCooling;
+        needReducePosition && console.log(`@@@[做多 开仓] 需要减少仓位，needReducePosition=${needReducePosition}`);
         quantity = needReducePosition ? quantity * positionReductionRatio : quantity;
         await placeOrder("BUY", quantity);
 
@@ -825,6 +845,7 @@ const teadeSell = async (stopLoss) => {
         // 冷却机制检测改成了减少仓位
         const needCooling = checkCoolingMechanism(state, configEth);
         const needReducePosition = state.shortTrendLowerReachCount >= reachCountForPositionReduction || (maxConsecutiveLoss > 0 && state.lossCount >= maxConsecutiveLoss) || needCooling;
+        needReducePosition && console.log(`@@@[做空 开仓] 需要减少仓位，needReducePosition=${needReducePosition}`);
         quantity = needReducePosition ? quantity * positionReductionRatio : quantity;
         await placeOrder("SELL", quantity);
 
@@ -849,31 +870,11 @@ const recordRradingInfo = async (info) => {
     console.log("Purchase Info Updated:", state.tradingInfo);
 };
 
-/**
- * 冷却机制：记录平仓时的状态值（仅在亏损时调用）
- * 记录 longTrendUpperReachCount / shortTrendLowerReachCount / trend
- */
-function recordCoolingStateOnClose() {
-    const { enableCoolingMechanism } = configEth;
-    if (!enableCoolingMechanism) return;
-
-    const [superTrend3] = getLastFromArr(state.superTrendArr, 1);
-    if (!superTrend3) return;
-
-    state.close_longTrendUpperReachCount = state.longTrendUpperReachCount;
-    state.close_shortTrendLowerReachCount = state.shortTrendLowerReachCount;
-    state.close_trend = superTrend3.trend ?? null;
-    console.log(
-        `[冷却机制] 记录平仓状态: longTrendUpperReachCount=${state.close_longTrendUpperReachCount}, ` +
-        `shortTrendLowerReachCount=${state.close_shortTrendLowerReachCount}, trend=${state.close_trend}`
-    );
-}
-
 const setLossCount = (curTestMoney) => {
     // 更新连续亏损次数
     if (curTestMoney <= 0) {
         // 冷却机制：记录平仓时的状态值
-        recordCoolingStateOnClose();
+        recordCoolingStateOnClose(state, configEth);
         // 亏损：增加计数
         if (sizingMode === 'Martingale') {
             state.lossCount = state.lossCount + 1 > maxLossCount ? maxLossCount : state.lossCount + 1;

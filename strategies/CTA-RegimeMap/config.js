@@ -18,7 +18,7 @@ const config = {
         priorityFee: 0.0007,                 // 手续费率
         slippage: 0,                         // 滑点
         sizingMode: 'Fixed',           // 仓位管理: Fixed, Martingale, RiskBased （'Fixed' / 'RiskBased' 时可以启用滚仓）
-        rolling: true,                // 滚仓: availableMoney = max(availableMoney + 盈利, availableMoney)
+        rolling: false,                // 滚仓: availableMoney = max(availableMoney + 盈利, availableMoney)
 
         // 马丁格尔模式配置
         martingaleInitialPercent: 100,  // 初始百分比（默认100，即100%）
@@ -98,14 +98,12 @@ const config = {
         priceTolerance: 0.001,              // 判断平仓时的价格容差
         
         // 波动率自适应止损（替代原来的移动止损）
-        enableVolatilityTrailingStop: true,   // 启用波动率自适应止损 31123 120单 , 31765  indicatorTPSecondCloseRatio: 0.5 （这个设为true后，曲线全是向上，非常好看）
-        volatilityATRPeriod: 14,              // 波动率计算用的ATR周期
+        enableVolatilityTrailingStop: false,   // 启用波动率自适应止损 31123 120单 , 31765  indicatorTPSecondCloseRatio: 0.5 （这个设为true后，曲线全是向上，非常好看）
+        volatilityATRPeriod: 20,              // 波动率计算用的ATR周期
         volatilitySMAPeriod: 50,              // 波动率计算用的SMA周期
         
-        // 高风险检测配置
-        enableIndicatorStopLoss: true,        // 启用 高风险检测 15：24359 156单 （收益曲线非常乱，不好） | 30：30350 135单
-        indicatorStopLossCheckPeriod: 50,     // 开仓后第N根K线时做一次高风险检测（与参考策略一致）
-        indicatorStopLossRiskRatio: 0.51,      // 区间内阴/阳线比例达到此值标记为高风险（做多：阴线比例，做空：阳线比例）
+        // 高风险检测配置 高风险平仓后续不能继续开仓
+        enableIndicatorStopLoss: false,        // 启用 高风险检测 15：24359 156单 （收益曲线非常乱，不好） | 30：30350 135单
         indicatorStopLossQQEModThresholdLong: 25,   // 做多指标止损QQE MOD阈值，高风险单等待qqemod > 此阈值时触发止损
         indicatorStopLossQQEModThresholdShort: -25, // 做空指标止损QQE MOD阈值，高风险单等待qqemod < 此阈值时触发止损
 
@@ -134,7 +132,7 @@ const config = {
         indicatorTPSecondCloseCount: 2,       // 第二次平仓计数阈值，达到此计数时执行第二次平仓
         indicatorTPFinalCloseCount: 3,        // 最终平仓计数阈值，达到此计数时平仓剩余所有仓位
         indicatorTPFirstCloseRatio: 0,      // 第一次平仓比例，平仓初始仓位的40%
-        indicatorTPSecondCloseRatio: 0.5,     // 第二次平仓比例，平仓初始仓位的40%
+        indicatorTPSecondCloseRatio: 0,     // 第二次平仓比例，平仓初始仓位的40%
         indicatorTPCoolingPeriod: 20,          // 指标止盈冷静期（K线数量），触发指标止盈后在此时间内不再触发
 
         // 保本止损配置
