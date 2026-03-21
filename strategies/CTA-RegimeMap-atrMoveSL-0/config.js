@@ -32,14 +32,6 @@ const config = {
         logsFolder: "logs",
         errorsFolder: "errors",
         enableVisualizationLogs: true,       // 是否启用可视化日志收集
-
-        // ========== 机器学习训练数据导出（Step 1） ==========
-        enableTrainingDataExport: true,      // 回测结束后是否导出 ML 训练数据
-        futureBarsCount: 100,                // 未来 K 线根数，用于计算 label（maxProfitR >= 2）
-
-        // ========== AI 开仓过滤（Step 3：m2cgen 导出的 score_*.js） ==========
-        enableAiFilter: true,                // 是否用双模型概率过滤开仓（需先有 ai/dual_models/output/）
-        aiManifestPath: "ai/dual_models/output/training_manifest.json", // 相对本策略目录
         
         // ========== SuperTrend 指标配置 ==========
         atrPeriod: 20,                       // SuperTrend ATR 周期

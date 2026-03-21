@@ -1,0 +1,3 @@
+# 可选：不提交模型与 JS，仅保留 manifest 时取消下面注释或按需调整
+# lgbm_*.txt
+# score_*.js

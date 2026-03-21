@@ -27,9 +27,6 @@ const { gridPointClearTrading, recordCoolingStateOnClose } = require("./exit.js"
 
 // 日志收集模块（可选，通过配置开关控制）
 const { initLogCollector, getLogCollector } = require("./logs.js");
-// ML 训练数据导出（方案 C：回测结束后生成）
-const { exportTrainingData } = require("./exportTrainingData.js");
-const { evaluateAiFilter } = require("./aiFilter.js");
 
 // 配置解构 - 从config中获取eth配置
 const configEth = config["eth"];
@@ -56,10 +53,6 @@ const {
     maxKLinelen,
     enableVisualizationLogs,
     maxConsecutiveLoss,
-    enableTrainingDataExport = false,
-    futureBarsCount = 100,
-    enableAiFilter = false,
-    aiManifestPath,
 } = configEth;
 
 // 全局状态对象
@@ -145,9 +138,6 @@ const state = {
     trailStop: null,                  // 移动止损价格
 
     profitR: null,  // 当前持仓的 profitR，由 exit.js updateProfitRMoveStop 写入，平仓时供 recordClose 使用
-
-    // ML 训练样本收集（开仓时记录，回测结束后导出）
-    trainingSamples: [],
 
     // 固定止盈位（开仓时计算）
     longTakeProfit: null,
@@ -547,69 +537,11 @@ const kaiDanDaJi = async () => {
     state.isOrdering = false;
 };
 
-/**
- * 记录开仓样本，供回测结束后导出 ML 训练数据
- * 仅在 enableTrainingDataExport 时执行
- */
-const recordTrainingSample = () => {
-    if (!enableTrainingDataExport) return;
-    const [rsiItem] = getLastFromArr(state.rsiArr, 1);
-    const [superTrendItem] = getLastFromArr(state.superTrendArr, 1);
-    const [adxItem] = getLastFromArr(state.adxArr, 1);
-    const [ema50Item] = getLastFromArr(state.ema50Arr, 1);
-    const [lastKLine] = getLastFromArr(state.kLineData, 1);
-    const rsi = rsiItem != null ? rsiItem : null;
-    const atr = superTrendItem?.atr;
-    const adx = adxItem?.ADX != null ? adxItem.ADX : null;
-    const price = state.currentPrice;
-    const ma = ema50Item != null ? ema50Item : null;
-    const openTime = lastKLine?.openTime;
-    const initialStopLossVal = state.initialLongStopLoss ?? state.initialShortStopLoss;
-    if (openTime == null || price <= 0 || !state.entryPrice || initialStopLossVal == null) return;
-    const entryPrice = state.entryPrice;
-    const initialStopLoss = initialStopLossVal;
-    const trend = state.tradingInfo.trend || (state.initialLongStopLoss != null ? "up" : "down");
-    const price_vs_ma = ma != null && ma > 0 ? price / ma : null;
-    const volatility = atr != null && price > 0 ? atr / price : null;
-    state.trainingSamples.push({
-        openTime,
-        trend,
-        entryPrice,
-        initialStopLoss,
-        rsi,
-        atr,
-        adx,
-        price,
-        ma,
-        price_vs_ma,
-        volatility,
-    });
-};
-
 const judgeAndTrading = async () => {
     state.loadingTrading = true;
 
     const { trend, stopLoss, stopProfit } = calculateTradingSignal(state, configEth);
     console.log("预备开仓信息： Trading trend, stopLoss, stopProfit:", trend, stopLoss, stopProfit);
-
-    // Step 3：AI 过滤（概率 < manifest 阈值则不开仓，恢复 hold）
-    if (trend === "up" || trend === "down") {
-        const ai = evaluateAiFilter(state, trend, { enableAiFilter, aiManifestPath }, __dirname);
-        if (!ai.skipped && !ai.pass) {
-            console.log(
-                `AI filter blocked ${trend}: prob=${ai.prob != null ? ai.prob.toFixed(4) : ai.prob} < threshold=${ai.threshold}`
-            );
-            state.readyTradingDirection = "hold";
-            saveGlobalVariables();
-            state.loadingTrading = false;
-            return;
-        }
-        if (!ai.skipped && ai.pass) {
-            console.log(
-                `AI filter pass ${trend}: prob=${ai.prob?.toFixed?.(4)} >= threshold=${ai.threshold}`
-            );
-        }
-    }
 
     switch (trend) {
         case "up":
@@ -641,7 +573,6 @@ const judgeAndTrading = async () => {
                     }
                 }
             }
-            recordTrainingSample();
             break;
         case "down":
             await teadeSell(stopLoss);
@@ -672,7 +603,6 @@ const judgeAndTrading = async () => {
                     }
                 }
             }
-            recordTrainingSample();
             break;
         default:
             break;
@@ -1313,19 +1243,6 @@ const startWebSocket = async () => {
                 longTrendUpperReachCountMap: state.longTrendUpperReachCountMap,
                 shortTrendLowerReachCountMap: state.shortTrendLowerReachCountMap,
             });
-            // 回测结束：导出 ML 训练数据（方案 C）
-            if (enableTrainingDataExport && state.trainingSamples?.length > 0) {
-                try {
-                    exportTrainingData({
-                        trainingSamples: state.trainingSamples,
-                        symbol: SYMBOL,
-                        klineStage,
-                        futureBarsCount: futureBarsCount ?? 100,
-                    });
-                } catch (e) {
-                    console.error("[exportTrainingData] 导出失败:", e);
-                }
-            }
             // 程序结束前保存可视化日志
             if (enableVisualizationLogs) {
                 const collector = getLogCollector();

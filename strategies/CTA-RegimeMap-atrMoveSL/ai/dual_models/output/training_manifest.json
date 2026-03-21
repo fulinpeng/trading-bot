@@ -1,0 +1,53 @@
+{
+  "input": "E:\\githubProjects\\trading-bot\\strategies\\CTA-RegimeMap-atrMoveSL\\training-data\\ml-training-data-ethusdt-30m.json",
+  "meta": {
+    "symbol": "ethusdt",
+    "klineStage": "30m",
+    "futureBarsCount": 100,
+    "labelThreshold": 2,
+    "sampleCount": 109,
+    "label1Count": 42,
+    "label0Count": 67
+  },
+  "feature_cols": [
+    "rsi",
+    "atr",
+    "adx",
+    "price_vs_ma",
+    "volatility"
+  ],
+  "feature_order_note": "Node 侧构造 input 数组时须与此顺序一致：input[0]=rsi ... input[4]=volatility",
+  "m2cgen_score_output": "[P(label=0), P(label=1)]，正类概率请取返回值下标 1",
+  "train_ratio": 0.8,
+  "seed": 42,
+  "long": {
+    "n_train": 39,
+    "n_val": 10,
+    "metrics": {
+      "val_auc": 0.5,
+      "best_threshold_f1": 0.3846153846153846,
+      "val_precision": 0.3,
+      "val_recall": 1.0,
+      "val_f1": 0.46153846153846156,
+      "val_accuracy": 0.3
+    },
+    "model_txt": "lgbm_long.txt",
+    "js": "score_long.js",
+    "js_function": "scoreLong"
+  },
+  "short": {
+    "n_train": 48,
+    "n_val": 12,
+    "metrics": {
+      "val_auc": 0.7571428571428571,
+      "best_threshold_f1": 0.5478152851976642,
+      "val_precision": 0.625,
+      "val_recall": 1.0,
+      "val_f1": 0.7692307692307693,
+      "val_accuracy": 0.75
+    },
+    "model_txt": "lgbm_short.txt",
+    "js": "score_short.js",
+    "js_function": "scoreShort"
+  }
+}
