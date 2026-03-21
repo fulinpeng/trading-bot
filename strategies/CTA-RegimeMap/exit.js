@@ -772,6 +772,53 @@ function isInCoolingPeriod(lastBarCount, state, config) {
 }
 
 /**
+ * 计算当前 profitR（R倍数，基于 entryPrice 与初始止损计算）和 profitPercent（浮盈百分比），并写入 state
+ * @param {Object} params
+ * @param {String} params.trend - 'up'/'down'
+ * @param {Object} params.state
+ * @param {Number} params.currentPrice
+ * @returns {Number|null}
+ */
+function calcProfitRAndSaveToState(params) {
+    const { trend, state, currentPrice } = params;
+    const isLong = trend === 'up';
+    const entryPrice = state.entryPrice;
+    const initialStopLoss = isLong ? state.initialLongStopLoss : state.initialShortStopLoss;
+
+    if (entryPrice == null || initialStopLoss == null) {
+        state.profitR = null;
+        state.profitPercent = null;
+        return null;
+    }
+    if (typeof currentPrice !== 'number') {
+        state.profitR = null;
+        state.profitPercent = null;
+        return null;
+    }
+
+    let profitR = null;
+    if (isLong) {
+        const denom = entryPrice - initialStopLoss;
+        if (denom > 0) profitR = (currentPrice - entryPrice) / denom;
+    } else {
+        const denom = initialStopLoss - entryPrice;
+        if (denom > 0) profitR = (entryPrice - currentPrice) / denom;
+    }
+
+    state.profitR = profitR;
+
+    // 浮盈百分比：相对 entryPrice 的盈利占比（多单为 (cur-entry)/entry，空单为 (entry-cur)/entry）
+    let profitPercent = null;
+    if (entryPrice !== 0) {
+        profitPercent = isLong
+            ? (currentPrice - entryPrice) / entryPrice
+            : (entryPrice - currentPrice) / entryPrice;
+    }
+    state.profitPercent = profitPercent;
+    return profitR;
+}
+
+/**
  * 设置保本止损
  * @param {Object} params - 参数对象
  * @param {String} params.trend - 交易方向 'up' 或 'down'
@@ -782,20 +829,21 @@ function isInCoolingPeriod(lastBarCount, state, config) {
  */
 function setBreakEvenStopLoss(params) {
     const { trend, state, config, currentStopLoss } = params;
-    const { enableBreakEvenStopLoss, breakEvenStopLossRatio, tpCountForStopLoss } = config;
+    const { enableBreakEvenStopLoss, breakEvenStopLossRatio, breakEvenStopLossProfitPercentThreshold } = config;
     
     // 检查是否启用保本止损
     if (!enableBreakEvenStopLoss) return false;
     
     // 检查是否有开仓价格
     if (!state.entryPrice) return false;
-    
-    // 检查是否已经触发过第一次指标止盈（保本止损应该在第一次指标止盈后才运行）
-    if (state.indicatorTPCount < tpCountForStopLoss || tpCountForStopLoss === 0) {
-        return false;
-    }
-    
+
     const isLong = trend === 'up';
+
+    // 通过“盈利百分比”触发保本止损：profitPercent >= threshold 才开启
+    // profitPercent 建议由 gridPointClearTrading 优先计算并写入 state.profitPercent
+    const lockThreshold = breakEvenStopLossProfitPercentThreshold ?? 0.03;
+    const profitPercent = state.profitPercent;
+    if (profitPercent == null || profitPercent < lockThreshold) return false;
     
     // 计算保本止损价格
     // 多单保本：开仓价 * (1 + ratio)
@@ -1071,6 +1119,13 @@ async function gridPointClearTrading(currentPrice, state, config, closeUp, close
     if (!state.hasOrder) return;
 
     state.onGridPoint = true;
+
+    // 优先计算并写入当前 profitR（供保本止损/移动止损门槛判断复用）
+    calcProfitRAndSaveToState({
+        trend: state.tradingInfo?.trend,
+        state,
+        currentPrice,
+    });
 
     // 判断固定止损（是否达到初始止损）
     await judgeStopLoss(currentPrice, state, config, closeUp, closeDown);

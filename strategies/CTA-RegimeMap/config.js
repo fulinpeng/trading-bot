@@ -98,7 +98,7 @@ const config = {
         priceTolerance: 0.001,              // 判断平仓时的价格容差
         
         // 波动率自适应止损（替代原来的移动止损）
-        enableVolatilityTrailingStop: false,   // 启用波动率自适应止损 31123 120单 , 31765  indicatorTPSecondCloseRatio: 0.5 （这个设为true后，曲线全是向上，非常好看）
+        enableVolatilityTrailingStop: true,   // 启用波动率自适应止损 31123 120单 , 31765  indicatorTPSecondCloseRatio: 0.5 （这个设为true后，曲线全是向上，非常好看）
         volatilityATRPeriod: 20,              // 波动率计算用的ATR周期
         volatilitySMAPeriod: 50,              // 波动率计算用的SMA周期
         
@@ -132,13 +132,16 @@ const config = {
         indicatorTPSecondCloseCount: 2,       // 第二次平仓计数阈值，达到此计数时执行第二次平仓
         indicatorTPFinalCloseCount: 3,        // 最终平仓计数阈值，达到此计数时平仓剩余所有仓位
         indicatorTPFirstCloseRatio: 0,      // 第一次平仓比例，平仓初始仓位的40%
-        indicatorTPSecondCloseRatio: 0,     // 第二次平仓比例，平仓初始仓位的40%
+        indicatorTPSecondCloseRatio: 0.5,     // 第二次平仓比例，平仓初始仓位的40%
         indicatorTPCoolingPeriod: 20,          // 指标止盈冷静期（K线数量），触发指标止盈后在此时间内不再触发
 
         // 保本止损配置
-        enableBreakEvenStopLoss: false,        // 启用保本止损，当 第一次指标止盈 后，设置保本止损，如果已经存在移动止损，取更有利的那个（多单时取较大值，空单时取较小值）
-        breakEvenStopLossRatio: 0.001,        // 保本止损比例，多单：开仓价 * (1 + ratio)，空单：开仓价 * (1 - ratio)
-        tpCountForStopLoss: 2,                 // 指标止盈计数关键字，用于判断是否达到平仓条件
+        enableBreakEvenStopLoss: true,        // 启用保本止损：当盈亏比达到阈值时开启；如果已经存在移动止损，取更有利的那个（多单时取较大值，空单时取较小值）
+        breakEvenStopLossRatio: 0.001,        // 保本止损比例：多单=entry*(1+ratio)，空单=entry*(1-ratio)
+        // 盈利百分比阈值（相对 entryPrice）：当浮盈 >= 3% 时开启保本止损
+        // 多单： (currentPrice-entryPrice)/entryPrice
+        // 空单： (entryPrice-currentPrice)/entryPrice
+        breakEvenStopLossProfitPercentThreshold: 0.04,
 
         // 指标止盈 QQE MOD止盈
         qqeModTakeProfitThresholdLong: 30,   // 做多QQE MOD拐止盈阈值，默认30

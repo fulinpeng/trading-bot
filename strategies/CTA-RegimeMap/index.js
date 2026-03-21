@@ -136,6 +136,12 @@ const state = {
     trailActive: false,               // 移动止损是否激活
     trailStop: null,                  // 移动止损价格
 
+    // 当前持仓对应的 profitR
+    profitR: null,
+
+    // 当前持仓对应的浮盈百分比（多单为 (cur-entry)/entry，空单为 (entry-cur)/entry）
+    profitPercent: null,
+
     // 固定止盈位（开仓时计算）
     longTakeProfit: null,
     shortTakeProfit: null,
@@ -764,7 +770,7 @@ const closeOrder = async (side, quantity, cb) => {
                 state.tradingInfo.quantity -= quantity;
                 saveGlobalVariables();
             } else {
-                console.log("🚀 ~ closeOrder ~ 平仓时的indicatorTPCount:", state.indicatorTPCount)
+                console.log("🚀 ~ closeOrder ~ 平仓时的indicatorTPCount:", state.indicatorTPCount, state.profitPercent)
                 // 全部平仓：重置所有状态
                 state.readyTradingDirection = "hold";
                 state.hasOrder = false;
@@ -783,6 +789,8 @@ const closeOrder = async (side, quantity, cb) => {
                 state.indicatorTPCount = 0;
                 state.trailActive = false;
                 state.trailStop = null;
+                state.profitR = null;
+                state.profitPercent = null;
                 state.longTakeProfit = null;
                 state.shortTakeProfit = null;
                 state.isHighRisk = false;

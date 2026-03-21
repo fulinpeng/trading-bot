@@ -102,7 +102,6 @@ const config = {
         // ========= profitR 自适应移动止损（替代原来的波动率止损） =========
         enableProfitRMoveStop: true,          // 启用 profitR 分阶段移动止损
         moveStopAtrPeriod: 20,               // 用于计算 ATR 的周期（用于移动止损的 ATR*倍数）
-
         // ========= ATR 初始止损 & profitR 分阶段移动止损 =========
         initialStopLossAtrMultiplier: 3,    // 初始止损：long=entry-ATR*X, short=entry+ATR*X（会夹取到 supertrend 上下沿内）
 
@@ -116,7 +115,7 @@ const config = {
         moveStopAtrMultiplierTier4: 10,      // >=Tier3：close +/- ATR*Tier4
 
         // 当 profitR 达到该阈值时开始锁定部分利润
-        lockProfitRThreshold: 6,             // 默认 3R 开始锁定利润
+        lockProfitRThreshold: 60,             // 默认 3R 开始锁定利润
         lockProfitRatio: 0.3,                // 默认锁定 30% 浮盈（0.3）
         
         // 高风险检测配置 高风险平仓后续不能继续开仓

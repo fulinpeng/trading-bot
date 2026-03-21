@@ -15,7 +15,7 @@
         }
         #chart {
             width: 100%;
-            height: 700px;
+            height: 1400px;
             margin-bottom: 20px;
         }
         #profitChart {
@@ -537,18 +537,6 @@
                                 result += `SuperTrend ATR: ${superTrend.atr.toFixed(4)}<br>`;
                             }
                         }
-                        if (alignedAtrZArr && alignedAtrZArr[idx] !== null && alignedAtrZArr[idx] !== undefined) {
-                            const atrZ = alignedAtrZArr[idx];
-                            let atrZStatus = '';
-                            if (atrZ < -1) {
-                                atrZStatus = '压缩行情';
-                            } else if (atrZ > 1) {
-                                atrZStatus = '极端波动';
-                            } else {
-                                atrZStatus = '正常行情';
-                            }
-                            result += `ATR Z-Score: ${atrZ.toFixed(4)} (${atrZStatus})<br>`;
-                        }
                         // if (ssl) {
                         //     result += `SSL: ${ssl.hlv === 1 ? 'UP' : 'DOWN'}<br>`;
                         // }
@@ -611,8 +599,6 @@
                     "Squeeze Box 上轨",
                     "Squeeze Box 下轨",
                     "QQE MOD",
-                    "ATR",
-                    "ATR Z-Score",
                 ],
                 textStyle: {
                     color: '#fff',
@@ -987,67 +973,6 @@
                     },
                     barWidth: '60%',
                 },
-                {
-                    name: "ATR Z-Score",
-                    type: "line",
-                    data: alignedAtrZArr,
-                    xAxisIndex: 2,
-                    yAxisIndex: 2,
-                    smooth: false,
-                    symbol: "none",
-                    lineStyle: {
-                        color: "#ff00ff",
-                        width: 2,
-                    },
-                    markLine: {
-                        data: [
-                            { 
-                                yAxis: -1, 
-                                lineStyle: { color: '#00ff00', type: 'dashed', width: 1 },
-                                label: {
-                                    formatter: '压缩行情阈值: -1',
-                                    position: 'end',
-                                    color: '#00ff00'
-                                }
-                            },
-                            { 
-                                yAxis: 1, 
-                                lineStyle: { color: '#ff0000', type: 'dashed', width: 1 },
-                                label: {
-                                    formatter: '极端波动阈值: 1',
-                                    position: 'end',
-                                    color: '#ff0000'
-                                }
-                            }
-                        ]
-                    },
-                },
-                {
-                    name: "ATR",
-                    type: "line",
-                    data: superTrendATR,
-                    xAxisIndex: 3,
-                    yAxisIndex: 3,
-                    smooth: false,
-                    symbol: "none",
-                    lineStyle: {
-                        color: "#ffff00",
-                        width: 1,
-                    },
-                    markLine: avgATR ? {
-                        data: [
-                            { 
-                                yAxis: avgATR, 
-                                lineStyle: { color: '#00ff00', type: 'dashed', width: 2 },
-                                label: {
-                                    formatter: `ATR平均值: ${avgATR.toFixed(4)}`,
-                                    position: 'middle',
-                                    color: '#00ff00'
-                                }
-                            }
-                        ]
-                    } : null,
-                },
                 // {
                 //     name: "PreHigh",
                 //     type: "scatter",
@@ -1267,7 +1192,7 @@
                     'indicatorTPSecondCloseCount', 'indicatorTPFinalCloseCount', 
                     'indicatorTPFirstCloseRatio', 'indicatorTPSecondCloseRatio', 
                     'indicatorTPCoolingPeriod', 'enableBreakEvenStopLoss', 
-                    'breakEvenStopLossRatio', 'tpCountForStopLoss', 
+                    'breakEvenStopLossRatio', 'breakEvenStopLossProfitPercentThreshold', 
                     'qqeModTakeProfitThresholdLong', 'qqeModTakeProfitThresholdShort'
                 ],
                 'QQE MOD趋势反转入场配置': [
