@@ -95,7 +95,24 @@ flowchart TB
     subgraph L6["可选：AI 过滤"]
         ML["exportTrainingData → dual_models 训练<br/>aiFilter 概率门控"]
     end
+
+    K --> IND
+    IND --> REG
+    IND --> TD
+    IND --> VF
+    REG --> SIG
+    TD --> SIG
+    VF --> SIG
+    SIG --> LIQ
+    LIQ --> RISK
+    RISK --> ORD
+    ORD --> SL
+    ORD --> TP
+    ORD --> CD
+    SIG -.-> ML
 ```
+
+**文字版（与上图对应）**
 
 | 阶段 | 内容 |
 |------|------|
