@@ -57,7 +57,7 @@ CTA-RegimeMap/
 
 ## 核心策略：`CTA-RegimeMap`（superTrend_SSL_qqeMod）
 
-**定位**：以 **SuperTrend** 定大趋势，**SSL / SSL2** 定通道与斜率，**QQE MOD** 作动量与拐头过滤，配合 **ADX**、**Fib**、可选 **SSL55 + Squeeze Box** 等多路入场；**exit** 侧实现止损、分批止盈（SuperTrend/Fib/QQE 等可配）、**波动率相关止损**、冷却与连续亏损保护。适用于 **ETH** 等品种，周期上文档建议 **1h / 4h**（实现上可按 `config.klineStage` 如 `30m` 回测）。
+**定位**：以 **SuperTrend** 定大趋势，**SSL / SSL2** 定通道与斜率，**QQE MOD** 作动量与拐头过滤，配合 **ADX**、**Fib**、可选 **SSL55 + Squeeze Box** 等多路入场；**exit** 侧实现止损、分批止盈（SuperTrend/Fib/QQE 等可配）、**波动率相关止损**、冷却与连续亏损保护。适用于 **ETH** 等品种，周期上文档建议 **30m**（实现上可按 `config.klineStage` 如 `30m` 回测）。
 
 ### 量化流水线（逻辑架构）
 
@@ -156,7 +156,11 @@ BINANCE_API_SECRET=your_secret
 
 ## 其他策略与遗留说明
 
-仓库中 **`strategies/`** 下其他目录、`tests/bestSolution`、根目录 `temp/` 等为**历史实验或参数搜索**，与 `CTA-RegimeMap` 主文档不同步时以**各目录内 `config.js` 与代码**为准。
+仓库中 `strategies/` 下其他目录、 `temp/` 等为历史K线数据回测
+
+`tests/bestSolution` 最佳参数挖掘会过拟合，不建议
+
+部分文档与 `CTA-RegimeMap` 主文档不同步时以**各目录内 `config.js` 与代码为准。
 
 ---
 
