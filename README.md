@@ -1,182 +1,148 @@
-#### 项目概述
-本项目是一个基于币安API开发的自动化交易机器人，旨在帮助用户实现高效、智能的加密货币交易。通过使用技术指标、策略和算法，该机器人能够自动分析市场动态，进行交易决策，减少手动交易带来的情绪干扰与操作失误。
+# trading-bot
 
-#### 功能特点
-- **智能交易策略**：
-    1. 集成多种交易策略，如移动平均交叉、相对强弱指数（RSI）、布林带等，帮助用户把握市场趋势。
-    2. 提供不看指标的交易策略，采用`变形马丁`策略，无需关注多空趋势，只关注交易波动即可。
-- **自动化执行**：通过币安API自动下单，支持实时日志监控和宕机自动恢复功能。
-- **风险管理**：自动止损、止盈等功能，以降低潜在的投资风险。
-- **数据分析**：实时分析市场数据，生成交易信号，支持用户根据数据做出决策。
+基于 **Node.js** 的加密货币量化交易与回测仓库：策略逻辑与执行框架解耦，指标与工具集中在 `utils/`，策略以独立目录形式维护。默认连接 **币安 U 本位合约** API；本地回测通过 `tests/nodeServer/wsServer.js` 按 K 线流推送历史数据。
 
-#### 技术栈
-- **编程语言**：JavaScript / Node.js
-- **API**：币安交易所API
-- **数据存储**：mongoDB存储交易状态
+---
 
-#### 开发目标
-本项目的目标是为用户提供一个可操作的交易工具，使其能够更有效地参与加密货币市场。同时，通过开源的方式，鼓励开发者贡献代码和策略，共同提升交易机器人的智能化和适应性。
+## 仓库结构（总览）
 
-#### 核心策略
-
-获取最佳参数：
-
-[获取mading-sequence策略参数](https://github.com/fulinpeng/trading-bot/tree/master/paramsFactory/mading/best-for-mading-sequence.js)
-
-
-[获取BBK策略参数](https://github.com/fulinpeng/trading-bot/tree/master/paramsFactory/keltner/strategies/BBK.js)
-
-获取boll策略参数：待开发
-
-获取emaMaCrossover策略参数：待优化
-
-获取highesthighLowestLow策略参数：待优化
-
-获取rsiEma策略参数：待开发
-
-策略机器人：
-
-[mading-sequence策略机器人](https://github.com/fulinpeng/trading-bot/tree/master/goldDigger/mading/mading-sequence.js)
-
-
-[BBK策略机器人](https://github.com/fulinpeng/trading-bot/tree/master/goldDigger/keltner/BBK-mading-sequence-rest.js)
-
-boll策略参数：待优化
-
-grid策略机器人：已完成
-
-emaMaCrossover策略机器人：已完成
-
-highesthighLowestLow策略机器人：已完成
-
-rsiEma策略机器人：已完成
-
-#### 获取币安API_KEY
-先获取币安API_KEY，新建`.env`文件
-```js
-BINANCE_API_KEY = Wxxxxxxxxxxxxxxxxxxxxxxxxxxxxcr;
-BINANCE_API_SECRET = DYxxxxxxxxxxx0Xz9qVAi9;
-
-MONGO_URI = "mongodb://localhost:27017/tradingBot" // mongoDB数据库地址
-
-// 不需要邮件通知可以省略，可能需要注释对应代码
-SEND_MAIL_ACOUNT = "xxxxx@qq.com"; // 发邮件，目前简单用QQ邮箱实现
-SEND_MAIL_CODE = "xxxx";
-RECIEVE_MAIL_ACOUNT = "xxx@qq.com"; // 邮件接收方
-
+```text
+trading-bot/
+├── strategies/                    # 策略包（每个子目录 = 一套可运行策略）
+│   ├── CTA-RegimeMap/             # 【主策略】ETH CTA + SuperTrend/SSL/QQE 体系（见下文）
+│   ├── CTA-RegimeMap-atrMoveSL/   # 变体：profitR 分档移动止损等
+│   ├── superTrend_SSL_qqeMod/    # 较早的 superTrend+SSL+QQE 组织方式
+│   ├── multWaveTrend_fvg/        # 多周期 WaveTrend + FVG 等实验策略
+│   └── …
+├── utils/                         # 指标与通用函数（ADX、ATR、EMA、RSI、SuperTrend、SSL、QQE…）
+├── tests/
+│   ├── nodeServer/                # 本地 HTTP/WS：回放 tests/source 下 K 线，驱动策略回测
+│   ├── source/                    # 历史 K 线数据（*.js 导出 kLineData，体积大，常用 Git LFS）
+│   └── test-*.js                  # 各策略/周期的离线测试脚本
+├── tools/getKlines/               # 从交易所拉取并合并 K 线写入 tests/source
+├── models/                        # 机器学习侧（如 DNN 优化实验）
+├── data/                          # 运行期或可视化用的数据导出（视策略配置）
+├── tradingviePinScript/           # TradingView Pine 脚本参考
+├── temp/                          # 本地临时脚本/配置（不保证稳定）
+├── start.sh / stop.sh             # 部署用脚本示例
+├── analysisWinRate.ps1            # 日志胜率分析示例
+├── package.json / pnpm-lock.yaml
+└── README.md
 ```
 
-`第一次尝试运行可以跳过获取最佳参数的步骤，1000pepeUSDT参数已经放在/paramsFactory/mading/temp下，直接用选用即可`
+### `strategies/CTA-RegimeMap/`（策略目录展开）
 
-
-#### 如何运用真实历史k线数据验证策略
-
-1. 获取真实k线数据(以mading-sequence策略机器人为例)
-```sh
-cd tools/getKlines
-# 先获取 1000pepeUSDT 从 2024-01-01 开始和之后30天的k线数据
-node getKlines-1m.js 1000pepeUSDT 1704038400000 30
-# 接着获取剩下的所有K线数据
-node getKlines-1m-to-now.js 1000pepeUSDT
-```
-2. 生成所有可能的参数
-```sh
-node paramsFactory/mading/functions/createParams-mading.js
-```
-3. 通过历史k线数据找最优参数
-```sh
-node paramsFactory/mading/pipeline-mading
-node paramsFactory/mading/functions/paramsSort.js mading-1000pepeUSDT
-```
-4. 将参数填入对应量化机器人
-```sh
-node mading-sequence.js
-```
-5. 通过历史数据测试最佳参数盈利情况
-```sh
-node tests/test-mading4-6.js
-```
-6. 查看测试情况
-
-* 控制台会得到如下结果：
-```js
-{
-  profitRate: 10000,
-  overNumberToRest: 15,
-  howManyCandleHeight: 6,
-  howManyNumForAvarageCandleHight: 6,
-  overGrid: 5,
-  nextBig: false,
-  testMoney: 673.0414680197536,
-  maxMoney: 697.9778231200553,
-  minMoney: -243.4413620124446,
-  tradeCount: 1111,
-  mostCountKey: '2',
-  mostCountValue: 479,
-  mostCountMap: '{"2":479,"3":82,"4":24,"5":21,"6":5,"7":4,"8":9,"9":3,"10":2,"11":1,"12":1,"13":1,"14":1,"15":1,"17":1,"18":1,"19":1,"22":1,"27":1}',
-  maxPosition: 27,
-  lastPosition: 8,
-  modelType: 1,
-  model1: { timeDis: 6, profit: 0.3 },
-  model2: { priceDis: 0.002, profit: 0.8 },
-  maxPositionMoney: 620
-}
+```text
+CTA-RegimeMap/
+├── index.js              # 主进程：WS、下单、回测循环、kaiDanDaJi → judgeAndTrading
+├── config.js             # 交易对、周期、风控、止盈止损、AI 开关等
+├── entry.js              # 交易方向、入场条件（SSL/SSL2/ADX、SSL55+Squeeze、反转等）
+├── exit.js               # 止损、分批止盈、冷却、平仓逻辑
+├── indicators.js         # 指标更新管线（与 K 线同步 push/shift）
+├── logs.js               # 可视化日志收集（可选）
+├── exportTrainingData.js # Step1：回测结束导出 ML 训练 JSON
+├── aiFilter.js           # Step3：m2cgen 双模型概率过滤（可选）
+├── ai/
+│   └── dual_models/      # Python：双模型训练 + output/score_*.js
+├── training-data/        # ml-training-data-*.json（导出结果）
+├── test/                 # 本地可视化：app.js + data 日志
+├── logs/ / errors/
+└── md/
+    ├── 策略描述-superTrend_SSL_qqeMod.md   # 多空规则细则
+    ├── 建议总结.md                         # 改造路线与模块说明（含策略结构）
+    └── AI接入-*.md                         # 训练数据与 AI 接入说明
 ```
 
-* 会将更详细的测试情况运行node服务结合k线图查看，浏览器打开：`http://localhost:3000`
+---
 
-```sh
-node tests/nodeServer/server.js
+## 核心策略：`CTA-RegimeMap`（superTrend_SSL_qqeMod）
+
+**定位**：以 **SuperTrend** 定大趋势，**SSL / SSL2** 定通道与斜率，**QQE MOD** 作动量与拐头过滤，配合 **ADX**、**Fib**、可选 **SSL55 + Squeeze Box** 等多路入场；**exit** 侧实现止损、分批止盈（SuperTrend/Fib/QQE 等可配）、**波动率相关止损**、冷却与连续亏损保护。适用于 **ETH** 等品种，周期上文档建议 **1h / 4h**（实现上可按 `config.klineStage` 如 `30m` 回测）。
+
+### 量化流水线（逻辑架构）
+
+其中「市场状态 Regime」「成交量过滤」等模块在工程里可能阶段性关闭或注释，以仓库内 `entry.js` / `config.js` 为准。
+
+```mermaid
+flowchart TB
+    subgraph L1["数据层"]
+        K["K 线流 / 历史回放"]
+    end
+
+    subgraph L2["特征与状态层"]
+        IND["指标计算 indicators.js<br/>SuperTrend · SSL/SSL2 · QQE · ADX · Fib · ATR Z-Score 等"]
+        REG["可选：市场状态 Regime Map<br/>（代码中可开关）"]
+        TD["趋势密度 Trend Density<br/>（EMA 带 + 回看窗口）"]
+        VF["可选：成交量过滤"]
+    end
+
+    subgraph L3["信号层 entry.js"]
+        SIG["入场分支：SSL1 / SSL2 / ADX / SSL55+Squeeze · 反转等"]
+        LIQ["扩展：流动性扫单 / 趋势爆发等条件"]
+    end
+
+    subgraph L4["执行与风控 index.js"]
+        RISK["仓位：Fixed / Martingale / RiskBased"]
+        ORD["下单与持仓状态"]
+    end
+
+    subgraph L5["出场层 exit.js"]
+        SL["止损：通道/ATR/指标止损等"]
+        TP["止盈：分批与指标止盈"]
+        CD["冷却 · 连续亏损保护"]
+    end
+
+    subgraph L6["可选：AI 过滤"]
+        ML["exportTrainingData → dual_models 训练<br/>aiFilter 概率门控"]
+    end
 ```
 
-#### 调用正式环境api
-进入`gridBot-doge3-7-1-mading-speed-small.js` 后，修改 `isTest`值为false即可
+| 阶段 | 内容 |
+|------|------|
+| 数据层 | WebSocket 或本地 WS 推送的 OHLCV；`maxKLinelen` 滑动窗口 |
+| 特征层 | SuperTrend、SSL/SSL2、QQE MOD、ADX、Fib、Swing、ATR Z-Score 等；可选 Regime / 趋势密度 / 成交量 |
+| 信号层 | `judgeTradingDirection` 与 `calculateTradingSignal`：多路 section 合成方向与止损止盈价 |
+| 执行层 | `judgeAndTrading` → 下单；可选 **AI 过滤**（`config.enableAiFilter`） |
+| 出场层 | 止损、分批止盈、保本、冷却机制 |
 
-```sh
-forever start --minUptime 10000 --spinSleepTime 10000 -o /dev/null -e /dev/null gridBot-mading-speed-small-1000pepe.js
+更细的**多空条件、参数名**见：`strategies/CTA-RegimeMap/md/策略描述-superTrend_SSL_qqeMod.md`。
+
+---
+
+## 技术栈与运行依赖
+
+- **运行时**：Node.js（策略主程序）
+- **交易所**：币安合约 API（`config.isTest` / `isTestLocal` 区分实盘与本地回放）
+- **本地回测**：`tests/nodeServer/wsServer.js` 读取 `tests/source/<symbol>-<interval>.js` 中的 `kLineData` 逐根推送
+- **可选**：Python 3（`CTA-RegimeMap/ai/dual_models` 双模型训练）、MongoDB 等仅在部分历史脚本中出现，**以当前策略 `config` 与入口为准**
+
+### 环境变量（示例）
+
+在项目根目录创建 `.env`（勿提交密钥）：
+
+```env
+BINANCE_API_KEY=your_key
+BINANCE_API_SECRET=your_secret
 ```
 
-* `data`目录下查看日志
+其他变量以各策略目录说明为准。
 
-#### 注意事项
-1. 访问不了api？
-    * 需要代理
-2. 请在交易界面开启双向开仓功能
-3. 这三个文件的代码逻辑是一样的： gridBot-doge3-7-1-mading-speed-small.js test-mading4-3.js test-mading4-6.js
-    * 不用疑惑，请谅解这是最初的代码，后续考虑只保留一套，并删除无用代码
-    * 测试就关注 [test-mading4-3.js](https://github.com/fulinpeng/trading-bot/tree/main-deprecated/tests/test-mading4-3.js) [test-mading4-6.js](https://github.com/fulinpeng/trading-bot/tree/main-deprecated/tests/test-mading4-6.js) 这俩文件
-    * 正式环境只关注 [gridBot-doge3-7-1-mading-speed-small.js](https://github.com/fulinpeng/trading-bot/tree/main-deprecated/gridBot-doge3-7-1-mading-speed-small.js)
+### 本地回放 CTA-RegimeMap（简要）
 
-#### 法律声明
+1. 准备 K 线：`tests/source/` 下存在对应 `ethusdt-30m.js` 等（或通过 `tools/getKlines` 生成）。
+2. 启动推流服务：`node tests/nodeServer/wsServer.js`（注意该文件内 `startTime` / `endTime` 与交易对）。
+3. 启动策略：`node strategies/CTA-RegimeMap/index.js`（`config.js` 中 `isTestLocal: true` 连本地 WS）。
 
-本项目是一个开源的加密货币交易机器人，仅供教育和参考使用。项目的发起人及贡献者不对任何因使用本项目而导致的损失或损害承担任何责任。用户在使用本项目时需自行承担风险，并应对所有交易行为负责。
+训练数据与 AI：`strategies/CTA-RegimeMap/md/AI接入-step1.md` 等。
 
-##### 重要声明
+---
 
-1. **风险提示**：加密货币交易具有高度的风险，可能导致部分或全部投资损失。用户在进行任何交易之前应充分了解市场风险，并根据自身的风险承受能力进行决策。
+## 其他策略与遗留说明
 
-2. **非投资建议**：本项目及其相关文档不构成任何投资建议、财务建议或其他形式的建议。用户在做出投资决策时应咨询专业的财务顾问。
+仓库中 **`strategies/`** 下其他目录、`tests/bestSolution`、根目录 `temp/` 等为**历史实验或参数搜索**，与 `CTA-RegimeMap` 主文档不同步时以**各目录内 `config.js` 与代码**为准。
 
-3. **合规性**：用户应确保其交易活动符合所在地区的法律法规，项目发起人对用户的合规性行为不承担任何责任。
+---
 
-4. **遵守交易所API使用条款**：发布前确保交易机器人符合交易所的规则，避免被封禁账户或面临法律责任。
+## 法律声明
 
-5. **第三方链接**：本项目可能包含第三方网站或服务的链接，项目发起人对这些第三方网站或服务的内容和使用不承担任何责任。
-
-使用本项目即表示您已阅读、理解并同意上述法律声明。如您不同意，请勿使用本项目。
-
-## Contributors ✨
-
-<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
-<!-- ALL-CONTRIBUTORS-BADGE:END -->
-
-Thanks goes to these wonderful people:
-
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
-
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
-<!-- ALL-CONTRIBUTORS-LIST:END -->
+本项目仅供学习与研究。加密货币交易风险极高，可能造成本金全部损失。作者与贡献者不对使用本仓库产生的任何盈亏或法律责任负责。使用即表示你已阅读并同意自担风险；请遵守所在地法律法规及交易所条款。
