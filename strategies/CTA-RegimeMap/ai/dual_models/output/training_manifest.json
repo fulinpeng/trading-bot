@@ -1,0 +1,54 @@
+{
+  "input": "..\\..\\training-data\\ml-training-data-ethusdt-30m.json",
+  "meta": {
+    "symbol": "ethusdt",
+    "klineStage": "30m",
+    "futureBarsCount": 100,
+    "labelThreshold": 0.5,
+    "sampleCount": 20,
+    "label1Count": 6,
+    "label0Count": 14
+  },
+  "feature_cols": [
+    "rsi",
+    "atr",
+    "adx",
+    "price_vs_ma",
+    "volatility"
+  ],
+  "feature_order_note": "Node 侧构造 input 数组时须与此顺序一致：input[0]=rsi ... input[4]=volatility",
+  "m2cgen_score_output": "[P(label=0), P(label=1)]，正类概率请取返回值下标 1",
+  "train_ratio": 0.8,
+  "seed": 42,
+  "long": {
+    "n_train": 8,
+    "n_val": 3,
+    "metrics": {
+      "val_auc": 0.5,
+      "best_threshold_f1": 0.5,
+      "val_precision": 0.3333333333333333,
+      "val_recall": 1.0,
+      "val_f1": 0.5,
+      "val_accuracy": 0.3333333333333333
+    },
+    "model_txt": "lgbm_long.txt",
+    "js": "score_long.js",
+    "js_function": "scoreLong"
+  },
+  "short": {
+    "n_train": 7,
+    "n_val": 2,
+    "metrics": {
+      "val_auc": null,
+      "note": "验证集仅单一类别，无法计算 AUC；验证集仅单一类别，阈值未优化",
+      "best_threshold_f1": 0.5,
+      "val_precision": null,
+      "val_recall": null,
+      "val_f1": null,
+      "val_accuracy": null
+    },
+    "model_txt": "lgbm_short.txt",
+    "js": "score_short.js",
+    "js_function": "scoreShort"
+  }
+}

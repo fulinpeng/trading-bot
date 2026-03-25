@@ -32,6 +32,16 @@ const config = {
         logsFolder: "logs",
         errorsFolder: "errors",
         enableVisualizationLogs: true,       // 是否启用可视化日志收集
+
+        // ========== 机器学习训练数据导出（Step 1） ==========
+        enableTrainingDataExport: false,      // 回测结束后是否导出 ML 训练数据
+        futureBarsCount: 100,                // 未来 K 线根数，用于计算 maxProfitR
+        // label=1 当未来 N 根内 maxProfitR >= 该值（R）：0.5=半R，1=1R，2=2R；导出 JSON 的 meta.labelThreshold 与此相同（与 md 示例不一致时请以本处为准）
+        trainingLabelThreshold: 0.5,
+
+        // ========== AI 开仓过滤（Step 3：m2cgen 导出的 score_*.js） ==========
+        enableAiFilter: false,                // 是否用双模型概率过滤开仓（需先有 ai/dual_models/output/）
+        aiManifestPath: "ai/dual_models/output/training_manifest.json", // 相对本策略目录
         
         // ========== SuperTrend 指标配置 ==========
         atrPeriod: 50,                       // SuperTrend ATR 周期
@@ -132,7 +142,7 @@ const config = {
         indicatorTPSecondCloseCount: 2,       // 第二次平仓计数阈值，达到此计数时执行第二次平仓
         indicatorTPFinalCloseCount: 3,        // 最终平仓计数阈值，达到此计数时平仓剩余所有仓位
         indicatorTPFirstCloseRatio: 0,      // 第一次平仓比例，平仓初始仓位的40%
-        indicatorTPSecondCloseRatio: 0.5,     // 第二次平仓比例，平仓初始仓位的40%
+        indicatorTPSecondCloseRatio: 0,     // 第二次平仓比例，平仓初始仓位的40%
         indicatorTPCoolingPeriod: 20,          // 指标止盈冷静期（K线数量），触发指标止盈后在此时间内不再触发
 
         // 保本止损配置

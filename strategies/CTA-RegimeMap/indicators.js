@@ -97,14 +97,14 @@ async function setEveryIndex(historyClosePrices, curKLine, state, config) {
         //     setBBKeltnerSqueezeArr(curKLine, state, config);
         //     resolve();
         // })),
-        // new Promise(resolve => setImmediate(() => {
-        //     setEma50Arr(curKLine, state, config);
-        //     resolve();
-        // })),
-        // new Promise(resolve => setImmediate(() => {
-        //     setRsiArr(curKLine, state, config);
-        //     resolve();
-        // })),
+        new Promise(resolve => setImmediate(() => {
+            setEma50Arr(curKLine, state, config);
+            resolve();
+        })),
+        new Promise(resolve => setImmediate(() => {
+            setRsiArr(curKLine, state, config);
+            resolve();
+        })),
         new Promise(resolve => setImmediate(() => {
             setVolumeSmaArr(curKLine, state, config);
             resolve();
