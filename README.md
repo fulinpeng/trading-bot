@@ -1,7 +1,7 @@
 #### 项目概述
 本项目是一个基于币安API开发的自动化交易机器人，旨在帮助用户实现高效、智能的加密货币交易。通过使用技术指标、策略和算法，该机器人能够自动分析市场动态，进行交易决策，减少手动交易带来的情绪干扰与操作失误。
 
-回测/实盘/交易分析框架：[LiveBackEngine]('https://github.com/fulinpeng/trading-bot/tree/live-back-engine')。
+回测/实盘/交易分析框架：[LiveBackEngine](https://github.com/fulinpeng/trading-bot/tree/live-back-engine)
 
 #### 功能特点
 - **智能交易策略**：
