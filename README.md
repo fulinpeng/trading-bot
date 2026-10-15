@@ -1,7 +1,7 @@
 # trading-bot
 
-![CTA-RegimeMap ETH 45m TradingView 回测](strategies/CTA-RegimeMap/md/img/eth-45min-20261015.png)
-![CTA-RegimeMap ETH 45m TradingView 回测](strategies/CTA-RegimeMap/md/img/eth-45min-20261015-2.png)
+![CTA-RegimeMap ETH 45m TradingView 回测](images/eth-45min-20261015.png)
+![CTA-RegimeMap ETH 45m TradingView 回测](images/eth-45min-20261015-2.png)
 
 > 上图为同等策略（`CTA-RegimeMap`，ETH 45m）在 TradingView 上的回测盈利展示。
 
