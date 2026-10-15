@@ -1,5 +1,10 @@
 # trading-bot
 
+![CTA-RegimeMap ETH 45m TradingView 回测](strategies/CTA-RegimeMap/md/img/eth-45min-20261015.png)
+![CTA-RegimeMap ETH 45m TradingView 回测](strategies/CTA-RegimeMap/md/img/eth-45min-20261015-2.png)
+
+> 上图为同等策略（`CTA-RegimeMap`，ETH 45m）在 TradingView 上的回测盈利展示。
+
 基于 **Node.js** 的加密货币量化交易与回测仓库：策略逻辑与执行框架解耦，指标与工具集中在 `utils/`，策略以独立目录形式维护。默认连接 **币安 U 本位合约** API；本地回测通过 `tests/nodeServer/wsServer.js` 按 K 线流推送历史数据。
 
 ---
@@ -30,6 +35,8 @@ trading-bot/
 └── README.md
 ```
 
+
+
 ### `strategies/CTA-RegimeMap/`（策略目录展开）
 
 ```text
@@ -54,6 +61,8 @@ CTA-RegimeMap/
 ```
 
 ---
+
+
 
 ## 核心策略：`CTA-RegimeMap`（superTrend_SSL_qqeMod）
 
@@ -112,26 +121,34 @@ flowchart TB
     SIG -.-> ML
 ```
 
+
+
 **文字版（与上图对应）**
 
-| 阶段 | 内容 |
-|------|------|
-| 数据层 | WebSocket 或本地 WS 推送的 OHLCV；`maxKLinelen` 滑动窗口 |
+
+| 阶段  | 内容                                                                             |
+| --- | ------------------------------------------------------------------------------ |
+| 数据层 | WebSocket 或本地 WS 推送的 OHLCV；`maxKLinelen` 滑动窗口                                  |
 | 特征层 | SuperTrend、SSL/SSL2、QQE MOD、ADX、Fib、Swing、ATR Z-Score 等；可选 Regime / 趋势密度 / 成交量 |
-| 信号层 | `judgeTradingDirection` 与 `calculateTradingSignal`：多路 section 合成方向与止损止盈价 |
-| 执行层 | `judgeAndTrading` → 下单；可选 **AI 过滤**（`config.enableAiFilter`） |
-| 出场层 | 止损、分批止盈、保本、冷却机制 |
+| 信号层 | `judgeTradingDirection` 与 `calculateTradingSignal`：多路 section 合成方向与止损止盈价       |
+| 执行层 | `judgeAndTrading` → 下单；可选 **AI 过滤**（`config.enableAiFilter`）                   |
+| 出场层 | 止损、分批止盈、保本、冷却机制                                                                |
+
 
 更细的**多空条件、参数名**见：`strategies/CTA-RegimeMap/md/策略描述-superTrend_SSL_qqeMod.md`。
 
 ---
+
+
 
 ## 技术栈与运行依赖
 
 - **运行时**：Node.js（策略主程序）
 - **交易所**：币安合约 API（`config.isTest` / `isTestLocal` 区分实盘与本地回放）
 - **本地回测**：`tests/nodeServer/wsServer.js` 读取 `tests/source/<symbol>-<interval>.js` 中的 `kLineData` 逐根推送
-- **可选**：Python 3（`CTA-RegimeMap/ai/dual_models` 双模型训练）、MongoDB 等仅在部分历史脚本中出现，**以当前策略 `config` 与入口为准**
+- **可选**：Python 3（`CTA-RegimeMap/ai/dual_models` 双模型训练）、MongoDB 等仅在部分历史脚本中出现，**以当前策略** `config` **与入口为准**
+
+
 
 ### 环境变量（示例）
 
@@ -154,6 +171,8 @@ BINANCE_API_SECRET=your_secret
 
 ---
 
+
+
 ## 其他策略与遗留说明
 
 仓库中 `strategies/` 下其他目录、 `temp/` 等为历史K线数据回测
@@ -163,6 +182,8 @@ BINANCE_API_SECRET=your_secret
 部分文档与 `CTA-RegimeMap` 主文档不同步时以**各目录内 `config.js` 与代码为准。
 
 ---
+
+
 
 ## 法律声明
 
